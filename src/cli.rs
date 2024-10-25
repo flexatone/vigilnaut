@@ -38,6 +38,7 @@ impl From<CliAnchor> for Anchor {
 }
 
 //------------------------------------------------------------------------------
+const TITLE: &str = "◎○◉ fetter: System-wide Python package discovery and validation";
 
 const AFTER_HELP: &str = "\
 Examples:
@@ -66,7 +67,7 @@ Examples:
 ";
 
 #[derive(clap::Parser)]
-#[command(version, about, long_about = None, after_help = AFTER_HELP)]
+#[command(version, about, long_about = TITLE, after_help = AFTER_HELP)]
 struct Cli {
     /// Zero or more executable paths to derive site package locations. If not provided, all discoverable executables will be used.
     #[arg(short, long, value_name = "FILES", required = false)]
@@ -311,7 +312,7 @@ fn get_scan(
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
     let active = Arc::new(AtomicBool::new(true));
     if log {
-        spin(active.clone());
+        spin(active.clone(), "scanning".to_string());
     }
     let sfs = match exe_paths {
         Some(exe_paths) => ScanFS::from_exes(exe_paths, force_usite),
@@ -429,7 +430,16 @@ where
             }
         }
         Some(Commands::Audit { subcommands }) => {
+            // network look makes this potentially slow
+            let active = Arc::new(AtomicBool::new(true));
+            if !quiet {
+                spin(active.clone(), "vulnerability searching".to_string());
+            }
             let ar = sfs.to_audit_report();
+            if !quiet {
+                active.store(false, Ordering::Relaxed);
+                thread::sleep(Duration::from_millis(100));
+            }
             match subcommands {
                 AuditSubcommand::Display => {
                     let _ = ar.to_stdout();

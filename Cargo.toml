@@ -9,7 +9,7 @@ repository = "https://github.com/fetter-io/fetter-rs"
 license = "GPL-3.0-or-later"
 readme = "README.md"
 
-description = "System-wide Python package discovery and allow listing."
+description = "System-wide Python package discovery and validation."
 
 keywords = ["package", "allow-listing", "python"]
 categories = [

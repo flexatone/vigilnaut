@@ -26,7 +26,7 @@ const FRAME_SPIN: [&str; 20] = [
 // vec!["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█", "▇", "▆", "▅", "▄", "▃", "▂", "▁", " "];
 // vec!["○─•  ", "◉──• ", "◎───•", "◉──• ", "○─•  "];
 
-pub(crate) fn spin(active: Arc<AtomicBool>) {
+pub(crate) fn spin(active: Arc<AtomicBool>, message: String) {
     let mut stdout = stdout();
     if !stdout.is_tty() {
         return;
@@ -42,7 +42,7 @@ pub(crate) fn spin(active: Arc<AtomicBool>) {
             while active.load(Ordering::Relaxed) {
                 stdout.execute(cursor::MoveToColumn(0)).unwrap();
                 let fs = FRAME_SPIN[frame_idx % FRAME_SPIN.len()];
-                let msg = format!("{} fettering... ", fs);
+                let msg = format!("{} {}... ", fs, message);
                 write_color(&mut stdout, 120, 120, 120, &msg);
                 stdout.flush().unwrap();
                 thread::sleep(Duration::from_millis(80));
