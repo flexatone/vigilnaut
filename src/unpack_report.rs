@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-// use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::io::BufRead;
@@ -84,50 +83,6 @@ impl Artifacts {
         Ok(())
     }
 }
-
-// for dir in &self.dirs {
-//     let start = Instant::now();
-//     let mut delay = Duration::from_millis(50);
-//     let max_wait = Duration::from_secs(5);
-
-//     while start.elapsed() < max_wait {
-//         if fs::read_dir(dir)?.next().is_none() {
-//             if log {
-//                 eprintln!("removing dir: {:?}", dir);
-//             }
-//             fs::remove_dir(&dir)?;
-//             break;
-//         }
-//         thread::sleep(delay);
-//         delay = delay.saturating_mul(2);
-//     }
-// }
-
-// we cannot evaluate this until after we remove the files
-// let dirs = dir_candidates
-//     .iter()
-//     .filter_map(|dir| {
-//         if fs::read_dir(&dir).ok()?.next().is_none() {
-//             Some(dir.clone()) // keep if empty
-//         } else {
-//             None
-//         }
-//     })
-//     .collect();
-// Attempt to remove any empty directories
-// for dir in dirs {
-//     match fs::remove_dir(&dir) {
-//         Ok(_) => println!("Removed empty directory: {:?}", dir),
-//         Err(e) => {
-//             // Directory is not empty or some other error occurred
-//             if e.kind() == io::ErrorKind::NotEmpty {
-//                 println!("Directory not empty, skipping: {:?}", dir);
-//             } else {
-//                 println!("Error removing directory {:?}: {}", dir, e);
-//             }
-//         }
-//     }
-// }
 
 //------------------------------------------------------------------------------
 trait UnpackRecordTrait {

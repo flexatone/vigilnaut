@@ -134,17 +134,13 @@ enum Commands {
         #[command(subcommand)]
         subcommands: ValidateSubcommand,
     },
-    /// Search for vulnerabilities on observed packages.
+    /// Search for package security vulnerabilities via the OSV DB.
     Audit {
         #[command(subcommand)]
         subcommands: AuditSubcommand,
     },
-    /// Discover all installed artifacts of packages.
-    Unpack {
-        /// Show artifact counts per package.
-        #[arg(long)]
-        count: bool,
-
+    /// Discover counts of all installed packages artifacts.
+    UnpackCount {
         /// Provide a glob-like pattern to select packages.
         #[arg(short, long, default_value = "*")]
         pattern: String,
@@ -154,7 +150,20 @@ enum Commands {
         case: bool,
 
         #[command(subcommand)]
-        subcommands: UnpackSubcommand,
+        subcommands: UnpackCountSubcommand,
+    },
+    /// Discover file names of all installed package artifacts.
+    UnpackFiles {
+        /// Provide a glob-like pattern to select packages.
+        #[arg(short, long, default_value = "*")]
+        pattern: String,
+
+        /// Enable case-sensitive pattern matching.
+        #[arg(long)]
+        case: bool,
+
+        #[command(subcommand)]
+        subcommands: UnpackFilesSubcommand,
     },
     /// Purge packages that match a search pattern.
     PurgePattern {
@@ -266,7 +275,20 @@ enum AuditSubcommand {
 }
 
 #[derive(Subcommand)]
-enum UnpackSubcommand {
+enum UnpackCountSubcommand {
+    /// Display installed artifacts in the terminal.
+    Display,
+    /// Write installed artifacts to a delimited file.
+    Write {
+        #[arg(short, long, value_name = "FILE")]
+        output: PathBuf,
+        #[arg(short, long, default_value = ",")]
+        delimiter: char,
+    },
+}
+
+#[derive(Subcommand)]
+enum UnpackFilesSubcommand {
     /// Display installed artifacts in the terminal.
     Display,
     /// Write installed artifacts to a delimited file.
@@ -417,18 +439,34 @@ where
                 }
             }
         }
-        Some(Commands::Unpack {
+        Some(Commands::UnpackCount {
             subcommands,
-            count,
             pattern,
             case,
         }) => {
-            let ir = sfs.to_unpack_report(&pattern, !case, *count);
+            let count = true;
+            let ir = sfs.to_unpack_report(&pattern, !case, count);
             match subcommands {
-                UnpackSubcommand::Display => {
+                UnpackCountSubcommand::Display => {
                     let _ = ir.to_stdout();
                 }
-                UnpackSubcommand::Write { output, delimiter } => {
+                UnpackCountSubcommand::Write { output, delimiter } => {
+                    let _ = ir.to_file(output, *delimiter);
+                }
+            }
+        }
+        Some(Commands::UnpackFiles {
+            subcommands,
+            pattern,
+            case,
+        }) => {
+            let count = false;
+            let ir = sfs.to_unpack_report(&pattern, !case, count);
+            match subcommands {
+                UnpackFilesSubcommand::Display => {
+                    let _ = ir.to_stdout();
+                }
+                UnpackFilesSubcommand::Write { output, delimiter } => {
                     let _ = ir.to_file(output, *delimiter);
                 }
             }
