@@ -104,6 +104,7 @@ pub(crate) fn query_osv_batches<U: UreqClient + std::marker::Sync>(
     client: &U,
     packages: &Vec<Package>,
 ) -> Vec<Option<Vec<String>>> {
+    // prepare query structs from Package
     let packages_osv: Vec<OSVPackageQuery> = packages
         .iter()
         .map(|p| OSVPackageQuery::from_package(p))
