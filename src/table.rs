@@ -47,7 +47,7 @@ pub(crate) trait Rowable {
 
 //------------------------------------------------------------------------------
 #[derive(Debug)]
-struct WidthFormat {
+pub(crate) struct WidthFormat {
     width_pad: usize,
     width_chars: usize,
 }
@@ -121,14 +121,14 @@ fn prepare_field(value: &String, widths: &WidthFormat) -> String {
 
 fn to_table_delimited<W: Write, T: Rowable>(
     writer: &mut W,
-    headers: Vec<ColumnFormat>,
+    column_formats: Vec<ColumnFormat>,
     records: &Vec<T>,
     delimiter: &str,
 ) -> Result<(), Error> {
-    if records.is_empty() || headers.is_empty() {
+    if records.is_empty() || column_formats.is_empty() {
         return Ok(());
     }
-    let header_labels: Vec<String> = headers.iter().map(|hf| hf.header.clone()).collect();
+    let header_labels: Vec<String> = column_formats.iter().map(|hf| hf.header.clone()).collect();
     writeln!(writer, "{}", header_labels.join(delimiter))?;
     for record in records {
         for row in record.to_rows(&RowableContext::Delimited) {
@@ -141,16 +141,16 @@ fn to_table_delimited<W: Write, T: Rowable>(
 /// Wite Rowables to a writer. If `delimiter` is None, we assume writing to stdout; if `delimiter` is not None, we assume writing a delimited text file.
 fn to_table_display<W: Write + AsRawFd, T: Rowable>(
     writer: &mut W,
-    headers: Vec<ColumnFormat>,
+    column_formats: Vec<ColumnFormat>,
     records: &Vec<T>,
 ) -> Result<(), Error> {
-    if records.is_empty() || headers.is_empty() {
+    if records.is_empty() || column_formats.is_empty() {
         return Ok(());
     }
-    let header_labels: Vec<String> = headers.iter().map(|hf| hf.header.clone()).collect();
-    let ellipsisable: Vec<bool> = headers.iter().map(|hf| hf.ellipsisable).collect();
-    // evaluate headers and all elements in every row to determine max colum widths; store extracted rows for reuse in writing body.
-    let mut widths_max = vec![0; headers.len()];
+    let header_labels: Vec<String> = column_formats.iter().map(|hf| hf.header.clone()).collect();
+    let ellipsisable: Vec<bool> = column_formats.iter().map(|hf| hf.ellipsisable).collect();
+    // evaluate column_formats and all elements in every row to determine max colum widths; store extracted rows for reuse in writing body.
+    let mut widths_max = vec![0; column_formats.len()];
     for (i, header) in header_labels.iter().enumerate() {
         widths_max[i] = header.len();
     }
@@ -168,7 +168,7 @@ fn to_table_display<W: Write + AsRawFd, T: Rowable>(
     // header
     for (i, header) in header_labels.into_iter().enumerate() {
         // write!(writer, "{}", prepare_field(&header, &widths[i]),)?;
-        if let Some((r, g, b)) = headers[i].color {
+        if let Some((r, g, b)) = column_formats[i].color {
             write_color(writer, r, g, b, &prepare_field(&header, &widths[i]));
         } else {
             write!(writer, "{}", prepare_field(&header, &widths[i]),)?;
@@ -178,8 +178,9 @@ fn to_table_display<W: Write + AsRawFd, T: Rowable>(
     // body
     for row in rows {
         for (i, element) in row.into_iter().enumerate() {
+            let _ = column_formats[i].write_element(writer, &element, &widths[i]);
             // color application has to happen after `prepare_field`
-            // if let Some(color) = &headers[i].color {
+            // if let Some(color) = &column_formats[i].color {
             //     write_color(
             //         writer,
             //         color.0,
@@ -188,7 +189,7 @@ fn to_table_display<W: Write + AsRawFd, T: Rowable>(
             //         &prepare_field(&element, &widths[i]),
             //     );
             // }
-            write!(writer, "{}", prepare_field(&element, &widths[i]),)?;
+            // write!(writer, "{}", prepare_field(&element, &widths[i]),)?;
         }
         writeln!(writer)?;
     }
@@ -213,6 +214,19 @@ impl ColumnFormat {
             ellipsisable,
             color,
         }
+    }
+
+    pub(crate) fn write_element<W: Write + IsTty>(
+        &self,
+        writer: &mut W,
+        message: &String,
+        width_format: &WidthFormat,
+    ) -> Result<(), Error> {
+        // can branch on common headers and implement uniform formatting
+        // write_color(writer, 0, 0, 120, message);
+        let field = prepare_field(&message, width_format);
+        write!(writer, "{}", field);
+        return Ok(())
     }
 }
 
