@@ -5,7 +5,7 @@ use crate::osv_vulns::query_osv_vulns;
 
 use crate::osv_vulns::OSVVulnInfo;
 use crate::package::Package;
-use crate::table::HeaderFormat;
+use crate::table::ColumnFormat;
 use crate::table::Rowable;
 use crate::table::RowableContext;
 use crate::table::Tableable;
@@ -111,12 +111,12 @@ impl AuditReport {
 }
 
 impl Tableable<AuditRecord> for AuditReport {
-    fn get_header(&self) -> Vec<HeaderFormat> {
+    fn get_header(&self) -> Vec<ColumnFormat> {
         vec![
-            HeaderFormat::new("Package".to_string(), false, None),
-            HeaderFormat::new("Vulnerabilities".to_string(), false, None),
-            HeaderFormat::new("Attribute".to_string(), false, None),
-            HeaderFormat::new("Value".to_string(), true, None),
+            ColumnFormat::new("Package".to_string(), false, Some((20, 20, 20)), None),
+            ColumnFormat::new("Vulnerabilities".to_string(), false, Some((20, 20, 20)), None),
+            ColumnFormat::new("Attribute".to_string(), false, Some((20, 20, 20)), None),
+            ColumnFormat::new("Value".to_string(), true, Some((20, 20, 20)), None),
         ]
     }
     fn get_records(&self) -> &Vec<AuditRecord> {

@@ -120,7 +120,7 @@ fn prepare_field(value: &String, widths: &WidthFormat) -> String {
 
 fn to_table_delimited<W: Write, T: Rowable>(
     writer: &mut W,
-    headers: Vec<HeaderFormat>,
+    headers: Vec<ColumnFormat>,
     records: &Vec<T>,
     delimiter: &str,
 ) -> Result<(), Error> {
@@ -140,7 +140,7 @@ fn to_table_delimited<W: Write, T: Rowable>(
 /// Wite Rowables to a writer. If `delimiter` is None, we assume writing to stdout; if `delimiter` is not None, we assume writing a delimited text file.
 fn to_table_display<W: Write + AsRawFd, T: Rowable>(
     writer: &mut W,
-    headers: Vec<HeaderFormat>,
+    headers: Vec<ColumnFormat>,
     records: &Vec<T>,
 ) -> Result<(), Error> {
     if records.is_empty() || headers.is_empty() {
@@ -167,23 +167,27 @@ fn to_table_display<W: Write + AsRawFd, T: Rowable>(
     // header
     for (i, header) in header_labels.into_iter().enumerate() {
         // write!(writer, "{}", prepare_field(&header, &widths[i]),)?;
-        write_color(writer, 30, 30, 30, &prepare_field(&header, &widths[i]));
+        if let Some((r, g, b)) = headers[i].color {
+            write_color(writer, r, g, b, &prepare_field(&header, &widths[i]));
+        } else {
+            write!(writer, "{}", prepare_field(&header, &widths[i]),)?;
+        }
     }
     writeln!(writer)?;
     // body
     for row in rows {
         for (i, element) in row.into_iter().enumerate() {
-            if let Some(color) = &headers[i].color {
-                write_color(
-                    writer,
-                    color.0,
-                    color.1,
-                    color.2,
-                    &prepare_field(&element, &widths[i]),
-                );
-            } else {
-                write!(writer, "{}", prepare_field(&element, &widths[i]),)?;
-            }
+            // color application has to happen after `prepare_field`
+            // if let Some(color) = &headers[i].color {
+            //     write_color(
+            //         writer,
+            //         color.0,
+            //         color.1,
+            //         color.2,
+            //         &prepare_field(&element, &widths[i]),
+            //     );
+            // }
+            write!(writer, "{}", prepare_field(&element, &widths[i]),)?;
         }
         writeln!(writer)?;
     }
@@ -191,30 +195,32 @@ fn to_table_display<W: Write + AsRawFd, T: Rowable>(
 }
 
 //------------------------------------------------------------------------------
-#[derive(Clone)]
-pub(crate) struct HeaderFormat {
+pub(crate) struct ColumnFormat {
     header: String,
     ellipsisable: bool,
     color: Option<(u8, u8, u8)>,
+    color_element: Option<Box<dyn Fn(&mut dyn Write, &str)>>,
 }
 
-impl HeaderFormat {
+impl ColumnFormat {
     pub(crate) fn new(
         header: String,
         ellipsisable: bool,
         color: Option<(u8, u8, u8)>,
-    ) -> HeaderFormat {
-        HeaderFormat {
+        color_element: Option<Box<dyn Fn(&mut dyn Write, &str)>>,
+    ) -> ColumnFormat {
+        ColumnFormat {
             header,
             ellipsisable,
             color,
+            color_element,
         }
     }
 }
 
 //------------------------------------------------------------------------------
 pub(crate) trait Tableable<T: Rowable> {
-    fn get_header(&self) -> Vec<HeaderFormat>;
+    fn get_header(&self) -> Vec<ColumnFormat>;
     fn get_records(&self) -> &Vec<T>;
 
     fn to_file(&self, file_path: &PathBuf, delimiter: char) -> io::Result<()> {

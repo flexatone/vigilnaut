@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::package::Package;
 use crate::path_shared::PathShared;
-use crate::table::HeaderFormat;
+use crate::table::ColumnFormat;
 use crate::table::Rowable;
 use crate::table::RowableContext;
 use crate::table::Tableable;
@@ -72,10 +72,10 @@ impl ScanReport {
 }
 
 impl Tableable<ScanRecord> for ScanReport {
-    fn get_header(&self) -> Vec<HeaderFormat> {
+    fn get_header(&self) -> Vec<ColumnFormat> {
         vec![
-            HeaderFormat::new("Package".to_string(), false, None),
-            HeaderFormat::new("Site".to_string(), true, None),
+            ColumnFormat::new("Package".to_string(), false, Some((20, 20, 20)), None),
+            ColumnFormat::new("Site".to_string(), true, Some((20, 20, 20)), None),
         ]
     }
     fn get_records(&self) -> &Vec<ScanRecord> {
