@@ -114,7 +114,12 @@ impl Tableable<AuditRecord> for AuditReport {
     fn get_header(&self) -> Vec<ColumnFormat> {
         vec![
             ColumnFormat::new("Package".to_string(), false, Some((20, 20, 20)), None),
-            ColumnFormat::new("Vulnerabilities".to_string(), false, Some((20, 20, 20)), None),
+            ColumnFormat::new(
+                "Vulnerabilities".to_string(),
+                false,
+                Some((20, 20, 20)),
+                None,
+            ),
             ColumnFormat::new("Attribute".to_string(), false, Some((20, 20, 20)), None),
             ColumnFormat::new("Value".to_string(), true, Some((20, 20, 20)), None),
         ]
