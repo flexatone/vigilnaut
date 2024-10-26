@@ -179,17 +179,6 @@ fn to_table_display<W: Write + AsRawFd, T: Rowable>(
     for row in rows {
         for (i, element) in row.into_iter().enumerate() {
             let _ = column_formats[i].write_element(writer, &element, &widths[i]);
-            // color application has to happen after `prepare_field`
-            // if let Some(color) = &column_formats[i].color {
-            //     write_color(
-            //         writer,
-            //         color.0,
-            //         color.1,
-            //         color.2,
-            //         &prepare_field(&element, &widths[i]),
-            //     );
-            // }
-            // write!(writer, "{}", prepare_field(&element, &widths[i]),)?;
         }
         writeln!(writer)?;
     }
@@ -225,7 +214,7 @@ impl ColumnFormat {
         // can branch on common headers and implement uniform formatting
         // write_color(writer, 0, 0, 120, message);
         let field = prepare_field(&message, width_format);
-        write!(writer, "{}", field);
+        write!(writer, "{}", field)?;
         return Ok(())
     }
 }
