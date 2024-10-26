@@ -214,10 +214,10 @@ pub(crate) struct UnpackFullReport {
 impl Tableable<UnpackFullRecord> for UnpackFullReport {
     fn get_header(&self) -> Vec<ColumnFormat> {
         vec![
-            ColumnFormat::new("Package".to_string(), false, Some((20, 20, 20)), None),
-            ColumnFormat::new("Site".to_string(), true, Some((20, 20, 20)), None),
-            ColumnFormat::new("Exists".to_string(), false, Some((20, 20, 20)), None),
-            ColumnFormat::new("Artifacts".to_string(), true, Some((20, 20, 20)), None),
+            ColumnFormat::new("Package".to_string(), false, Some((20, 20, 20))),
+            ColumnFormat::new("Site".to_string(), true, Some((20, 20, 20))),
+            ColumnFormat::new("Exists".to_string(), false, Some((20, 20, 20))),
+            ColumnFormat::new("Artifacts".to_string(), true, Some((20, 20, 20))),
         ]
     }
     fn get_records(&self) -> &Vec<UnpackFullRecord> {
@@ -233,10 +233,10 @@ pub(crate) struct UnpackCountReport {
 impl Tableable<UnpackCountRecord> for UnpackCountReport {
     fn get_header(&self) -> Vec<ColumnFormat> {
         vec![
-            ColumnFormat::new("Package".to_string(), false, Some((20, 20, 20)), None),
-            ColumnFormat::new("Site".to_string(), true, Some((20, 20, 20)), None),
-            ColumnFormat::new("Files".to_string(), false, Some((20, 20, 20)), None),
-            ColumnFormat::new("Dirs".to_string(), false, Some((20, 20, 20)), None),
+            ColumnFormat::new("Package".to_string(), false, Some((20, 20, 20))),
+            ColumnFormat::new("Site".to_string(), true, Some((20, 20, 20))),
+            ColumnFormat::new("Files".to_string(), false, Some((20, 20, 20))),
+            ColumnFormat::new("Dirs".to_string(), false, Some((20, 20, 20))),
         ]
     }
     fn get_records(&self) -> &Vec<UnpackCountRecord> {

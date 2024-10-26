@@ -10,6 +10,7 @@ use std::io::{Error, Write};
 use std::os::fd::AsRawFd;
 use std::path::PathBuf;
 
+
 pub(crate) fn write_color<W: Write + IsTty>(
     writer: &mut W,
     r: u8,
@@ -199,7 +200,6 @@ pub(crate) struct ColumnFormat {
     header: String,
     ellipsisable: bool,
     color: Option<(u8, u8, u8)>,
-    color_element: Option<Box<dyn Fn(&mut dyn Write, &str)>>,
 }
 
 impl ColumnFormat {
@@ -207,13 +207,11 @@ impl ColumnFormat {
         header: String,
         ellipsisable: bool,
         color: Option<(u8, u8, u8)>,
-        color_element: Option<Box<dyn Fn(&mut dyn Write, &str)>>,
     ) -> ColumnFormat {
         ColumnFormat {
             header,
             ellipsisable,
             color,
-            color_element,
         }
     }
 }
