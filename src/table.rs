@@ -214,6 +214,7 @@ impl ColumnFormat {
         // can branch on common headers and implement uniform formatting
         // write_color(writer, 0, 0, 120, message);
         let field = prepare_field(&message, width_format);
+        // if header is something, to formatting
         write!(writer, "{}", field)?;
         return Ok(())
     }
