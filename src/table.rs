@@ -10,14 +10,25 @@ use std::io::{Error, Write};
 use std::os::fd::AsRawFd;
 use std::path::PathBuf;
 
+fn to_rgb(hex_color: &str) -> (u8, u8, u8) {
+    if hex_color.len() == 7 && hex_color.starts_with('#') {
+        if let Ok(rgb) = u32::from_str_radix(&hex_color[1..], 16) {
+            let r = ((rgb >> 16) & 0xFF) as u8;
+            let g = ((rgb >> 8) & 0xFF) as u8;
+            let b = (rgb & 0xFF) as u8;
+            return (r, g, b);
+        }
+    }
+    panic!("Bad color code: {}", hex_color);
+}
+
 pub(crate) fn write_color<W: Write + IsTty>(
     writer: &mut W,
-    r: u8,
-    g: u8,
-    b: u8,
+    hex_color: &str,
     message: &str,
 ) {
     if writer.is_tty() {
+        let (r, g, b) = to_rgb(hex_color);
         execute!(
             writer,
             SetForegroundColor(Color::Rgb { r, g, b }),
@@ -46,7 +57,7 @@ pub(crate) trait Rowable {
 
 //------------------------------------------------------------------------------
 #[derive(Debug)]
-struct WidthFormat {
+pub(crate) struct WidthFormat {
     width_pad: usize,
     width_chars: usize,
 }
@@ -120,14 +131,15 @@ fn prepare_field(value: &String, widths: &WidthFormat) -> String {
 
 fn to_table_delimited<W: Write, T: Rowable>(
     writer: &mut W,
-    headers: Vec<HeaderFormat>,
+    column_formats: Vec<ColumnFormat>,
     records: &Vec<T>,
     delimiter: &str,
 ) -> Result<(), Error> {
-    if records.is_empty() || headers.is_empty() {
+    if records.is_empty() || column_formats.is_empty() {
         return Ok(());
     }
-    let header_labels: Vec<String> = headers.iter().map(|hf| hf.header.clone()).collect();
+    let header_labels: Vec<String> =
+        column_formats.iter().map(|hf| hf.header.clone()).collect();
     writeln!(writer, "{}", header_labels.join(delimiter))?;
     for record in records {
         for row in record.to_rows(&RowableContext::Delimited) {
@@ -140,16 +152,18 @@ fn to_table_delimited<W: Write, T: Rowable>(
 /// Wite Rowables to a writer. If `delimiter` is None, we assume writing to stdout; if `delimiter` is not None, we assume writing a delimited text file.
 fn to_table_display<W: Write + AsRawFd, T: Rowable>(
     writer: &mut W,
-    headers: Vec<HeaderFormat>,
+    column_formats: Vec<ColumnFormat>,
     records: &Vec<T>,
 ) -> Result<(), Error> {
-    if records.is_empty() || headers.is_empty() {
+    if records.is_empty() || column_formats.is_empty() {
         return Ok(());
     }
-    let header_labels: Vec<String> = headers.iter().map(|hf| hf.header.clone()).collect();
-    let ellipsisable: Vec<bool> = headers.iter().map(|hf| hf.ellipsisable).collect();
-    // evaluate headers and all elements in every row to determine max colum widths; store extracted rows for reuse in writing body.
-    let mut widths_max = vec![0; headers.len()];
+    let header_labels: Vec<String> =
+        column_formats.iter().map(|hf| hf.header.clone()).collect();
+    let ellipsisable: Vec<bool> =
+        column_formats.iter().map(|hf| hf.ellipsisable).collect();
+    // evaluate column_formats and all elements in every row to determine max colum widths; store extracted rows for reuse in writing body.
+    let mut widths_max = vec![0; column_formats.len()];
     for (i, header) in header_labels.iter().enumerate() {
         widths_max[i] = header.len();
     }
@@ -166,24 +180,18 @@ fn to_table_display<W: Write + AsRawFd, T: Rowable>(
     let widths = optimize_widths(&widths_max, &ellipsisable, w_gutter);
     // header
     for (i, header) in header_labels.into_iter().enumerate() {
+        write_color(
+            writer,
+            &column_formats[i].color,
+            &prepare_field(&header, &widths[i]),
+        );
         // write!(writer, "{}", prepare_field(&header, &widths[i]),)?;
-        write_color(writer, 30, 30, 30, &prepare_field(&header, &widths[i]));
     }
     writeln!(writer)?;
     // body
     for row in rows {
         for (i, element) in row.into_iter().enumerate() {
-            if let Some(color) = &headers[i].color {
-                write_color(
-                    writer,
-                    color.0,
-                    color.1,
-                    color.2,
-                    &prepare_field(&element, &widths[i]),
-                );
-            } else {
-                write!(writer, "{}", prepare_field(&element, &widths[i]),)?;
-            }
+            let _ = column_formats[i].write_element(writer, &element, &widths[i]);
         }
         writeln!(writer)?;
     }
@@ -191,30 +199,51 @@ fn to_table_display<W: Write + AsRawFd, T: Rowable>(
 }
 
 //------------------------------------------------------------------------------
-#[derive(Clone)]
-pub(crate) struct HeaderFormat {
+pub(crate) struct ColumnFormat {
     header: String,
     ellipsisable: bool,
-    color: Option<(u8, u8, u8)>,
+    color: String,
 }
 
-impl HeaderFormat {
-    pub(crate) fn new(
-        header: String,
-        ellipsisable: bool,
-        color: Option<(u8, u8, u8)>,
-    ) -> HeaderFormat {
-        HeaderFormat {
+impl ColumnFormat {
+    pub(crate) fn new(header: String, ellipsisable: bool, color: String) -> ColumnFormat {
+        ColumnFormat {
             header,
             ellipsisable,
             color,
         }
     }
+
+    pub(crate) fn write_element<W: Write + IsTty>(
+        &self,
+        writer: &mut W,
+        message: &String,
+        width_format: &WidthFormat,
+    ) -> Result<(), Error> {
+        let field = prepare_field(&message, width_format);
+        if self.header == "Package" {
+            // split on hyphen
+            let parts: Vec<&str> = field.split('-').collect();
+            for (i, part) in parts.iter().enumerate() {
+                if i > 0 {
+                    write_color(writer, "#ff9900", "-");
+                }
+                write!(writer, "{}", part)?;
+            }
+        } else if self.header == "Site" {
+            write_color(writer, "#999999", &field);
+        } else if message.starts_with("#") {
+            write_color(writer, "#999999", &field);
+        } else {
+            write!(writer, "{}", field)?;
+        }
+        return Ok(());
+    }
 }
 
 //------------------------------------------------------------------------------
 pub(crate) trait Tableable<T: Rowable> {
-    fn get_header(&self) -> Vec<HeaderFormat>;
+    fn get_header(&self) -> Vec<ColumnFormat>;
     fn get_records(&self) -> &Vec<T>;
 
     fn to_file(&self, file_path: &PathBuf, delimiter: char) -> io::Result<()> {

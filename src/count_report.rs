@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::path_shared::PathShared;
 use crate::scan_fs::ScanFS;
-use crate::table::HeaderFormat;
+use crate::table::ColumnFormat;
 use crate::table::Rowable;
 use crate::table::RowableContext;
 use crate::table::Tableable;
@@ -58,10 +58,10 @@ impl CountReport {
 }
 
 impl Tableable<CountRecord> for CountReport {
-    fn get_header(&self) -> Vec<HeaderFormat> {
+    fn get_header(&self) -> Vec<ColumnFormat> {
         vec![
-            HeaderFormat::new("".to_string(), false, Some((20, 20, 20))),
-            HeaderFormat::new("Count".to_string(), false, None),
+            ColumnFormat::new("".to_string(), false, "#666666".to_string()),
+            ColumnFormat::new("Count".to_string(), false, "#666666".to_string()),
         ]
     }
     fn get_records(&self) -> &Vec<CountRecord> {

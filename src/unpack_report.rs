@@ -9,7 +9,7 @@ use rayon::prelude::*;
 
 use crate::package::Package;
 use crate::path_shared::PathShared;
-use crate::table::HeaderFormat;
+use crate::table::ColumnFormat;
 use crate::table::Rowable;
 use crate::table::RowableContext;
 use crate::table::Tableable;
@@ -212,12 +212,12 @@ pub(crate) struct UnpackFullReport {
 }
 
 impl Tableable<UnpackFullRecord> for UnpackFullReport {
-    fn get_header(&self) -> Vec<HeaderFormat> {
+    fn get_header(&self) -> Vec<ColumnFormat> {
         vec![
-            HeaderFormat::new("Package".to_string(), false, None),
-            HeaderFormat::new("Site".to_string(), true, None),
-            HeaderFormat::new("Exists".to_string(), false, None),
-            HeaderFormat::new("Artifacts".to_string(), true, None),
+            ColumnFormat::new("Package".to_string(), false, "#666666".to_string()),
+            ColumnFormat::new("Site".to_string(), true, "#666666".to_string()),
+            ColumnFormat::new("Exists".to_string(), false, "#666666".to_string()),
+            ColumnFormat::new("Artifacts".to_string(), true, "#666666".to_string()),
         ]
     }
     fn get_records(&self) -> &Vec<UnpackFullRecord> {
@@ -231,12 +231,12 @@ pub(crate) struct UnpackCountReport {
 }
 
 impl Tableable<UnpackCountRecord> for UnpackCountReport {
-    fn get_header(&self) -> Vec<HeaderFormat> {
+    fn get_header(&self) -> Vec<ColumnFormat> {
         vec![
-            HeaderFormat::new("Package".to_string(), false, None),
-            HeaderFormat::new("Site".to_string(), true, None),
-            HeaderFormat::new("Files".to_string(), false, None),
-            HeaderFormat::new("Dirs".to_string(), false, None),
+            ColumnFormat::new("Package".to_string(), false, "#666666".to_string()),
+            ColumnFormat::new("Site".to_string(), true, "#666666".to_string()),
+            ColumnFormat::new("Files".to_string(), false, "#666666".to_string()),
+            ColumnFormat::new("Dirs".to_string(), false, "#666666".to_string()),
         ]
     }
     fn get_records(&self) -> &Vec<UnpackCountRecord> {

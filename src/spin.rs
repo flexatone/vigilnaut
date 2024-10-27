@@ -43,7 +43,7 @@ pub(crate) fn spin(active: Arc<AtomicBool>, message: String) {
                 stdout.execute(cursor::MoveToColumn(0)).unwrap();
                 let fs = FRAME_SPIN[frame_idx % FRAME_SPIN.len()];
                 let msg = format!("{} {}... ", fs, message);
-                write_color(&mut stdout, 120, 120, 120, &msg);
+                write_color(&mut stdout, "#666666", &msg);
                 stdout.flush().unwrap();
                 thread::sleep(Duration::from_millis(80));
                 frame_idx += 1;
