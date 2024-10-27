@@ -11,17 +11,15 @@ use std::os::fd::AsRawFd;
 use std::path::PathBuf;
 
 fn to_rgb(hex_color: &str) -> (u8, u8, u8) {
-    let mut r = 0;
-    let mut g = 0;
-    let mut b = 0;
     if hex_color.len() == 7 && hex_color.starts_with('#') {
         if let Ok(rgb) = u32::from_str_radix(&hex_color[1..], 16) {
-            r = ((rgb >> 16) & 0xFF) as u8;
-            g = ((rgb >> 8) & 0xFF) as u8;
-            b = (rgb & 0xFF) as u8;
+            let r = ((rgb >> 16) & 0xFF) as u8;
+            let g = ((rgb >> 8) & 0xFF) as u8;
+            let b = (rgb & 0xFF) as u8;
+            return (r, g, b);
         }
     }
-    (r, g, b)
+    panic!("Bad color code: {}", hex_color);
 }
 
 pub(crate) fn write_color<W: Write + IsTty>(
@@ -182,12 +180,8 @@ fn to_table_display<W: Write + AsRawFd, T: Rowable>(
     let widths = optimize_widths(&widths_max, &ellipsisable, w_gutter);
     // header
     for (i, header) in header_labels.into_iter().enumerate() {
+        write_color(writer, &column_formats[i].color, &prepare_field(&header, &widths[i]));
         // write!(writer, "{}", prepare_field(&header, &widths[i]),)?;
-        if let Some((r, g, b)) = column_formats[i].color {
-            write_color(writer, "#666666", &prepare_field(&header, &widths[i]));
-        } else {
-            write!(writer, "{}", prepare_field(&header, &widths[i]),)?;
-        }
     }
     writeln!(writer)?;
     // body
@@ -204,15 +198,11 @@ fn to_table_display<W: Write + AsRawFd, T: Rowable>(
 pub(crate) struct ColumnFormat {
     header: String,
     ellipsisable: bool,
-    color: Option<(u8, u8, u8)>,
+    color: String,
 }
 
 impl ColumnFormat {
-    pub(crate) fn new(
-        header: String,
-        ellipsisable: bool,
-        color: Option<(u8, u8, u8)>,
-    ) -> ColumnFormat {
+    pub(crate) fn new(header: String, ellipsisable: bool, color: String) -> ColumnFormat {
         ColumnFormat {
             header,
             ellipsisable,
@@ -237,6 +227,8 @@ impl ColumnFormat {
                 write!(writer, "{}", part)?;
             }
         } else if self.header == "Site" {
+            write_color(writer, "#999999", &field);
+        } else if message.starts_with("#") {
             write_color(writer, "#999999", &field);
         } else {
             write!(writer, "{}", field)?;
