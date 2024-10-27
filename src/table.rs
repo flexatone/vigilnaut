@@ -180,7 +180,11 @@ fn to_table_display<W: Write + AsRawFd, T: Rowable>(
     let widths = optimize_widths(&widths_max, &ellipsisable, w_gutter);
     // header
     for (i, header) in header_labels.into_iter().enumerate() {
-        write_color(writer, &column_formats[i].color, &prepare_field(&header, &widths[i]));
+        write_color(
+            writer,
+            &column_formats[i].color,
+            &prepare_field(&header, &widths[i]),
+        );
         // write!(writer, "{}", prepare_field(&header, &widths[i]),)?;
     }
     writeln!(writer)?;
