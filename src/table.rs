@@ -10,15 +10,27 @@ use std::io::{Error, Write};
 use std::os::fd::AsRawFd;
 use std::path::PathBuf;
 
+fn to_rgb(hex_color: &str) -> (u8, u8, u8) {
+    let mut r = 0;
+    let mut g = 0;
+    let mut b = 0;
+    if hex_color.len() == 7 && hex_color.starts_with('#') {
+        if let Ok(rgb) = u32::from_str_radix(&hex_color[1..], 16) {
+            r = ((rgb >> 16) & 0xFF) as u8;
+            g = ((rgb >> 8) & 0xFF) as u8;
+            b = (rgb & 0xFF) as u8;
+        }
+    }
+    (r, g, b)
+}
 
 pub(crate) fn write_color<W: Write + IsTty>(
     writer: &mut W,
-    r: u8,
-    g: u8,
-    b: u8,
+    hex_color: &str,
     message: &str,
 ) {
     if writer.is_tty() {
+        let (r, g, b) = to_rgb(hex_color);
         execute!(
             writer,
             SetForegroundColor(Color::Rgb { r, g, b }),
@@ -128,7 +140,8 @@ fn to_table_delimited<W: Write, T: Rowable>(
     if records.is_empty() || column_formats.is_empty() {
         return Ok(());
     }
-    let header_labels: Vec<String> = column_formats.iter().map(|hf| hf.header.clone()).collect();
+    let header_labels: Vec<String> =
+        column_formats.iter().map(|hf| hf.header.clone()).collect();
     writeln!(writer, "{}", header_labels.join(delimiter))?;
     for record in records {
         for row in record.to_rows(&RowableContext::Delimited) {
@@ -147,8 +160,10 @@ fn to_table_display<W: Write + AsRawFd, T: Rowable>(
     if records.is_empty() || column_formats.is_empty() {
         return Ok(());
     }
-    let header_labels: Vec<String> = column_formats.iter().map(|hf| hf.header.clone()).collect();
-    let ellipsisable: Vec<bool> = column_formats.iter().map(|hf| hf.ellipsisable).collect();
+    let header_labels: Vec<String> =
+        column_formats.iter().map(|hf| hf.header.clone()).collect();
+    let ellipsisable: Vec<bool> =
+        column_formats.iter().map(|hf| hf.ellipsisable).collect();
     // evaluate column_formats and all elements in every row to determine max colum widths; store extracted rows for reuse in writing body.
     let mut widths_max = vec![0; column_formats.len()];
     for (i, header) in header_labels.iter().enumerate() {
@@ -169,7 +184,7 @@ fn to_table_display<W: Write + AsRawFd, T: Rowable>(
     for (i, header) in header_labels.into_iter().enumerate() {
         // write!(writer, "{}", prepare_field(&header, &widths[i]),)?;
         if let Some((r, g, b)) = column_formats[i].color {
-            write_color(writer, r, g, b, &prepare_field(&header, &widths[i]));
+            write_color(writer, "#666666", &prepare_field(&header, &widths[i]));
         } else {
             write!(writer, "{}", prepare_field(&header, &widths[i]),)?;
         }
@@ -211,12 +226,22 @@ impl ColumnFormat {
         message: &String,
         width_format: &WidthFormat,
     ) -> Result<(), Error> {
-        // can branch on common headers and implement uniform formatting
-        // write_color(writer, 0, 0, 120, message);
         let field = prepare_field(&message, width_format);
-        // if header is something, to formatting
-        write!(writer, "{}", field)?;
-        return Ok(())
+        if self.header == "Package" {
+            // split on hyphen
+            let parts: Vec<&str> = field.split('-').collect();
+            for (i, part) in parts.iter().enumerate() {
+                if i > 0 {
+                    write_color(writer, "#ff9900", "-");
+                }
+                write!(writer, "{}", part)?;
+            }
+        } else if self.header == "Site" {
+            write_color(writer, "#999999", &field);
+        } else {
+            write!(writer, "{}", field)?;
+        }
+        return Ok(());
     }
 }
 

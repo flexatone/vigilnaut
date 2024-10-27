@@ -1,10 +1,7 @@
-// use crossterm::tty::IsTty;
 use std::collections::HashMap;
-// use std::io::Write;
 
 use crate::package::Package;
 use crate::path_shared::PathShared;
-// use crate::table::write_color;
 use crate::table::ColumnFormat;
 use crate::table::Rowable;
 use crate::table::RowableContext;
@@ -74,19 +71,11 @@ impl ScanReport {
     }
 }
 
-// fn column_format_sites<W: Write + ?Sized>(writer: &mut W, message: &str) {
-//     write_color(writer, 20, 20, 120, message);
-// }
-
 impl Tableable<ScanRecord> for ScanReport {
     fn get_header(&self) -> Vec<ColumnFormat> {
         vec![
             ColumnFormat::new("Package".to_string(), false, Some((20, 20, 20))),
-            ColumnFormat::new(
-                "Site".to_string(),
-                true,
-                Some((20, 20, 20)),
-            ),
+            ColumnFormat::new("Site".to_string(), true, Some((20, 20, 20))),
         ]
     }
     fn get_records(&self) -> &Vec<ScanRecord> {
