@@ -385,19 +385,18 @@ where
         Some(Commands::Derive {
             subcommands,
             anchor,
-        }) => {
-            match subcommands {
-                DeriveSubcommand::Display => {
-                    let dm = sfs.to_dep_manifest((*anchor).into())?;
-                    dm.to_stdout();
-                }
-                DeriveSubcommand::Write { output } => {
-                    let dm = sfs.to_dep_manifest((*anchor).into())?;
-                    // TODO: might have a higher-order func that branches based on extension between txt and json
-                    let _ = dm.to_requirements(output);
-                }
+        }) => match subcommands {
+            DeriveSubcommand::Display => {
+                let dm = sfs.to_dep_manifest((*anchor).into())?;
+                let dmr = dm.to_dep_manifest_report();
+                let _ = dmr.to_stdout();
             }
-        }
+            DeriveSubcommand::Write { output } => {
+                let dm = sfs.to_dep_manifest((*anchor).into())?;
+                let dmr = dm.to_dep_manifest_report();
+                let _ = dmr.to_file(output, ' ');
+            }
+        },
         Some(Commands::Validate {
             bound,
             subset,
