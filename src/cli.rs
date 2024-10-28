@@ -53,13 +53,13 @@ Examples:
 
   fetter validate --bound /tmp/bound_requirements.txt display
   fetter --exe python3 validate --bound /tmp/bound_requirements.txt display
+  fetter --exe python3 validate --superset --bound git@github.com:fetter-io/bound-test.git display
 
   fetter audit display
-
   fetter --exe python3 audit display
 
-  fetter --exe python3 unpack --count display
-  fetter unpack -p pip* display
+  fetter --exe python3 unpack-count display
+  fetter unpack-count -p pip* display
 
   fetter --exe /usr/bin/python purge-pattern -p numpy*
 
@@ -327,9 +327,14 @@ fn get_scan(
 
 // Given a Path, load a DepManifest. This might branch by extension to handle pyproject.toml and other formats.
 fn get_dep_manifest(bound: &PathBuf) -> Result<DepManifest, Box<dyn std::error::Error>> {
+    if bound.to_str().map_or(false, |s| s.ends_with(".git")) {
+        DepManifest::from_git_repo(&bound)
+    }
     // if we cannot normalize we keep that path as is
-    let fp = path_normalize(&bound).unwrap_or_else(|_| bound.clone());
-    DepManifest::from_requirements(&fp)
+    else {
+        let fp = path_normalize(&bound).unwrap_or_else(|_| bound.clone());
+        DepManifest::from_requirements(&fp)
+    }
 }
 
 //------------------------------------------------------------------------------
