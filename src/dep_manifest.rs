@@ -4,13 +4,48 @@ use std::collections::VecDeque;
 use std::fs::File;
 use std::io;
 use std::io::BufRead;
-use std::io::Write;
+// use std::io::Write;
 use std::path::PathBuf;
+
+use crate::table::ColumnFormat;
+use crate::table::Rowable;
+use crate::table::RowableContext;
+use crate::table::Tableable;
 
 use crate::dep_spec::DepSpec;
 use crate::package::Package;
 use crate::util::ResultDynError;
 
+//------------------------------------------------------------------------------
+pub(crate) struct DepManifestRecord {
+    dep_spec: DepSpec,
+}
+
+impl Rowable for DepManifestRecord {
+    fn to_rows(&self, _context: &RowableContext) -> Vec<Vec<String>> {
+        vec![vec![self.dep_spec.to_string()]]
+    }
+}
+
+// Simple report around dep manifest for common display/output needs
+pub struct DepManifestReport {
+    records: Vec<DepManifestRecord>,
+}
+
+impl Tableable<DepManifestRecord> for DepManifestReport {
+    fn get_header(&self) -> Vec<ColumnFormat> {
+        vec![ColumnFormat::new(
+            "# via fetter".to_string(),
+            false,
+            "#666666".to_string(),
+        )]
+    }
+    fn get_records(&self) -> &Vec<DepManifestRecord> {
+        &self.records
+    }
+}
+
+//------------------------------------------------------------------------------
 // A DepManifest is a requirements listing, implemented as HashMap for quick lookup by package name.
 #[derive(Debug, Clone)]
 pub(crate) struct DepManifest {
@@ -157,15 +192,6 @@ impl DepManifest {
         dep_specs
     }
 
-    /// Given a writer, write out all dependency specs
-    fn to_writer<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        writeln!(writer, "# created by fetter")?;
-        for key in self.keys() {
-            writeln!(writer, "{}", self.dep_specs.get(&key).unwrap())?;
-        }
-        Ok(())
-    }
-
     //--------------------------------------------------------------------------
     #[allow(dead_code)]
     pub(crate) fn len(&self) -> usize {
@@ -187,17 +213,17 @@ impl DepManifest {
     }
 
     //--------------------------------------------------------------------------
-    // Writes to a file
-    pub(crate) fn to_requirements(&self, file_path: &PathBuf) -> io::Result<()> {
-        let file = File::create(file_path)?;
-        self.to_writer(file)
-    }
 
-    // Prints to stdout
-    pub(crate) fn to_stdout(&self) {
-        let stdout = io::stdout();
-        let handle = stdout.lock();
-        self.to_writer(handle).unwrap();
+    pub(crate) fn to_dep_manifest_report(&self) -> DepManifestReport {
+        let mut records = Vec::new();
+        for key in self.keys() {
+            if let Some(ds) = self.dep_specs.get(&key) {
+                records.push(DepManifestRecord {
+                    dep_spec: ds.clone(),
+                });
+            }
+        }
+        DepManifestReport { records }
     }
 }
 
@@ -478,7 +504,8 @@ regex==2024.4.16
         let dm1 = DepManifest::from_dep_specs(&ds).unwrap();
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("requirements.txt");
-        dm1.to_requirements(&file_path).unwrap();
+        let dmr1 = dm1.to_dep_manifest_report();
+        dmr1.to_file(&file_path, ' ').unwrap();
 
         let dm2 = DepManifest::from_requirements(&file_path).unwrap();
         assert_eq!(dm2.len(), 3)

@@ -214,6 +214,7 @@ impl ColumnFormat {
         }
     }
 
+    // All terminal content uses this method to write output. This permits per-column formatting based on the column type, discovered via the header string.
     pub(crate) fn write_element<W: Write + IsTty>(
         &self,
         writer: &mut W,
@@ -232,8 +233,8 @@ impl ColumnFormat {
             }
         } else if self.header == "Site" {
             write_color(writer, "#999999", &field);
-        } else if message.starts_with("#") {
-            write_color(writer, "#999999", &field);
+        // } else if message.starts_with("#") {
+        //     write_color(writer, "#999999", &field);
         } else {
             write!(writer, "{}", field)?;
         }
