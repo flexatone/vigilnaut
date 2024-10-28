@@ -4,8 +4,10 @@ use std::collections::VecDeque;
 use std::fs::File;
 use std::io;
 use std::io::BufRead;
-// use std::io::Write;
 use std::path::PathBuf;
+use std::process::Command;
+
+use tempfile::tempdir;
 
 use crate::table::ColumnFormat;
 use crate::table::Rowable;
@@ -140,30 +142,24 @@ impl DepManifest {
     //     Ok(DepManifest { packages })
     // }
 
-    // pub(crate) fn from_git_repo(repo_url: &str) -> ResultDynError<Self> {
-    //     // Create a temporary directory
-    //     let tmp_dir = tempdir().map_err(|e| format!("Failed to create temporary directory: {}", e))?;
-    //     let repo_path = tmp_dir.path().join("repo");
+    pub(crate) fn from_git_repo(url: &PathBuf) -> ResultDynError<Self> {
+        let tmp_dir = tempdir()
+            .map_err(|e| format!("Failed to create temporary directory: {}", e))?;
+        let repo_path = tmp_dir.path().join("repo");
 
-    //     // Shell out to git to perform a shallow clone
-    //     let status = Command::new("git")
-    //         .args(&["clone", "--depth", "1", repo_url, repo_path.to_str().unwrap()])
-    //         .status()
-    //         .map_err(|e| format!("Failed to execute git: {}", e))?;
+        let status = Command::new("git")
+            .args(&["clone", "--depth", "1", url.to_str().unwrap(), repo_path.to_str().unwrap()])
+            .status()
+            .map_err(|e| format!("Failed to execute git: {}", e))?;
 
-    //     if !status.success() {
-    //         return Err("Git clone failed".to_string());
-    //     }
+        if !status.success() {
+            return Err("Git clone failed".into());
+        }
 
-    //     // Construct the path to the requirements.txt file
-    //     let requirements_path = repo_path.join("requirements.txt");
-
-    //     // Load the requirements.txt file into a DepManifest
-    //     let manifest = DepManifest::from_requirements_file(&requirements_path)?;
-
-    //     // TempDir will be cleaned up when it goes out of scope
-    //     Ok(manifest)
-    // }
+        let requirements_path = repo_path.join("requirements.txt");
+        let manifest = DepManifest::from_requirements(&requirements_path)?;
+        Ok(manifest)
+    }
 
     //--------------------------------------------------------------------------
     fn keys(&self) -> Vec<String> {
