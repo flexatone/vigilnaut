@@ -148,7 +148,13 @@ impl DepManifest {
         let repo_path = tmp_dir.path().join("repo");
 
         let status = Command::new("git")
-            .args(&["clone", "--depth", "1", url.to_str().unwrap(), repo_path.to_str().unwrap()])
+            .args(&[
+                "clone",
+                "--depth",
+                "1",
+                url.to_str().unwrap(),
+                repo_path.to_str().unwrap(),
+            ])
             .status()
             .map_err(|e| format!("Failed to execute git: {}", e))?;
 
