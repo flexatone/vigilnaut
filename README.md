@@ -11,6 +11,19 @@ System-wide Python package discovery and allow listing.
 ## What is New in Fetter
 
 
+### 0.11.0
+
+Implemented variable-width and colored terminal displays.
+
+Implemented terminal spinner for long-running commands.
+
+Added `purge-invalid` and `purge-pattern` commands.
+
+Split `unpack` command into `unpack-count` and `unpack-files`.
+
+Added support to specify `--bound` with a git repository.
+
+
 ### 0.10.0
 
 Added `--user-site` flag to force inclusion of user site packages; otherwise, user site packages are only included if `ENABLE_USER_SITE` is set.
