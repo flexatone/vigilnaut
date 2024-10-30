@@ -38,6 +38,8 @@ impl From<CliAnchor> for Anchor {
 }
 
 //------------------------------------------------------------------------------
+
+const ERROR_EXIT_CODE: i32 = 3;
 const TITLE: &str = "◎○◉ fetter: System-wide Python package discovery and validation";
 
 const AFTER_HELP: &str = "\
@@ -421,6 +423,7 @@ where
             match subcommands {
                 ValidateSubcommand::Display => {
                     let _ = vr.to_stdout();
+                    process::exit(if vr.len() > 0 { ERROR_EXIT_CODE } else { 0 });
                 }
                 ValidateSubcommand::JSON => {
                     println!("{}", serde_json::to_string(&vr.to_validation_digest())?);
@@ -447,10 +450,11 @@ where
             match subcommands {
                 AuditSubcommand::Display => {
                     let _ = ar.to_stdout();
+                    process::exit(if ar.len() > 0 { ERROR_EXIT_CODE } else { 0 });
                 }
                 AuditSubcommand::Write { output, delimiter } => {
                     let _ = ar.to_file(output, *delimiter);
-                }
+                } // NOTE: might add JSON and Exit
             }
         }
         Some(Commands::UnpackCount {
