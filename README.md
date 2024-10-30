@@ -10,6 +10,10 @@ System-wide Python package discovery and allow listing.
 
 ## What is New in Fetter
 
+### 0.12.0
+
+Extended `validate` and `audit` commands to return a non-zero error code if `display` prints records.
+
 
 ### 0.11.0
 
