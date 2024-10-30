@@ -108,6 +108,10 @@ impl AuditReport {
         }
         AuditReport { records }
     }
+
+    pub(crate) fn len(&self) -> usize {
+        self.records.len()
+    }
 }
 
 impl Tableable<AuditRecord> for AuditReport {
