@@ -9,9 +9,9 @@ repository = "https://github.com/fetter-io/fetter-rs"
 license = "GPL-3.0-or-later"
 readme = "README.md"
 
-description = "System-wide Python package discovery and validation."
+description = "System-wide Python package discovery, validation, vulnerability scanning, and allow-listing."
+keywords = ["python-package", "allow-listing", "vulnerability scanning"]
 
-keywords = ["package", "allow-listing", "python"]
 categories = [
     "filesystem",
     "command-line-utilities",
