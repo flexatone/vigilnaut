@@ -8,6 +8,34 @@ System-wide Python package discovery, validation, and allow-listing.
 
 
 
+
+
+## Using `fetter` with pre-commit
+
+Two `fetter` commands can be run via [pre-commit](https://pre-commit.com/) hooks.
+
+To run fetter via pre-commit, add the following to your `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+- repo: https://github.com/fetter-io/fetter-rs
+  rev: v0.12.1
+  hooks:
+    - id: fetter-audit
+```
+
+```yaml
+repos:
+- repo: https://github.com/fetter-io/fetter-rs
+  rev: v0.12.1
+  hooks:
+    - id: fetter-validate
+```
+
+
+
+
+
 ## What is New in Fetter
 
 ### 0.12.0
