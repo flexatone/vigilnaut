@@ -1,10 +1,21 @@
 - id: fetter-audit
   name: Fetter Vulnerability Audit
   description: "Validate that none of the installed Python packages present in the active environment have security vulnerabilities defined on the Open Source Vulnerabilities database."
-  entry: fetter -e python3 audit display
+  entry: fetter --exe python3 audit display
   args: []
   language: rust
   always_run: true
   pass_filenames: false
   minimum_pre_commit_version: "2.9.2"
+
+- id: fetter-validate
+  name: Fetter Installed Package Validation
+  description: "Validate that installed packages do not deviate from requirements in requirements.txt, pyproject.toml, or a lock file."
+  entry: fetter --exe python3 validate --superset --bound display
+  args: []
+  language: python
+  always_run: true
+  pass_filenames: false
+  minimum_pre_commit_version: "2.9.2"
+
 
