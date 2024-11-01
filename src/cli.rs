@@ -92,7 +92,7 @@ enum Commands {
     /// Scan environment to report on installed packages.
     Scan {
         #[command(subcommand)]
-        subcommands: ScanSubcommand,
+        subcommands: Option<ScanSubcommand>,
     },
     /// Search environment to report on installed packages.
     Search {
@@ -356,13 +356,17 @@ where
 
     match &cli.command {
         Some(Commands::Scan { subcommands }) => match subcommands {
-            ScanSubcommand::Display => {
+            Some(ScanSubcommand::Display) => {
                 let sr = sfs.to_scan_report();
                 let _ = sr.to_stdout();
             }
-            ScanSubcommand::Write { output, delimiter } => {
+            Some(ScanSubcommand::Write { output, delimiter }) => {
                 let sr = sfs.to_scan_report();
                 let _ = sr.to_file(output, *delimiter);
+            }
+            None => { // display default
+                let sr = sfs.to_scan_report();
+                let _ = sr.to_stdout();
             }
         },
         Some(Commands::Search {
