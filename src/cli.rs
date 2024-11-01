@@ -356,15 +356,11 @@ where
 
     match &cli.command {
         Some(Commands::Scan { subcommands }) => match subcommands {
-            Some(ScanSubcommand::Display) => {
-                let sr = sfs.to_scan_report();
-                let _ = sr.to_stdout();
-            }
             Some(ScanSubcommand::Write { output, delimiter }) => {
                 let sr = sfs.to_scan_report();
                 let _ = sr.to_file(output, *delimiter);
             }
-            None => { // display default
+            Some(ScanSubcommand::Display) | None => { // default
                 let sr = sfs.to_scan_report();
                 let _ = sr.to_stdout();
             }
