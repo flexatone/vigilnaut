@@ -363,6 +363,7 @@ where
             }
             Some(ScanSubcommand::Display) | None => {
                 // default
+                // default
                 let sr = sfs.to_scan_report();
                 let _ = sr.to_stdout();
             }
@@ -372,38 +373,41 @@ where
             pattern,
             case,
         }) => match subcommands {
-            Some(SearchSubcommand::Display) | None => {
-                let sr = sfs.to_search_report(&pattern, !case);
-                let _ = sr.to_stdout();
-            }
             Some(SearchSubcommand::Write { output, delimiter }) => {
                 let sr = sfs.to_search_report(&pattern, !case);
                 let _ = sr.to_file(output, *delimiter);
             }
+            Some(SearchSubcommand::Display) | None => {
+                // default
+                let sr = sfs.to_search_report(&pattern, !case);
+                let _ = sr.to_stdout();
+            }
         },
         Some(Commands::Count { subcommands }) => match subcommands {
-            Some(CountSubcommand::Display) | None => {
-                let cr = sfs.to_count_report();
-                let _ = cr.to_stdout();
-            }
             Some(CountSubcommand::Write { output, delimiter }) => {
                 let cr = sfs.to_count_report();
                 let _ = cr.to_file(output, *delimiter);
+            }
+            Some(CountSubcommand::Display) | None => {
+                // default
+                let cr = sfs.to_count_report();
+                let _ = cr.to_stdout();
             }
         },
         Some(Commands::Derive {
             subcommands,
             anchor,
         }) => match subcommands {
-            Some(DeriveSubcommand::Display) | None => {
-                let dm = sfs.to_dep_manifest((*anchor).into())?;
-                let dmr = dm.to_dep_manifest_report();
-                let _ = dmr.to_stdout();
-            }
             Some(DeriveSubcommand::Write { output }) => {
                 let dm = sfs.to_dep_manifest((*anchor).into())?;
                 let dmr = dm.to_dep_manifest_report();
                 let _ = dmr.to_file(output, ' ');
+            }
+            Some(DeriveSubcommand::Display) | None => {
+                // default
+                let dm = sfs.to_dep_manifest((*anchor).into())?;
+                let dmr = dm.to_dep_manifest_report();
+                let _ = dmr.to_stdout();
             }
         },
         Some(Commands::Validate {
@@ -423,10 +427,6 @@ where
                 },
             );
             match subcommands {
-                Some(ValidateSubcommand::Display) | None => {
-                    let _ = vr.to_stdout();
-                    process::exit(if vr.len() > 0 { ERROR_EXIT_CODE } else { 0 });
-                }
                 Some(ValidateSubcommand::JSON) => {
                     println!("{}", serde_json::to_string(&vr.to_validation_digest())?);
                 }
@@ -435,6 +435,11 @@ where
                 }
                 Some(ValidateSubcommand::Exit { code }) => {
                     process::exit(if vr.len() > 0 { *code } else { 0 });
+                }
+                Some(ValidateSubcommand::Display) | None => {
+                    // default
+                    let _ = vr.to_stdout();
+                    process::exit(if vr.len() > 0 { ERROR_EXIT_CODE } else { 0 });
                 }
             }
         }
@@ -450,13 +455,14 @@ where
                 thread::sleep(Duration::from_millis(100));
             }
             match subcommands {
-                Some(AuditSubcommand::Display) | None => {
-                    let _ = ar.to_stdout();
-                    process::exit(if ar.len() > 0 { ERROR_EXIT_CODE } else { 0 });
-                }
                 Some(AuditSubcommand::Write { output, delimiter }) => {
                     let _ = ar.to_file(output, *delimiter);
                 } // NOTE: might add JSON and Exit
+                Some(AuditSubcommand::Display) | None => {
+                    // default
+                    let _ = ar.to_stdout();
+                    process::exit(if ar.len() > 0 { ERROR_EXIT_CODE } else { 0 });
+                }
             }
         }
         Some(Commands::UnpackCount {
@@ -467,11 +473,12 @@ where
             let count = true;
             let ir = sfs.to_unpack_report(&pattern, !case, count);
             match subcommands {
-                Some(UnpackCountSubcommand::Display) | None => {
-                    let _ = ir.to_stdout();
-                }
                 Some(UnpackCountSubcommand::Write { output, delimiter }) => {
                     let _ = ir.to_file(output, *delimiter);
+                }
+                Some(UnpackCountSubcommand::Display) | None => {
+                    // default
+                    let _ = ir.to_stdout();
                 }
             }
         }
@@ -483,11 +490,12 @@ where
             let count = false;
             let ir = sfs.to_unpack_report(&pattern, !case, count);
             match subcommands {
-                Some(UnpackFilesSubcommand::Display) | None => {
-                    let _ = ir.to_stdout();
-                }
                 Some(UnpackFilesSubcommand::Write { output, delimiter }) => {
                     let _ = ir.to_file(output, *delimiter);
+                }
+                Some(UnpackFilesSubcommand::Display) | None => {
+                    // default
+                    let _ = ir.to_stdout();
                 }
             }
         }
