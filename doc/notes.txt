@@ -7,8 +7,14 @@ Supply chain threats in open-source packaging ecosystems are numerous. Malicious
 Fetter is a Rust-built tool for system-wide package auditing. The fetter CLI presently offers four main tools: scan (discover all packages), derive (create a requirements file reflecting system-wide packages), validate (determine which packages violate a requirements file), and purge (remove packages that violate a requirements file).
 
 
+--
 
+Packages with known vulns:
 
+jinja2-3.1.3
+certifi-2023.11.17
+
+--
 
 The problem with virtual environments
     They proliferate
@@ -140,7 +146,7 @@ Basic model of a Report { Vec<Records> }
 
 Table traits:
 
-Two traits: 
+Two traits:
 Rowable
     define a method that converts a record into a Vec of strings
 

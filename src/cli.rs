@@ -92,7 +92,7 @@ enum Commands {
     /// Scan environment to report on installed packages.
     Scan {
         #[command(subcommand)]
-        subcommands: ScanSubcommand,
+        subcommands: Option<ScanSubcommand>,
     },
     /// Search environment to report on installed packages.
     Search {
@@ -104,12 +104,12 @@ enum Commands {
         case: bool,
 
         #[command(subcommand)]
-        subcommands: SearchSubcommand,
+        subcommands: Option<SearchSubcommand>,
     },
     /// Count discovered executables, sites, and packages.
     Count {
         #[command(subcommand)]
-        subcommands: CountSubcommand,
+        subcommands: Option<CountSubcommand>,
     },
     /// Derive new requirements from discovered packages.
     Derive {
@@ -118,7 +118,7 @@ enum Commands {
         anchor: CliAnchor,
 
         #[command(subcommand)]
-        subcommands: DeriveSubcommand,
+        subcommands: Option<DeriveSubcommand>,
     },
     /// Validate if packages conform to a validation target.
     Validate {
@@ -135,12 +135,12 @@ enum Commands {
         superset: bool,
 
         #[command(subcommand)]
-        subcommands: ValidateSubcommand,
+        subcommands: Option<ValidateSubcommand>,
     },
     /// Search for package security vulnerabilities via the OSV DB.
     Audit {
         #[command(subcommand)]
-        subcommands: AuditSubcommand,
+        subcommands: Option<AuditSubcommand>,
     },
     /// Discover counts of all installed packages artifacts.
     UnpackCount {
@@ -153,7 +153,7 @@ enum Commands {
         case: bool,
 
         #[command(subcommand)]
-        subcommands: UnpackCountSubcommand,
+        subcommands: Option<UnpackCountSubcommand>,
     },
     /// Discover file names of all installed package artifacts.
     UnpackFiles {
@@ -166,7 +166,7 @@ enum Commands {
         case: bool,
 
         #[command(subcommand)]
-        subcommands: UnpackFilesSubcommand,
+        subcommands: Option<UnpackFilesSubcommand>,
     },
     /// Purge packages that match a search pattern.
     PurgePattern {
@@ -194,6 +194,7 @@ enum Commands {
     },
 }
 
+//------------------------------------------------------------------------------
 #[derive(Subcommand)]
 enum ScanSubcommand {
     /// Display scan in the terminal.
@@ -356,13 +357,15 @@ where
 
     match &cli.command {
         Some(Commands::Scan { subcommands }) => match subcommands {
-            ScanSubcommand::Display => {
-                let sr = sfs.to_scan_report();
-                let _ = sr.to_stdout();
-            }
-            ScanSubcommand::Write { output, delimiter } => {
+            Some(ScanSubcommand::Write { output, delimiter }) => {
                 let sr = sfs.to_scan_report();
                 let _ = sr.to_file(output, *delimiter);
+            }
+            Some(ScanSubcommand::Display) | None => {
+                // default
+                // default
+                let sr = sfs.to_scan_report();
+                let _ = sr.to_stdout();
             }
         },
         Some(Commands::Search {
@@ -370,38 +373,41 @@ where
             pattern,
             case,
         }) => match subcommands {
-            SearchSubcommand::Display => {
-                let sr = sfs.to_search_report(&pattern, !case);
-                let _ = sr.to_stdout();
-            }
-            SearchSubcommand::Write { output, delimiter } => {
+            Some(SearchSubcommand::Write { output, delimiter }) => {
                 let sr = sfs.to_search_report(&pattern, !case);
                 let _ = sr.to_file(output, *delimiter);
             }
+            Some(SearchSubcommand::Display) | None => {
+                // default
+                let sr = sfs.to_search_report(&pattern, !case);
+                let _ = sr.to_stdout();
+            }
         },
         Some(Commands::Count { subcommands }) => match subcommands {
-            CountSubcommand::Display => {
-                let cr = sfs.to_count_report();
-                let _ = cr.to_stdout();
-            }
-            CountSubcommand::Write { output, delimiter } => {
+            Some(CountSubcommand::Write { output, delimiter }) => {
                 let cr = sfs.to_count_report();
                 let _ = cr.to_file(output, *delimiter);
+            }
+            Some(CountSubcommand::Display) | None => {
+                // default
+                let cr = sfs.to_count_report();
+                let _ = cr.to_stdout();
             }
         },
         Some(Commands::Derive {
             subcommands,
             anchor,
         }) => match subcommands {
-            DeriveSubcommand::Display => {
-                let dm = sfs.to_dep_manifest((*anchor).into())?;
-                let dmr = dm.to_dep_manifest_report();
-                let _ = dmr.to_stdout();
-            }
-            DeriveSubcommand::Write { output } => {
+            Some(DeriveSubcommand::Write { output }) => {
                 let dm = sfs.to_dep_manifest((*anchor).into())?;
                 let dmr = dm.to_dep_manifest_report();
                 let _ = dmr.to_file(output, ' ');
+            }
+            Some(DeriveSubcommand::Display) | None => {
+                // default
+                let dm = sfs.to_dep_manifest((*anchor).into())?;
+                let dmr = dm.to_dep_manifest_report();
+                let _ = dmr.to_stdout();
             }
         },
         Some(Commands::Validate {
@@ -421,18 +427,19 @@ where
                 },
             );
             match subcommands {
-                ValidateSubcommand::Display => {
-                    let _ = vr.to_stdout();
-                    process::exit(if vr.len() > 0 { ERROR_EXIT_CODE } else { 0 });
-                }
-                ValidateSubcommand::JSON => {
+                Some(ValidateSubcommand::JSON) => {
                     println!("{}", serde_json::to_string(&vr.to_validation_digest())?);
                 }
-                ValidateSubcommand::Write { output, delimiter } => {
+                Some(ValidateSubcommand::Write { output, delimiter }) => {
                     let _ = vr.to_file(output, *delimiter);
                 }
-                ValidateSubcommand::Exit { code } => {
+                Some(ValidateSubcommand::Exit { code }) => {
                     process::exit(if vr.len() > 0 { *code } else { 0 });
+                }
+                Some(ValidateSubcommand::Display) | None => {
+                    // default
+                    let _ = vr.to_stdout();
+                    process::exit(if vr.len() > 0 { ERROR_EXIT_CODE } else { 0 });
                 }
             }
         }
@@ -448,13 +455,14 @@ where
                 thread::sleep(Duration::from_millis(100));
             }
             match subcommands {
-                AuditSubcommand::Display => {
+                Some(AuditSubcommand::Write { output, delimiter }) => {
+                    let _ = ar.to_file(output, *delimiter);
+                } // NOTE: might add JSON and Exit
+                Some(AuditSubcommand::Display) | None => {
+                    // default
                     let _ = ar.to_stdout();
                     process::exit(if ar.len() > 0 { ERROR_EXIT_CODE } else { 0 });
                 }
-                AuditSubcommand::Write { output, delimiter } => {
-                    let _ = ar.to_file(output, *delimiter);
-                } // NOTE: might add JSON and Exit
             }
         }
         Some(Commands::UnpackCount {
@@ -465,11 +473,12 @@ where
             let count = true;
             let ir = sfs.to_unpack_report(&pattern, !case, count);
             match subcommands {
-                UnpackCountSubcommand::Display => {
-                    let _ = ir.to_stdout();
-                }
-                UnpackCountSubcommand::Write { output, delimiter } => {
+                Some(UnpackCountSubcommand::Write { output, delimiter }) => {
                     let _ = ir.to_file(output, *delimiter);
+                }
+                Some(UnpackCountSubcommand::Display) | None => {
+                    // default
+                    let _ = ir.to_stdout();
                 }
             }
         }
@@ -481,11 +490,12 @@ where
             let count = false;
             let ir = sfs.to_unpack_report(&pattern, !case, count);
             match subcommands {
-                UnpackFilesSubcommand::Display => {
-                    let _ = ir.to_stdout();
-                }
-                UnpackFilesSubcommand::Write { output, delimiter } => {
+                Some(UnpackFilesSubcommand::Write { output, delimiter }) => {
                     let _ = ir.to_file(output, *delimiter);
+                }
+                Some(UnpackFilesSubcommand::Display) | None => {
+                    // default
+                    let _ = ir.to_stdout();
                 }
             }
         }

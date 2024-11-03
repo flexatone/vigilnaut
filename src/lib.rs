@@ -21,3 +21,4 @@ mod validation_report;
 mod version_spec;
 
 pub use cli::run_cli;
+pub use table::write_color;

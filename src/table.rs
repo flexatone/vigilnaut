@@ -22,11 +22,7 @@ fn to_rgb(hex_color: &str) -> (u8, u8, u8) {
     panic!("Bad color code: {}", hex_color);
 }
 
-pub(crate) fn write_color<W: Write + IsTty>(
-    writer: &mut W,
-    hex_color: &str,
-    message: &str,
-) {
+pub fn write_color<W: Write + IsTty>(writer: &mut W, hex_color: &str, message: &str) {
     if writer.is_tty() {
         let (r, g, b) = to_rgb(hex_color);
         execute!(
