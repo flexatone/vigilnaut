@@ -18,6 +18,8 @@ use crate::scan_fs::ScanFS;
 use crate::spin::spin;
 use crate::table::Tableable;
 use crate::util::path_normalize;
+use crate::ureq_client::UreqClientLive;
+
 
 //------------------------------------------------------------------------------
 // utility enums
@@ -334,8 +336,9 @@ fn get_dep_manifest(bound: &PathBuf) -> Result<DepManifest, Box<dyn std::error::
     if bound.to_str().map_or(false, |s| s.ends_with(".git")) {
         DepManifest::from_git_repo(&bound)
     }
-    // if we cannot normalize we keep that path as is
-    else {
+    else if bound.to_str().map_or(false, |s| s.starts_with("http")) {
+        DepManifest::from_url(&UreqClientLive, &bound)
+    } else {
         let fp = path_normalize(&bound).unwrap_or_else(|_| bound.clone());
         DepManifest::from_requirements(&fp)
     }

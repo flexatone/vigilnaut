@@ -13,6 +13,7 @@ use crate::table::ColumnFormat;
 use crate::table::Rowable;
 use crate::table::RowableContext;
 use crate::table::Tableable;
+use crate::ureq_client::UreqClient;
 
 use crate::dep_spec::DepSpec;
 use crate::package::Package;
@@ -142,6 +143,21 @@ impl DepManifest {
     //     Ok(DepManifest { packages })
     // }
 
+    // Create a DepManifest from a URL point to a requirements.txt or pyproject.toml file.
+    pub(crate) fn from_url<U: UreqClient>(
+        client: &U,
+        url: &PathBuf,
+    ) -> ResultDynError<Self> {
+        let body_str = client.get(url.to_str().ok_or("Invalid PathBuf")?)?;
+        Self::from_iter(body_str.lines())
+
+        // // Read and process each line
+        // for line in reader.lines() {
+        //     let line = line?;
+        //     println!("{}", line);
+        // }
+    }
+
     pub(crate) fn from_git_repo(url: &PathBuf) -> ResultDynError<Self> {
         let tmp_dir = tempdir()
             .map_err(|e| format!("Failed to create temporary directory: {}", e))?;
@@ -161,7 +177,7 @@ impl DepManifest {
         if !status.success() {
             return Err("Git clone failed".into());
         }
-
+        // might look for pyproject first
         let requirements_path = repo_path.join("requirements.txt");
         let manifest = DepManifest::from_requirements(&requirements_path)?;
         Ok(manifest)
