@@ -31,7 +31,7 @@ repos:
   rev: v0.13.1
   hooks:
     - id: fetter-validate
-      args: [--bound {FILE} --superset --subset]
+      args: [--bound, {FILE}, --superset, --subset]
 
 ```
 
