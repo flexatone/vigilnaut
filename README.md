@@ -19,7 +19,7 @@ To run fetter via pre-commit, add the following to your `.pre-commit-config.yaml
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: fetter-audit
 ```
@@ -27,9 +27,11 @@ repos:
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: fetter-validate
+      args: [--bound {FILE} --superset --subset]
+
 ```
 
 
@@ -37,6 +39,15 @@ repos:
 
 
 ## What is New in Fetter
+
+### 0.13.0
+
+All subcommands now have their output sub-subcommands set to `display` by default.
+
+The `validate` and `audit` subcommands now return a non-zero exit code when items are found.
+
+The CLI now exits for unsupported platforms.
+
 
 ### 0.12.0
 

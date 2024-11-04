@@ -10,10 +10,10 @@
 
 - id: fetter-validate
   name: Fetter Installed Package Validation
-  description: "Validate that installed packages do not deviate from requirements in requirements.txt, pyproject.toml, or a lock file."
-  entry: fetter --exe python3 validate --superset --bound display
+  description: "Validate that installed packages do not deviate from requirements in requirements.txt, pyproject.toml, or a lock file. Provide, via `args`, the path to the packages to validate against with `--bound`; specify if packages can be present that are not defined with `--superset`; specify if packages can absent that are defined with `--subset`."
+  entry: fetter --exe python3 validate
   args: []
-  language: python
+  language: rust
   always_run: true
   pass_filenames: false
   minimum_pre_commit_version: "2.9.2"
