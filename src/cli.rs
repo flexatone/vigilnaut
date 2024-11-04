@@ -17,9 +17,8 @@ use crate::scan_fs::Anchor;
 use crate::scan_fs::ScanFS;
 use crate::spin::spin;
 use crate::table::Tableable;
-use crate::util::path_normalize;
 use crate::ureq_client::UreqClientLive;
-
+use crate::util::path_normalize;
 
 //------------------------------------------------------------------------------
 // utility enums
@@ -335,8 +334,7 @@ fn get_scan(
 fn get_dep_manifest(bound: &PathBuf) -> Result<DepManifest, Box<dyn std::error::Error>> {
     if bound.to_str().map_or(false, |s| s.ends_with(".git")) {
         DepManifest::from_git_repo(&bound)
-    }
-    else if bound.to_str().map_or(false, |s| s.starts_with("http")) {
+    } else if bound.to_str().map_or(false, |s| s.starts_with("http")) {
         DepManifest::from_url(&UreqClientLive, &bound)
     } else {
         let fp = path_normalize(&bound).unwrap_or_else(|_| bound.clone());
