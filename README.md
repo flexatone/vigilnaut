@@ -19,7 +19,7 @@ To run fetter via pre-commit, add the following to your `.pre-commit-config.yaml
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v0.13.0
+  rev: v0.13.1
   hooks:
     - id: fetter-audit
 ```
@@ -27,7 +27,7 @@ repos:
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v0.13.0
+  rev: v0.13.1
   hooks:
     - id: fetter-validate
       args: [--bound {FILE} --superset --subset]
