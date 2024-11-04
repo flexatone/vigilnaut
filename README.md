@@ -14,29 +14,54 @@ System-wide Python package discovery, validation, and allow-listing.
 
 Two `fetter` commands can be run via [pre-commit](https://pre-commit.com/) hooks.
 
-To run fetter via pre-commit, add the following to your `.pre-commit-config.yaml`:
+
+### Running `fetter validate` with `pre-commit`.
+
+
+The `fetter validate` command permits validating that the actually installed Python packages in the current environment are what are defined to be installed, as specified by a requirements.txt file, a pyproject.toml file, or a lock file such as one produced by `uv`.
+
+The `fetter validate` command takes a required argument, `--bound`, to specify that path or URL to the file to be used to define the bound requirements. The optional `--superset` argument permits packages not defined in the bound requirements to be present. The optional `--subset` argument permits not all packages in the bound requirements to be present.
+
+To run `fetter validate` with `pre-commit`, add the following to your `.pre-commit-config.yaml`.
+
 
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v0.12.1
+  rev: v0.13.1
+  hooks:
+    - id: fetter-validate
+      args: [--bound, {FILE}, --superset, --subset]
+
+```
+
+
+### Running `fetter audit` with `pre-commit`.
+
+The `fetter audit` command will check for cybersecurity vulnerabilities issued for all installed Python packages in the current environment. Vulnerabilities are searched for in the Open Source Vulnerability (OSV) database.
+
+To run `fetter audit` with `pre-commit`, add the following to your `.pre-commit-config.yaml`. Note that, as searching vulnerabilities can take time, this hook is likely better deployed as a `pre-push` rather than a `pre-commit` hook.
+
+```yaml
+repos:
+- repo: https://github.com/fetter-io/fetter-rs
+  rev: v0.13.1
   hooks:
     - id: fetter-audit
 ```
 
-```yaml
-repos:
-- repo: https://github.com/fetter-io/fetter-rs
-  rev: v0.12.1
-  hooks:
-    - id: fetter-validate
-```
-
-
-
 
 
 ## What is New in Fetter
+
+### 0.13.0
+
+All subcommands now have their output sub-subcommands set to `display` by default.
+
+The `validate` and `audit` subcommands now return a non-zero exit code when items are found.
+
+The CLI now exits for unsupported platforms.
+
 
 ### 0.12.0
 
