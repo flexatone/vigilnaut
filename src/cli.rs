@@ -2,6 +2,7 @@ use std::process;
 
 use crate::validation_report::ValidationFlags;
 use clap::{Parser, Subcommand, ValueEnum};
+use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::sync::{
@@ -346,13 +347,15 @@ where
     I: IntoIterator<Item = T>,
     T: Into<OsString> + Clone,
 {
+    if env::consts::OS != "macos" && env::consts::OS != "linux" {
+        return Err("No support for this platform. To request support, visit https://github.com/fetter-io/fetter-rs/issues/66".into());
+    }
     let cli = Cli::parse_from(args);
-    let quiet = cli.quiet;
     if cli.command.is_none() {
         return Err("No command provided. For more information, try '--help'.".into());
     }
-
     // we always do a scan; we might cache this
+    let quiet = cli.quiet;
     let sfs = get_scan(cli.exe, cli.user_site, !quiet).unwrap(); // handle error
 
     match &cli.command {
