@@ -149,13 +149,8 @@ impl DepManifest {
         url: &PathBuf,
     ) -> ResultDynError<Self> {
         let body_str = client.get(url.to_str().ok_or("Invalid PathBuf")?)?;
+        // TODO: based on url file path ending, handle tst or toml
         Self::from_iter(body_str.lines())
-
-        // // Read and process each line
-        // for line in reader.lines() {
-        //     let line = line?;
-        //     println!("{}", line);
-        // }
     }
 
     pub(crate) fn from_git_repo(url: &PathBuf) -> ResultDynError<Self> {
