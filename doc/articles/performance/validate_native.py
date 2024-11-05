@@ -49,13 +49,13 @@ if __name__ == '__main__':
 # fetter is 35% faster, or takes 75 percent the time
 
 # {.env311-fetter-bench}{default} % time /home/ariza/.env311-fetter-bench/bin/fetter -e python3 validate --bound requirements.txt --superset
-# real    0m0.187s
-# user    0m0.064s
-# sys     0m0.023s
+# real    0m0.202s
+# user    0m0.060s
+# sys     0m0.042s
 # {.env311-fetter-bench}{default} % time python3 validate_native.py
-# real    0m0.252s
-# user    0m0.189s
-# sys     0m0.056s
+# real    0m0.304s
+# user    0m0.254s
+# sys     0m0.040s
 
 # unlike pip-audit, fetter searches all installed packages, not just what is in requirmeents.
 # takes 14% time for osv, or 7.14 times faster
