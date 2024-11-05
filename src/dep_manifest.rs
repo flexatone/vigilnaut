@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
+use std::fs;
 use std::fs::File;
 use std::io;
 use std::io::BufRead;
@@ -8,6 +9,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use tempfile::tempdir;
+use toml::Value;
 
 use crate::table::ColumnFormat;
 use crate::table::Rowable;
@@ -128,24 +130,37 @@ impl DepManifest {
         }
         Ok(DepManifest { dep_specs: ds })
     }
-    // pub(crate) fn from_pyproject_toml<P: AsRef<Path>>(file_path: P) -> ResultDynError<Self> {
-    //     let contents = fs::read_to_string(file_path)
-    //         .map_err(|e| format!("Failed to read pyproject.toml file: {}", e))?;
-    //     let parsed_toml: toml::Value = toml::from_str(&contents)
-    //         .map_err(|e| format!("Failed to parse pyproject.toml file: {}", e))?;
 
-    //     let mut packages = HashMap::new();
-    //     if let Some(dependencies) = parsed_toml.get("tool").and_then(|t| t.get("poetry")).and_then(|p| p.get("dependencies")) {
-    //         for (name, version) in dependencies.as_table().ok_or("Dependencies is not a table")? {
-    //             let spec = format!("{} {}", name, version.as_str().unwrap_or(""));
-    //             let dep_spec = DepSpec::from_string(&spec)?;
-    //             packages.insert(dep_spec.name.clone(), dep_spec);
-    //         }
-    //     } else {
-    //         return Err("No dependencies found in pyproject.toml".to_string());
-    //     }
-    //     Ok(DepManifest { packages })
-    // }
+    pub(crate) fn from_pyproject(file_path: &PathBuf) -> ResultDynError<Self> {
+        let content = fs::read_to_string(file_path)
+            .map_err(|e| format!("Failed to read file: {}", e))?;
+        let value: Value = content
+            .parse::<Value>()
+            .map_err(|e| format!("Failed to parse TOML: {}", e))?;
+
+        if let Some(dependencies) = value
+            .get("project")
+            .and_then(|project| project.get("dependencies"))
+            .and_then(|deps| deps.as_array())
+        {
+            let deps_list: Vec<_> = dependencies
+                .iter()
+                .filter_map(|dep| dep.as_str().map(String::from))
+                .collect();
+            return DepManifest::from_iter(deps_list.iter());
+        }
+
+        if let Some(dependencies) = value
+            .get("tool")
+            .and_then(|tool| tool.get("poetry"))
+            .and_then(|poetry| poetry.get("dependencies"))
+            .and_then(|deps| deps.as_table())
+        {
+            let deps_list: Vec<_> = dependencies.keys().cloned().collect();
+            return DepManifest::from_iter(deps_list.iter());
+        }
+        Err("Dependencies section not found in pyproject.toml".into())
+    }
 
     // Create a DepManifest from a URL point to a requirements.txt or pyproject.toml file.
     pub(crate) fn from_url<U: UreqClient>(
