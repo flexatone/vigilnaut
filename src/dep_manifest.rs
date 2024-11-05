@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use tempfile::tempdir;
-use toml::Value;
+use toml;
 
 use crate::table::ColumnFormat;
 use crate::table::Rowable;
@@ -58,7 +58,6 @@ pub(crate) struct DepManifest {
 }
 
 impl DepManifest {
-    #[allow(dead_code)]
     pub(crate) fn from_iter<I, S>(ds_iter: I) -> ResultDynError<Self>
     where
         I: IntoIterator<Item = S>,
@@ -80,7 +79,7 @@ impl DepManifest {
         }
         Ok(DepManifest { dep_specs })
     }
-    // Create a DepManifest from a requirements.txt file, which might reference onther requirements.txt files.
+    // Create a DepManifest from a requirements.txt file, which might reference other requirements.txt files.
     pub(crate) fn from_requirements(file_path: &PathBuf) -> ResultDynError<Self> {
         let mut files: VecDeque<PathBuf> = VecDeque::new();
         files.push_back(file_path.clone());
@@ -131,11 +130,9 @@ impl DepManifest {
         Ok(DepManifest { dep_specs: ds })
     }
 
-    pub(crate) fn from_pyproject(file_path: &PathBuf) -> ResultDynError<Self> {
-        let content = fs::read_to_string(file_path)
-            .map_err(|e| format!("Failed to read file: {}", e))?;
-        let value: Value = content
-            .parse::<Value>()
+    pub(crate) fn from_pyproject(content: &String) -> ResultDynError<Self> {
+        let value: toml::Value = content
+            .parse::<toml::Value>()
             .map_err(|e| format!("Failed to parse TOML: {}", e))?;
 
         if let Some(dependencies) = value
@@ -147,7 +144,7 @@ impl DepManifest {
                 .iter()
                 .filter_map(|dep| dep.as_str().map(String::from))
                 .collect();
-            return DepManifest::from_iter(deps_list.iter());
+            return Self::from_iter(deps_list.iter());
         }
 
         if let Some(dependencies) = value
@@ -157,9 +154,15 @@ impl DepManifest {
             .and_then(|deps| deps.as_table())
         {
             let deps_list: Vec<_> = dependencies.keys().cloned().collect();
-            return DepManifest::from_iter(deps_list.iter());
+            return Self::from_iter(deps_list.iter());
         }
         Err("Dependencies section not found in pyproject.toml".into())
+    }
+
+    pub(crate) fn from_pyproject_file(file_path: &PathBuf) -> ResultDynError<Self> {
+        let content = fs::read_to_string(file_path)
+            .map_err(|e| format!("Failed to read file: {}", e))?;
+        Self::from_pyproject(&content)
     }
 
     // Create a DepManifest from a URL point to a requirements.txt or pyproject.toml file.
@@ -167,9 +170,14 @@ impl DepManifest {
         client: &U,
         url: &PathBuf,
     ) -> ResultDynError<Self> {
-        let body_str = client.get(url.to_str().ok_or("Invalid URL")?)?;
-        // TODO: based on url file path ending, handle txt or toml
-        Self::from_iter(body_str.lines())
+        let url_str = url.to_str().ok_or("Invalid URL")?;
+        let content = client.get(url_str)?;
+        if url_str.ends_with(".toml") {
+            Self::from_pyproject(&content)
+        } else {
+            // assume txt
+            Self::from_iter(content.lines())
+        }
     }
 
     pub(crate) fn from_git_repo(url: &PathBuf) -> ResultDynError<Self> {
@@ -556,7 +564,7 @@ dependencies = [
         let mut file = File::create(&file_path).unwrap();
         write!(file, "{}", content).unwrap();
 
-        let dm = DepManifest::from_pyproject(&file_path).unwrap();
+        let dm = DepManifest::from_pyproject_file(&file_path).unwrap();
         assert_eq!(dm.keys(), vec!["django", "gidgethub", "httpx"])
     }
 
