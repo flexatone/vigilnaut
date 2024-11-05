@@ -157,7 +157,6 @@ impl DepManifest {
         Self::from_iter(body_str.lines())
     }
 
-
     pub(crate) fn from_git_repo(url: &PathBuf) -> ResultDynError<Self> {
         let tmp_dir = tempdir()
             .map_err(|e| format!("Failed to create temporary directory: {}", e))?;
@@ -250,9 +249,9 @@ impl DepManifest {
 mod tests {
     use super::*;
     use crate::package_durl::DirectURL;
+    use crate::ureq_client::UreqClientMock;
     use std::io::Write;
     use tempfile::tempdir;
-    use crate::ureq_client::UreqClientMock;
 
     #[test]
     fn test_dep_spec_a() {
@@ -514,10 +513,8 @@ regex==2024.4.16
 
     //--------------------------------------------------------------------------
 
-
     #[test]
     fn test_from_url_a() {
-
         let mock_get = r#"
 dill>=0.3.9
 six>=1.15.0
@@ -525,15 +522,13 @@ numpy>= 2.0
         "#;
 
         let client = UreqClientMock {
-            mock_post : None,
-            mock_get : Some(mock_get.to_string()),
+            mock_post: None,
+            mock_get: Some(mock_get.to_string()),
         };
 
         let url = PathBuf::from("http://example.com/requirements.txt");
         let dm = DepManifest::from_url(&client, &url).unwrap();
         assert_eq!(dm.keys(), vec!["dill", "numpy", "six"])
-
-
     }
 
     //--------------------------------------------------------------------------
@@ -666,6 +661,4 @@ numpy>= 2.0
     }
 
     //--------------------------------------------------------------------------
-
-
 }
