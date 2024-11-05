@@ -63,8 +63,12 @@ impl DepManifest {
         S: AsRef<str>,
     {
         let mut dep_specs = HashMap::new();
-        for spec in ds_iter {
-            let dep_spec = DepSpec::from_string(spec.as_ref())?;
+        for line in ds_iter {
+            let spec = line.as_ref().trim();
+            if spec.is_empty() {
+                continue;
+            }
+            let dep_spec = DepSpec::from_string(spec)?;
             if dep_specs.contains_key(&dep_spec.key) {
                 return Err(
                     format!("Duplicate package key found: {}", dep_spec.key).into()
@@ -148,10 +152,11 @@ impl DepManifest {
         client: &U,
         url: &PathBuf,
     ) -> ResultDynError<Self> {
-        let body_str = client.get(url.to_str().ok_or("Invalid PathBuf")?)?;
-        // TODO: based on url file path ending, handle tst or toml
+        let body_str = client.get(url.to_str().ok_or("Invalid URL")?)?;
+        // TODO: based on url file path ending, handle txt or toml
         Self::from_iter(body_str.lines())
     }
+
 
     pub(crate) fn from_git_repo(url: &PathBuf) -> ResultDynError<Self> {
         let tmp_dir = tempdir()
@@ -247,6 +252,7 @@ mod tests {
     use crate::package_durl::DirectURL;
     use std::io::Write;
     use tempfile::tempdir;
+    use crate::ureq_client::UreqClientMock;
 
     #[test]
     fn test_dep_spec_a() {
@@ -505,6 +511,31 @@ regex==2024.4.16
         let dm1 = DepManifest::from_requirements(&fp3).unwrap();
         assert_eq!(dm1.len(), 9);
     }
+
+    //--------------------------------------------------------------------------
+
+
+    #[test]
+    fn test_from_url_a() {
+
+        let mock_get = r#"
+dill>=0.3.9
+six>=1.15.0
+numpy>= 2.0
+        "#;
+
+        let client = UreqClientMock {
+            mock_post : None,
+            mock_get : Some(mock_get.to_string()),
+        };
+
+        let url = PathBuf::from("http://example.com/requirements.txt");
+        let dm = DepManifest::from_url(&client, &url).unwrap();
+        assert_eq!(dm.keys(), vec!["dill", "numpy", "six"])
+
+
+    }
+
     //--------------------------------------------------------------------------
 
     #[test]
@@ -633,4 +664,8 @@ regex==2024.4.16
         let dm1 = DepManifest::from_dep_specs(&specs).unwrap();
         assert_eq!(dm1.validate(&p1, false).0, true);
     }
+
+    //--------------------------------------------------------------------------
+
+
 }
