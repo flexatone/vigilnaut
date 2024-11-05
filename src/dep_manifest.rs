@@ -529,6 +529,40 @@ regex==2024.4.16
     //--------------------------------------------------------------------------
 
     #[test]
+    fn test_from_pyproject_a() {
+        let content = r#"
+[project]
+name = "example_package_YOUR_USERNAME_HERE"
+version = "0.0.1"
+authors = [
+  { name="Example Author", email="author@example.com" },
+]
+description = "A small example package"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  "httpx",
+  "gidgethub[httpx]>4.0.0",
+  "django>2.1; os_name != 'nt'",
+]
+"#;
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("pyproject.toml");
+        let mut file = File::create(&file_path).unwrap();
+        write!(file, "{}", content).unwrap();
+
+        let dm = DepManifest::from_pyproject(&file_path).unwrap();
+        assert_eq!(dm.keys(), vec!["django", "gidgethub", "httpx"])
+    }
+
+    //--------------------------------------------------------------------------
+
+    #[test]
     fn test_from_url_a() {
         let mock_get = r#"
 dill>=0.3.9
