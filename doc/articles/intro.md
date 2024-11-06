@@ -20,22 +20,29 @@ Similar to `ruff` and `uv`, `fetter` is implemented in efficient, multi-threaded
 
 ## Installing `fetter`
 
-While available as pure Rust binary (crates), `fetter` is easily installed via a Python package wrapper:
+While available as a pure Rust binary ([crates](https://crates.io/crates/fetter)), `fetter` is easily installed via a Python package ([pypi](https://pypi.org/project/fetter)):
 
 ```
 $ pip install fetter
 $ fetter --help
 ```
 
+Alternatively, as `fetter` can operate on multiple virtual environments, installation via [`pipx`](https://pipx.pypa.io) might be appropriate:
+
+```
+$ pipx install fetter
+$ fetter --version
+```
+
 ## Scanning Systems and Environments
 
-By default, `fetter` will search for all packages in all `site_package` directories discoverable from all Python executables found in the system or user virtual environements.
+By default, `fetter` will search for all packages in all `site-package` directories discoverable from all Python executables found in the system or user virtual environments.
 
 ```
 $ fetter search
 ```
 
-To limit searching `site_packages` associated with specific Python executables, the `--exe` (or `-e`) argument can be supplied with relative or absolute paths. For example, to only search site-packages of the currently active Python, `-e python3` can be provided.
+To limit searching to `site-packages` associated with specific Python executables, the `--exe` (or `-e`) argument can be supplied with relative or absolute paths. For example, to only search the `site-packages` directory of the currently active Python, `-e python3` can be provided.
 
 ```
 $ fetter -e python3 search
