@@ -680,8 +680,6 @@ pytest-github-actions-annotate-failures = "==0.1.7"
                 "xattr"
             ]
         );
-
-        // we get no details....
         assert_eq!(
             dm.get_dep_spec("cachecontrol").unwrap().to_string(),
             "cachecontrol==0.14.0"
@@ -704,117 +702,114 @@ pytest-github-actions-annotate-failures = "==0.1.7"
         );
     }
 
+    //     #[test]
+    //     fn test_from_pyproject_c() {
+    //         let content = r#"
+    // [tool.poetry]
+    // name = "poetry"
+    // readme = "README.md"
+    // include = [{ path = "tests", format = "sdist" }]
+    // homepage = "https://python-poetry.org/"
 
+    // [tool.poetry.urls]
+    // Changelog = "https://python-poetry.org/history/"
 
-//     #[test]
-//     fn test_from_pyproject_c() {
-//         let content = r#"
-// [tool.poetry]
-// name = "poetry"
-// readme = "README.md"
-// include = [{ path = "tests", format = "sdist" }]
-// homepage = "https://python-poetry.org/"
+    // [tool.poetry.dependencies]
+    // python = "^3.9"
 
-// [tool.poetry.urls]
-// Changelog = "https://python-poetry.org/history/"
+    // poetry-core = { git = "https://github.com/python-poetry/poetry-core.git", branch = "main" }
+    // build = "^1.2.1"
+    // cachecontrol = { version = "^0.14.0", extras = ["filecache"] }
+    // cleo = "^2.1.0"
+    // dulwich = "^0.22.1"
+    // fastjsonschema = "^2.18.0"
+    // importlib-metadata = { version = ">=4.4", python = "<3.10" }
+    // installer = "^0.7.0"
+    // keyring = "^25.1.0"
+    // # packaging uses calver, so version is unclamped
+    // packaging = ">=24.0"
+    // pkginfo = "^1.10"
+    // platformdirs = ">=3.0.0,<5"
+    // pyproject-hooks = "^1.0.0"
+    // requests = "^2.26"
+    // requests-toolbelt = "^1.0.0"
+    // shellingham = "^1.5"
+    // tomli = { version = "^2.0.1", python = "<3.11" }
+    // tomlkit = ">=0.11.4,<1.0.0"
+    // # trove-classifiers uses calver, so version is unclamped
+    // trove-classifiers = ">=2022.5.19"
+    // virtualenv = "^20.26.6"
+    // xattr = { version = "^1.0.0", markers = "sys_platform == 'darwin'" }
 
-// [tool.poetry.dependencies]
-// python = "^3.9"
+    // [tool.poetry.group.dev.dependencies]
+    // pre-commit = ">=2.10"
+    // setuptools = { version = ">=60", python = "<3.10" }
 
-// poetry-core = { git = "https://github.com/python-poetry/poetry-core.git", branch = "main" }
-// build = "^1.2.1"
-// cachecontrol = { version = "^0.14.0", extras = ["filecache"] }
-// cleo = "^2.1.0"
-// dulwich = "^0.22.1"
-// fastjsonschema = "^2.18.0"
-// importlib-metadata = { version = ">=4.4", python = "<3.10" }
-// installer = "^0.7.0"
-// keyring = "^25.1.0"
-// # packaging uses calver, so version is unclamped
-// packaging = ">=24.0"
-// pkginfo = "^1.10"
-// platformdirs = ">=3.0.0,<5"
-// pyproject-hooks = "^1.0.0"
-// requests = "^2.26"
-// requests-toolbelt = "^1.0.0"
-// shellingham = "^1.5"
-// tomli = { version = "^2.0.1", python = "<3.11" }
-// tomlkit = ">=0.11.4,<1.0.0"
-// # trove-classifiers uses calver, so version is unclamped
-// trove-classifiers = ">=2022.5.19"
-// virtualenv = "^20.26.6"
-// xattr = { version = "^1.0.0", markers = "sys_platform == 'darwin'" }
+    // [tool.poetry.group.test.dependencies]
+    // coverage = ">=7.2.0"
+    // deepdiff = ">=6.3"
+    // httpretty = ">=1.1"
+    // jaraco-classes = ">=3.3.1"
+    // pytest = ">=8.0"
+    // pytest-cov = ">=4.0"
+    // pytest-mock = ">=3.9"
+    // pytest-randomly = ">=3.12"
+    // pytest-xdist = { version = ">=3.1", extras = ["psutil"] }
 
-// [tool.poetry.group.dev.dependencies]
-// pre-commit = ">=2.10"
-// setuptools = { version = ">=60", python = "<3.10" }
+    // [tool.poetry.group.typing.dependencies]
+    // mypy = ">=1.8.0"
+    // types-requests = ">=2.28.8"
 
-// [tool.poetry.group.test.dependencies]
-// coverage = ">=7.2.0"
-// deepdiff = ">=6.3"
-// httpretty = ">=1.1"
-// jaraco-classes = ">=3.3.1"
-// pytest = ">=8.0"
-// pytest-cov = ">=4.0"
-// pytest-mock = ">=3.9"
-// pytest-randomly = ">=3.12"
-// pytest-xdist = { version = ">=3.1", extras = ["psutil"] }
+    // # only used in github actions
+    // [tool.poetry.group.github-actions]
+    // optional = true
+    // [tool.poetry.group.github-actions.dependencies]
+    // pytest-github-actions-annotate-failures = "^0.1.7"
+    //     "#;
+    //         let dir = tempdir().unwrap();
+    //         let file_path = dir.path().join("pyproject.toml");
+    //         let mut file = File::create(&file_path).unwrap();
+    //         write!(file, "{}", content).unwrap();
 
-// [tool.poetry.group.typing.dependencies]
-// mypy = ">=1.8.0"
-// types-requests = ">=2.28.8"
+    //         let dm = DepManifest::from_pyproject_file(&file_path).unwrap();
+    //         assert_eq!(
+    //             dm.keys(),
+    //             vec![
+    //                 "build",
+    //                 "cachecontrol",
+    //                 "cleo",
+    //                 "dulwich",
+    //                 "fastjsonschema",
+    //                 "importlib_metadata",
+    //                 "installer",
+    //                 "keyring",
+    //                 "packaging",
+    //                 "pkginfo",
+    //                 "platformdirs",
+    //                 "poetry_core",
+    //                 "pyproject_hooks",
+    //                 "python",
+    //                 "requests",
+    //                 "requests_toolbelt",
+    //                 "shellingham",
+    //                 "tomli",
+    //                 "tomlkit",
+    //                 "trove_classifiers",
+    //                 "virtualenv",
+    //                 "xattr"
+    //             ]
+    //         );
 
-// # only used in github actions
-// [tool.poetry.group.github-actions]
-// optional = true
-// [tool.poetry.group.github-actions.dependencies]
-// pytest-github-actions-annotate-failures = "^0.1.7"
-//     "#;
-//         let dir = tempdir().unwrap();
-//         let file_path = dir.path().join("pyproject.toml");
-//         let mut file = File::create(&file_path).unwrap();
-//         write!(file, "{}", content).unwrap();
-
-//         let dm = DepManifest::from_pyproject_file(&file_path).unwrap();
-//         assert_eq!(
-//             dm.keys(),
-//             vec![
-//                 "build",
-//                 "cachecontrol",
-//                 "cleo",
-//                 "dulwich",
-//                 "fastjsonschema",
-//                 "importlib_metadata",
-//                 "installer",
-//                 "keyring",
-//                 "packaging",
-//                 "pkginfo",
-//                 "platformdirs",
-//                 "poetry_core",
-//                 "pyproject_hooks",
-//                 "python",
-//                 "requests",
-//                 "requests_toolbelt",
-//                 "shellingham",
-//                 "tomli",
-//                 "tomlkit",
-//                 "trove_classifiers",
-//                 "virtualenv",
-//                 "xattr"
-//             ]
-//         );
-
-//         // we get no details....
-//         assert_eq!(
-//             dm.get_dep_spec("cachecontrol").unwrap().to_string(),
-//             "cachecontrol"
-//         );
-//         assert_eq!(
-//             dm.get_dep_spec("platformdirs").unwrap().to_string(),
-//             "platformdirs"
-//         );
-//     }
-
+    //         // we get no details....
+    //         assert_eq!(
+    //             dm.get_dep_spec("cachecontrol").unwrap().to_string(),
+    //             "cachecontrol"
+    //         );
+    //         assert_eq!(
+    //             dm.get_dep_spec("platformdirs").unwrap().to_string(),
+    //             "platformdirs"
+    //         );
+    //     }
 
     //--------------------------------------------------------------------------
 
