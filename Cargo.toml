@@ -27,6 +27,7 @@ clap = { version = "4.5.17", features = ["derive"] }
 ureq = "2.10.1"
 crossterm = "0.28.1"
 tempfile = "=3.11.0" # lock to align windows-sys requirements
+toml = "0.8.19"
 
 
 [profile.release]
