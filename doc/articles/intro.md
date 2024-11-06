@@ -5,7 +5,7 @@
 # Scan Your Entire System for Python Packages with Vulnerabilities
 -->
 
-# System-Wide Python Package Control: Search, Allow List, and Find Vulnerabilities,
+# System-Wide Python Package Control: Search, Allow List, and Find Vulnerabilities
 
 
 A Python developer's system is likely littered with numerous virtual environments and hundreds of packages. Many of these virtual environments might be abandoned, holding out-of-date packages with known security vulnerabilities.
@@ -48,10 +48,21 @@ To limit searching to `site-packages` associated with specific Python executable
 $ fetter -e python3 search
 ```
 
+## Validating Installed Packages
 
 
+## Searching for Package Vulnerabilities
 
-## Usage With `pre-commit`
+
+## Deployment With `pre-commit`
+
+
+## Other Utilities
 
 
 ## Delimited File Output
+
+
+## Conclusion
+
+
