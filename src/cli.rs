@@ -345,7 +345,7 @@ fn get_dep_manifest(bound: &PathBuf) -> Result<DepManifest, Box<dyn std::error::
     } else {
         // assume all text files are requirements-style
         let fp = path_normalize(&bound).unwrap_or_else(|_| bound.clone());
-        DepManifest::from_requirements(&fp)
+        DepManifest::from_requirements_file(&fp)
     }
 }
 

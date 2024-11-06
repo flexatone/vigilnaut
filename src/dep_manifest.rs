@@ -80,7 +80,7 @@ impl DepManifest {
         Ok(DepManifest { dep_specs })
     }
     // Create a DepManifest from a requirements.txt file, which might reference other requirements.txt files.
-    pub(crate) fn from_requirements(file_path: &PathBuf) -> ResultDynError<Self> {
+    pub(crate) fn from_requirements_file(file_path: &PathBuf) -> ResultDynError<Self> {
         let mut files: VecDeque<PathBuf> = VecDeque::new();
         files.push_back(file_path.clone());
         let mut dep_specs = HashMap::new();
@@ -153,7 +153,22 @@ impl DepManifest {
             .and_then(|poetry| poetry.get("dependencies"))
             .and_then(|deps| deps.as_table())
         {
-            let deps_list: Vec<_> = dependencies.keys().cloned().collect();
+            let deps_list: Vec<_> = dependencies
+                .iter()
+                .map(|(name, value)| {
+                    let version = match value {
+                        toml::Value::String(v) => v.clone(),
+                        toml::Value::Table(t) => t
+                            .get("version")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string(),
+                        _ => String::new(),
+                    };
+                    // println!("got version: {} {:?}", name, version);
+                    format!("{}{}", name, version)
+                })
+                .collect();
             return Self::from_iter(deps_list.iter());
         }
         Err("Dependencies section not found in pyproject.toml".into())
@@ -201,7 +216,7 @@ impl DepManifest {
         }
         // might look for pyproject first
         let requirements_path = repo_path.join("requirements.txt");
-        let manifest = DepManifest::from_requirements(&requirements_path)?;
+        let manifest = DepManifest::from_requirements_file(&requirements_path)?;
         Ok(manifest)
     }
 
@@ -318,7 +333,7 @@ mod tests {
         writeln!(file, "pk2>=1,<3").unwrap();
         writeln!(file, "# ").unwrap();
 
-        let dep_manifest = DepManifest::from_requirements(&file_path).unwrap();
+        let dep_manifest = DepManifest::from_requirements_file(&file_path).unwrap();
         assert_eq!(dep_manifest.len(), 2);
 
         let p1 = Package::from_name_version_durl("pk2", "2.1", None).unwrap();
@@ -359,7 +374,7 @@ tomlkit==0.12.4
         let mut file = File::create(&file_path).unwrap();
         write!(file, "{}", content).unwrap();
 
-        let dm1 = DepManifest::from_requirements(&file_path).unwrap();
+        let dm1 = DepManifest::from_requirements_file(&file_path).unwrap();
         assert_eq!(dm1.len(), 7);
         let p1 = Package::from_name_version_durl("termcolor", "2.2.0", None).unwrap();
         assert_eq!(dm1.validate(&p1, false).0, true);
@@ -407,7 +422,7 @@ opentelemetry-semantic-conventions==0.45b0
         let mut file = File::create(&file_path).unwrap();
         write!(file, "{}", content).unwrap();
 
-        let dm1 = DepManifest::from_requirements(&file_path).unwrap();
+        let dm1 = DepManifest::from_requirements_file(&file_path).unwrap();
         assert_eq!(dm1.len(), 8);
         let p1 = Package::from_name_version_durl(
             "opentelemetry-exporter-otlp-proto-grpc",
@@ -459,7 +474,7 @@ regex==2024.4.16
         let mut file = File::create(&file_path).unwrap();
         write!(file, "{}", content).unwrap();
 
-        let dm1 = DepManifest::from_requirements(&file_path).unwrap();
+        let dm1 = DepManifest::from_requirements_file(&file_path).unwrap();
         assert_eq!(dm1.len(), 9);
         let p1 = Package::from_name_version_durl("regex", "2024.4.16", None).unwrap();
         assert_eq!(dm1.validate(&p1, false).0, true);
@@ -494,7 +509,7 @@ regex==2024.4.16
         let mut f2 = File::create(&fp2).unwrap();
         write!(f2, "{}", content2).unwrap();
 
-        let dm1 = DepManifest::from_requirements(&fp2).unwrap();
+        let dm1 = DepManifest::from_requirements_file(&fp2).unwrap();
         assert_eq!(dm1.len(), 9);
     }
 
@@ -530,7 +545,7 @@ regex==2024.4.16
         let mut f3 = File::create(&fp3).unwrap();
         write!(f3, "{}", content3).unwrap();
 
-        let dm1 = DepManifest::from_requirements(&fp3).unwrap();
+        let dm1 = DepManifest::from_requirements_file(&fp3).unwrap();
         assert_eq!(dm1.len(), 9);
     }
 
@@ -568,6 +583,239 @@ dependencies = [
         assert_eq!(dm.keys(), vec!["django", "gidgethub", "httpx"])
     }
 
+    #[test]
+    fn test_from_pyproject_b() {
+        let content = r#"
+[tool.poetry]
+name = "poetry"
+readme = "README.md"
+include = [{ path = "tests", format = "sdist" }]
+homepage = "https://python-poetry.org/"
+
+[tool.poetry.urls]
+Changelog = "https://python-poetry.org/history/"
+
+[tool.poetry.dependencies]
+python = "==3.9"
+
+poetry-core = { git = "https://github.com/python-poetry/poetry-core.git", branch = "main" }
+build = "==1.2.1"
+cachecontrol = { version = "==0.14.0", extras = ["filecache"] }
+cleo = "==2.1.0"
+dulwich = "==0.22.1"
+fastjsonschema = "==2.18.0"
+importlib-metadata = { version = ">=4.4", python = "<3.10" }
+installer = "==0.7.0"
+keyring = "==25.1.0"
+# packaging uses calver, so version is unclamped
+packaging = ">=24.0"
+pkginfo = "==1.10"
+platformdirs = ">=3.0.0,<5"
+pyproject-hooks = "==1.0.0"
+requests = "==2.26"
+requests-toolbelt = "==1.0.0"
+shellingham = "==1.5"
+tomli = { version = "==2.0.1", python = "<3.11" }
+tomlkit = ">=0.11.4,<1.0.0"
+# trove-classifiers uses calver, so version is unclamped
+trove-classifiers = ">=2022.5.19"
+virtualenv = "==20.26.6"
+xattr = { version = "==1.0.0", markers = "sys_platform == 'darwin'" }
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = ">=2.10"
+setuptools = { version = ">=60", python = "<3.10" }
+
+[tool.poetry.group.test.dependencies]
+coverage = ">=7.2.0"
+deepdiff = ">=6.3"
+httpretty = ">=1.1"
+jaraco-classes = ">=3.3.1"
+pytest = ">=8.0"
+pytest-cov = ">=4.0"
+pytest-mock = ">=3.9"
+pytest-randomly = ">=3.12"
+pytest-xdist = { version = ">=3.1", extras = ["psutil"] }
+
+[tool.poetry.group.typing.dependencies]
+mypy = ">=1.8.0"
+types-requests = ">=2.28.8"
+
+# only used in github actions
+[tool.poetry.group.github-actions]
+optional = true
+[tool.poetry.group.github-actions.dependencies]
+pytest-github-actions-annotate-failures = "==0.1.7"
+    "#;
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("pyproject.toml");
+        let mut file = File::create(&file_path).unwrap();
+        write!(file, "{}", content).unwrap();
+
+        let dm = DepManifest::from_pyproject_file(&file_path).unwrap();
+        assert_eq!(
+            dm.keys(),
+            vec![
+                "build",
+                "cachecontrol",
+                "cleo",
+                "dulwich",
+                "fastjsonschema",
+                "importlib_metadata",
+                "installer",
+                "keyring",
+                "packaging",
+                "pkginfo",
+                "platformdirs",
+                "poetry_core",
+                "pyproject_hooks",
+                "python",
+                "requests",
+                "requests_toolbelt",
+                "shellingham",
+                "tomli",
+                "tomlkit",
+                "trove_classifiers",
+                "virtualenv",
+                "xattr"
+            ]
+        );
+
+        // we get no details....
+        assert_eq!(
+            dm.get_dep_spec("cachecontrol").unwrap().to_string(),
+            "cachecontrol==0.14.0"
+        );
+        assert_eq!(
+            dm.get_dep_spec("dulwich").unwrap().to_string(),
+            "dulwich==0.22.1"
+        );
+        assert_eq!(
+            dm.get_dep_spec("tomli").unwrap().to_string(),
+            "tomli==2.0.1"
+        );
+        assert_eq!(
+            dm.get_dep_spec("platformdirs").unwrap().to_string(),
+            "platformdirs>=3.0.0,<5"
+        );
+        assert_eq!(
+            dm.get_dep_spec("importlib_metadata").unwrap().to_string(),
+            "importlib-metadata>=4.4"
+        );
+    }
+
+
+
+//     #[test]
+//     fn test_from_pyproject_c() {
+//         let content = r#"
+// [tool.poetry]
+// name = "poetry"
+// readme = "README.md"
+// include = [{ path = "tests", format = "sdist" }]
+// homepage = "https://python-poetry.org/"
+
+// [tool.poetry.urls]
+// Changelog = "https://python-poetry.org/history/"
+
+// [tool.poetry.dependencies]
+// python = "^3.9"
+
+// poetry-core = { git = "https://github.com/python-poetry/poetry-core.git", branch = "main" }
+// build = "^1.2.1"
+// cachecontrol = { version = "^0.14.0", extras = ["filecache"] }
+// cleo = "^2.1.0"
+// dulwich = "^0.22.1"
+// fastjsonschema = "^2.18.0"
+// importlib-metadata = { version = ">=4.4", python = "<3.10" }
+// installer = "^0.7.0"
+// keyring = "^25.1.0"
+// # packaging uses calver, so version is unclamped
+// packaging = ">=24.0"
+// pkginfo = "^1.10"
+// platformdirs = ">=3.0.0,<5"
+// pyproject-hooks = "^1.0.0"
+// requests = "^2.26"
+// requests-toolbelt = "^1.0.0"
+// shellingham = "^1.5"
+// tomli = { version = "^2.0.1", python = "<3.11" }
+// tomlkit = ">=0.11.4,<1.0.0"
+// # trove-classifiers uses calver, so version is unclamped
+// trove-classifiers = ">=2022.5.19"
+// virtualenv = "^20.26.6"
+// xattr = { version = "^1.0.0", markers = "sys_platform == 'darwin'" }
+
+// [tool.poetry.group.dev.dependencies]
+// pre-commit = ">=2.10"
+// setuptools = { version = ">=60", python = "<3.10" }
+
+// [tool.poetry.group.test.dependencies]
+// coverage = ">=7.2.0"
+// deepdiff = ">=6.3"
+// httpretty = ">=1.1"
+// jaraco-classes = ">=3.3.1"
+// pytest = ">=8.0"
+// pytest-cov = ">=4.0"
+// pytest-mock = ">=3.9"
+// pytest-randomly = ">=3.12"
+// pytest-xdist = { version = ">=3.1", extras = ["psutil"] }
+
+// [tool.poetry.group.typing.dependencies]
+// mypy = ">=1.8.0"
+// types-requests = ">=2.28.8"
+
+// # only used in github actions
+// [tool.poetry.group.github-actions]
+// optional = true
+// [tool.poetry.group.github-actions.dependencies]
+// pytest-github-actions-annotate-failures = "^0.1.7"
+//     "#;
+//         let dir = tempdir().unwrap();
+//         let file_path = dir.path().join("pyproject.toml");
+//         let mut file = File::create(&file_path).unwrap();
+//         write!(file, "{}", content).unwrap();
+
+//         let dm = DepManifest::from_pyproject_file(&file_path).unwrap();
+//         assert_eq!(
+//             dm.keys(),
+//             vec![
+//                 "build",
+//                 "cachecontrol",
+//                 "cleo",
+//                 "dulwich",
+//                 "fastjsonschema",
+//                 "importlib_metadata",
+//                 "installer",
+//                 "keyring",
+//                 "packaging",
+//                 "pkginfo",
+//                 "platformdirs",
+//                 "poetry_core",
+//                 "pyproject_hooks",
+//                 "python",
+//                 "requests",
+//                 "requests_toolbelt",
+//                 "shellingham",
+//                 "tomli",
+//                 "tomlkit",
+//                 "trove_classifiers",
+//                 "virtualenv",
+//                 "xattr"
+//             ]
+//         );
+
+//         // we get no details....
+//         assert_eq!(
+//             dm.get_dep_spec("cachecontrol").unwrap().to_string(),
+//             "cachecontrol"
+//         );
+//         assert_eq!(
+//             dm.get_dep_spec("platformdirs").unwrap().to_string(),
+//             "platformdirs"
+//         );
+//     }
+
+
     //--------------------------------------------------------------------------
 
     #[test]
@@ -603,7 +851,7 @@ numpy>= 2.0
         let dmr1 = dm1.to_dep_manifest_report();
         dmr1.to_file(&file_path, ' ').unwrap();
 
-        let dm2 = DepManifest::from_requirements(&file_path).unwrap();
+        let dm2 = DepManifest::from_requirements_file(&file_path).unwrap();
         assert_eq!(dm2.len(), 3)
     }
 
