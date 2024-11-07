@@ -154,7 +154,7 @@ zipp-3.18.1        GHSA-jfmj-5v4g-7637  URL        https://osv.dev/vulnerability
                                         Severity   CVSS:4.0/AV:L/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA
 ```
 
-For additional discussion and examples of `fetter` commands and functionality, see [pSystem-Wide Python Package Control](https://github.com/fetter-io/fetter-rs/blob/default/doc/articles/swppc/swppc.md).
+For additional discussion and examples of `fetter` commands and functionality, see [System-Wide Python Package Control](https://github.com/fetter-io/fetter-rs/blob/default/doc/articles/swppc/swppc.md).
 
 
 ## Using `fetter` with pre-commit
