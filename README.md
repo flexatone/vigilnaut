@@ -108,7 +108,7 @@ Package      Dependency    Explain     Sites
 zipp-3.20.2  zipp==3.18.1  Misdefined  ~/.env-wp/lib/python3.12/site-packages
 ```
 
-If we remove the the `zipp` package entirely, `fetter` identifies this as a "Missing" record:
+If we remove the `zipp` package entirely, `fetter` identifies this as a "Missing" record:
 
 ```shell
 $ fetter -e python3 validate --bound requirements.txt --superset
@@ -154,6 +154,7 @@ zipp-3.18.1        GHSA-jfmj-5v4g-7637  URL        https://osv.dev/vulnerability
                                         Severity   CVSS:4.0/AV:L/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA
 ```
 
+For additional discussion and examples of `fetter` commands and functionality, see [pSystem-Wide Python Package Control](https://github.com/fetter-io/fetter-rs/blob/default/doc/articles/swppc/swppc.md).
 
 
 ## Using `fetter` with pre-commit

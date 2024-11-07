@@ -264,7 +264,7 @@ fetter purge-pattern -p numpy-1.18.5
 
 All previous examples demonstrate the default `fetter` behavior to print output to the terminal. Alternatively, output can be written to delimited text files suitable for further processing. To write the output of the `fetter search` command to a CSV file, we simply include the "write" subcommand and additional arguments:
 
-'''shell
+```shell
 $ fetter search -p numpy-* write -o /tmp/out.txt -d ","
 $ cat /tmp/out.txt
 Package,Site
@@ -294,7 +294,7 @@ numpy-1.26.4,~/.env-sg/lib/python3.11/site-packages
 numpy-2.0.0,~/.env-tt/lib/python3.12/site-packages
 numpy-2.0.0,~/.env-sq/lib/python3.12/site-packages
 numpy-2.1.2,~/.env-lt/lib/python3.11/site-packages
-'''
+```
 
 ## Conclusion
 
