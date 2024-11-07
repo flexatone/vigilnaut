@@ -10,9 +10,9 @@
 
 A Python developer's system is likely littered with numerous virtual environments and hundreds of packages. Many of these virtual environments might be abandoned, holding out-of-date packages with known security vulnerabilities.
 
-Even within a single virtual environment, installed packages can drift from the project's specified requirements. A developer might mistakenly install a package in the wrong virtual environment, or install a new package that inadvertently upgrades another package. When installed packages deviate from vetted requirements, unexpected behaviors can result, or worse, malware can be installed.
+Even within a single virtual environment, installed packages can drift from the project's specified requirements. A developer might mistakenly install a package in the wrong virtual environment, or install a new package that inadvertently upgrades another package. When installed packages deviate from vetted requirements, unexpected behavior can result, or worse, malware can be installed.
 
-The `fetter` command-line application searches an entire system (or targeted virtual environments) for installed Python packages. Once found, those packages can be validated against a requirements or lock file, or audited for security vulnerabilities. Deployed as a `pre-commit` hook, these checks can be performed on `git` commit or push and integrated into continuous integration workflows. Going further, with `fetter` teams can enforce environment or system-wide package allow listing.
+The `fetter` command-line application searches an entire system (or targeted virtual environments) for installed Python packages. Once found, those packages can be validated against a requirements or lock file, or audited for security vulnerabilities in the Open Source Vulnerability database. Deployed as a `pre-commit` hook, these checks can be performed on `git` commit or push and integrated into continuous integration workflows. Going further, with `fetter` teams can enforce environment or system-wide package allow listing.
 
 Beyond core validation operations, `fetter` permits searching installed packages, deriving new requirements from observed packages across multiple environments, and unpacking and purging package content.
 
@@ -97,7 +97,7 @@ zipp-3.18.1               ~/.env-wp/lib/python3.12/site-packages
 
 Having discovered installed packages, `fetter` can validate them against a list of expected packages. That list, or "bound requirements", can be a "requirements.txt" file, a "pyproject.toml" file, or a lock file created by `uv` or other tool.
 
-For example, to validate that the installed packages match the packages specified in "requirements.txt", we can use the `fetter validate` command, again targeting our active Python with `-e python3` and providing "requirements.txt" to the `--bound` argument.
+For example, to validate that the installed packages match the packages specified in "requirements.txt", we can use the `fetter validate` command, again targeting our active Python with `-e python3`, and providing "requirements.txt" to the `--bound` argument.
 
 ```shell
 $ fetter -e python3 validate --bound requirements.txt
@@ -125,7 +125,7 @@ Package      Dependency    Explain     Sites
 zipp-3.20.2  zipp==3.18.1  Misdefined  ~/.env-wp/lib/python3.12/site-packages
 ```
 
-If we remove the the `zipp` package entirely, `fetter` identifies this as a "Missing" record:
+If we remove the `zipp` package entirely, `fetter` identifies this as a "Missing" record:
 
 ```shell
 $ fetter -e python3 validate --bound requirements.txt --superset
@@ -139,11 +139,9 @@ If we want to permit the absence of specified packages, the `--subset` flag can 
 fetter -e python3 validate --bound requirements.txt --superset --subset
 ```
 
-For greater control, bound requirements can be a lock file, which is expected to fully specify all packages and their dependencies. To help derive a bound requirements file from a system (or virtual environment), the `fetter derive` command can be used. Bound requirements can be stored on the local file system, fetched from a URL, or pulled from a `git` repository.
+For greater control, bound requirements can be a lock file, which is expected to fully specify all packages and their dependencies. To help derive a bound requirements file from a system (or virtual environment), the `fetter derive` command can be used. Bound requirements can be stored on the local file system, fetched from a URL, or pulled from a `git` repository. Validating installed packages provides an important check that developer environments conform to a  project's expectations.
 
-Validating installed packages provides an important check that developer environments conform to the project's expectations. Going further, validating against system-wide bound requirements implements Python package allow listing.
-
-The `fetter validate` command can be deployed as a `git` hook with `pre-commit`: just specify in your ".pre-commit-config.yaml" the `fetter-io/fetter-rs` repo, the `fetter-validate` hook, and additional configuration:
+The `fetter validate` command can be deployed as a `git` hook with `pre-commit`: just specify in your ".pre-commit-config.yaml" the `fetter-io/fetter-rs` repo, the `fetter-validate` hook, and additional configuration `args`:
 
 ```yaml
 repos:
@@ -203,7 +201,7 @@ repos:
 
 ## Other Utilities
 
-The `fetter` CLI exposes a number of additional utilities to explore system-wide Python package information. For example, to get metrics on discovered executables, site-packages directories, and installed packages, counts are available with `fetter count`:
+The `fetter` CLI exposes a number of additional utilities to explore system-wide Python package information. For example, the `fetter count` command can be used to get metrics on discovered executables, site-packages directories:
 
 ```shell
 fetter count
@@ -247,7 +245,7 @@ numpy-2.0.0   ~/.env-tt/lib/python3.12/site-packages
 numpy-2.1.2   ~/.env-lt/lib/python3.11/site-packages
 ```
 
-Having 15 different versions of NumPy in 27 virtual environment might be undesirable. Using `fetter unpack-count`, we can view how many files are associated with this package.
+Having 15 different versions of NumPy in 27 virtual environment might be undesirable. Using `fetter unpack-count`, we can view how many files are associated with a particular version.
 
 ```shell
 fetter unpack-count -p numpy-1.18.5
@@ -264,45 +262,45 @@ fetter purge-pattern -p numpy-1.18.5
 
 ## Delimited File Output
 
-All previous examples demonstrate the default `fetter` behavior to print output to the terminal. Alternatively, output can be written to delimited text files suitable for further processing. To write the output of the `fetter search` command to a pipe-delimited file, we simply include the "write" subcommand and additional arguments:
+All previous examples demonstrate the default `fetter` behavior to print output to the terminal. Alternatively, output can be written to delimited text files suitable for further processing. To write the output of the `fetter search` command to a CSV file, we simply include the "write" subcommand and additional arguments:
 
 '''shell
-$ fetter search -p numpy-* write -o /tmp/out.txt -d "|"
+$ fetter search -p numpy-* write -o /tmp/out.txt -d ","
 $ cat /tmp/out.txt
-Package|Site
-numpy-1.19.5|~/.env-qa/lib/python3.8/site-packages
-numpy-1.22.0|~/.env-qf/lib/python3.8/site-packages
-numpy-1.22.2|~/.env310/lib/python3.10/site-packages
-numpy-1.22.4|~/.env-te/lib/python3.8/site-packages
-numpy-1.23.5|~/.env-np/lib/python3.10/site-packages
-numpy-1.23.5|~/.env-yp/lib/python3.8/site-packages
-numpy-1.23.5|~/.env-gp/lib/python3.8/site-packages
-numpy-1.23.5|~/.env-hy/lib/python3.8/site-packages
-numpy-1.23.5|~/.env-tn/lib/python3.9/site-packages
-numpy-1.23.5|~/.env-tl/lib/python3.11/site-packages
-numpy-1.24.2|~/.env-am/lib/python3.8/site-packages
-numpy-1.24.2|~/.env-er/lib/python3.11/site-packages
-numpy-1.24.2|~/.env-aw/lib/python3.8/site-packages
-numpy-1.24.3|~/.env-tl/lib/python3.11/site-packages
-numpy-1.24.3|~/.env-ak/lib/python3.8/site-packages
-numpy-1.24.3|~/.env-uv/lib/python3.11/site-packages
-numpy-1.24.4|~/.env-rt/lib/python3.8/site-packages
-numpy-1.25.1|~/.env-sf/lib/python3.11/site-packages
-numpy-1.26.0|~/.env-fb/lib/python3.11/site-packages
-numpy-1.26.2|~/.env-rr/lib/python3.12/site-packages
-numpy-1.26.2|~/.env-tt/lib/python3.12/site-packages
-numpy-1.26.4|~/.env-df/lib/python3.12/site-packages
-numpy-1.26.4|~/.env-sg/lib/python3.11/site-packages
-numpy-2.0.0|~/.env-tt/lib/python3.12/site-packages
-numpy-2.0.0|~/.env-sq/lib/python3.12/site-packages
-numpy-2.1.2|~/.env-lt/lib/python3.11/site-packages
+Package,Site
+numpy-1.19.5,~/.env-qa/lib/python3.8/site-packages
+numpy-1.22.0,~/.env-qf/lib/python3.8/site-packages
+numpy-1.22.2,~/.env310/lib/python3.10/site-packages
+numpy-1.22.4,~/.env-te/lib/python3.8/site-packages
+numpy-1.23.5,~/.env-np/lib/python3.10/site-packages
+numpy-1.23.5,~/.env-yp/lib/python3.8/site-packages
+numpy-1.23.5,~/.env-gp/lib/python3.8/site-packages
+numpy-1.23.5,~/.env-hy/lib/python3.8/site-packages
+numpy-1.23.5,~/.env-tn/lib/python3.9/site-packages
+numpy-1.23.5,~/.env-tl/lib/python3.11/site-packages
+numpy-1.24.2,~/.env-am/lib/python3.8/site-packages
+numpy-1.24.2,~/.env-er/lib/python3.11/site-packages
+numpy-1.24.2,~/.env-aw/lib/python3.8/site-packages
+numpy-1.24.3,~/.env-tl/lib/python3.11/site-packages
+numpy-1.24.3,~/.env-ak/lib/python3.8/site-packages
+numpy-1.24.3,~/.env-uv/lib/python3.11/site-packages
+numpy-1.24.4,~/.env-rt/lib/python3.8/site-packages
+numpy-1.25.1,~/.env-sf/lib/python3.11/site-packages
+numpy-1.26.0,~/.env-fb/lib/python3.11/site-packages
+numpy-1.26.2,~/.env-rr/lib/python3.12/site-packages
+numpy-1.26.2,~/.env-tt/lib/python3.12/site-packages
+numpy-1.26.4,~/.env-df/lib/python3.12/site-packages
+numpy-1.26.4,~/.env-sg/lib/python3.11/site-packages
+numpy-2.0.0,~/.env-tt/lib/python3.12/site-packages
+numpy-2.0.0,~/.env-sq/lib/python3.12/site-packages
+numpy-2.1.2,~/.env-lt/lib/python3.11/site-packages
 '''
 
 ## Conclusion
 
 Should I be concerned that my system has eight different versions of `zipp`, or fifteen different versions of `numpy`? Maybe: I might return to these environments and execute code now known to have security vulnerabilities, potentially putting my system at risk of exploit or malware.
 
-Instead, enforcing environment or system-wide controls on what packages can be installed might be better. This form of Python package allow listing, at a minimum, ensures that all developers work within the same environment; at a maximum, packages can be controlled across entire systems. The `fetter` command-line tool offers an efficient utility for this purpose.
+Rather than building-up this out-of-date package debt, enforcing environment or system-wide controls on what packages can be installed might be better. This form of Python package allow listing, at a minimum, ensures that all developers work within the same environment; at a maximum, packages can be controlled across entire systems. The `fetter` command-line tool offers an efficient utility for this purpose.
 
 
 

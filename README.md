@@ -80,7 +80,7 @@ zipp==3.18.1
 requests==2.32.3
 ```
 
-To validate that the installed packages match the packages specified in "requirements.txt", we can use the `fetter validate` command, again targeting our active Python with `-e python3` and providing "requirements.txt" to the `--bound` argument.
+To validate that the installed packages match the packages specified in "requirements.txt", we can use the `fetter validate` command, again targeting our active Python with `-e python3`, and providing "requirements.txt" to the `--bound` argument.
 
 ```shell
 $ fetter -e python3 validate --bound requirements.txt
