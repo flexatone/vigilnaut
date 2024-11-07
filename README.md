@@ -9,9 +9,9 @@
 <a href="https://pypi.org/project/fetter/">
     <img src="https://img.shields.io/pypi/v/fetter?label=PyPI&logo=pypi"></img>
 </a>
-<a href="https://crates.io/crates/fetter">
+<!-- <a href="https://crates.io/crates/fetter">
     <img src="https://img.shields.io/crates/d/fetter?label=Downloads&logo=rust"></img>
-</a>
+</a> -->
 
 ## System-wide Python package discovery, validation, and allow-listing.
 
@@ -48,6 +48,49 @@ $ fetter --version
 ## Using `fetter` from the command line
 
 For complete command-line documentation, see [CLI Documentation](#Command-Line-Interface-Documentation).
+
+By default, `fetter` will search for all packages in `site-packages` directories discoverable from all Python executables found in the system or user virtual environments. Depending on your system, this command might take several seconds.
+
+```shell
+$ fetter scan
+```
+
+To limit scanning to `site-packages` directories associated with a specific Python executable, the `--exe` (or `-e`) argument can be supplied.
+
+```shell
+$ fetter -e python3 scan
+Package                   Site
+certifi-2024.8.30         ~/.env-wp/lib/python3.12/site-packages
+charset_normalizer-3.4.0  ~/.env-wp/lib/python3.12/site-packages
+idna-3.10                 ~/.env-wp/lib/python3.12/site-packages
+jinja2-3.1.3              ~/.env-wp/lib/python3.12/site-packages
+markupsafe-2.1.5          ~/.env-wp/lib/python3.12/site-packages
+pip-21.1.1                ~/.env-wp/lib/python3.12/site-packages
+requests-2.32.3           ~/.env-wp/lib/python3.12/site-packages
+setuptools-56.0.0         ~/.env-wp/lib/python3.12/site-packages
+urllib3-2.2.3             ~/.env-wp/lib/python3.12/site-packages
+zipp-3.18.1               ~/.env-wp/lib/python3.12/site-packages
+```
+
+To validate that the installed packages match the packages specified in "requirements.txt", we can use the `fetter validate` command, again targeting our active Python with `-e python3` and providing "requirements.txt" to the `--bound` argument.
+
+```shell
+$ fetter -e python3 validate --bound requirements.txt
+Package                   Dependency  Explain     Sites
+certifi-2024.8.30                     Unrequired  ~/.env-wp/lib/python3.12/site-packages
+charset_normalizer-3.4.0              Unrequired  ~/.env-wp/lib/python3.12/site-packages
+idna-3.10                             Unrequired  ~/.env-wp/lib/python3.12/site-packages
+markupsafe-2.1.5                      Unrequired  ~/.env-wp/lib/python3.12/site-packages
+pip-21.1.1                            Unrequired  ~/.env-wp/lib/python3.12/site-packages
+setuptools-56.0.0                     Unrequired  ~/.env-wp/lib/python3.12/site-packages
+urllib3-2.2.3                         Unrequired  ~/.env-wp/lib/python3.12/site-packages
+```
+
+The `--superset` command can be provided to accept packages that are not defined in the bound requirements.
+
+```shell
+$ fetter -e python3 validate --bound requirements.txt --superset
+```
 
 
 ## Using `fetter` with pre-commit
