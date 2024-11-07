@@ -1,7 +1,16 @@
 # fetter
 
-<a href="https://github.com/flexatone/vigilnaut/actions/workflows/ci.yml">
-    <img style="display: inline!important" src="https://img.shields.io/github/actions/workflow/status/flexatone/vigilnaut/ci.yml?branch=default&label=CI&logo=Github"></img>
+<a href="https://github.com/fetter-io/fetter-rs/actions/workflows/ci.yml">
+    <img style="display: inline!important" src="https://img.shields.io/github/actions/workflow/status/fetter-io/fetter-rs/ci.yml?branch=default&label=CI&logo=Github"></img>
+</a>
+<a href="https://crates.io/crates/fetter">
+    <img src="https://img.shields.io/crates/v/fetter?label=crates.io&logo=rust"></img>
+</a>
+<a href="https://pypi.org/project/fetter/">
+    <img src="https://img.shields.io/pypi/v/fetter?label=PyPI&logo=pypi"></img>
+</a>
+<a href="https://crates.io/crates/fetter">
+    <img src="https://img.shields.io/crates/d/fetter?label=Downloads&logo=rust"></img>
 </a>
 
 ## System-wide Python package discovery, validation, and allow-listing.
