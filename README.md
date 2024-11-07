@@ -13,7 +13,7 @@ The `fetter` command-line tool scans and validates Python packages across virtua
 * 🔎 System Scanning: Finds Python packages across system environments.
 * ⚖️ Package Validation: Checks installed packages against requirements.txt, pyproject.toml, or lock files sourced locally, via URLs, or via `git` repositories.
 * 🛡️ Vulnerability Audit: Scans packages for security vulnerabilites in the Open Source Vulnerability database.
-* ⚙️ CI Integration: Validate and audit with `pre-commit` hooks.
+* ⚙️ CI Integration: Validate and audit with `pre-commit` [hooks](#Using-fetter-with-pre-commit).
 * 🚀 Fast: Multi-threaded Rust implementation.
 * 🪢 Bound Requirements: Derive lock-file-like bound requirements from observed system packages.
 * 🧹 Search and Purge: Find and remove packages across environments.
@@ -36,9 +36,9 @@ $ pipx install fetter
 $ fetter --version
 ```
 
-## Usinmg `fetter` from the command line
+## Using `fetter` from the command line
 
-For complete command-line documentation, see [CLI documentation](#Command-Line-Interface-Documentation).
+For complete command-line documentation, see [CLI Documentation](#Command-Line-Interface-Documentation).
 
 
 ## Using `fetter` with pre-commit
