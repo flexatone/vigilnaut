@@ -36,7 +36,9 @@ $ pipx install fetter
 $ fetter --version
 ```
 
-## Command Line Usage
+## Usinmg `fetter` from the command line
+
+For complete command-line documentation, see [CLI documentation](#Command-Line-Interface-Documentation).
 
 
 ## Using `fetter` with pre-commit
@@ -79,6 +81,8 @@ repos:
     - id: fetter-audit
 ```
 
+
+## Command Line Interface Documentation
 
 
 ## What is New in Fetter
