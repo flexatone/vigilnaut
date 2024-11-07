@@ -300,9 +300,11 @@ numpy-2.1.2|~/.env-lt/lib/python3.11/site-packages
 
 ## Conclusion
 
-Should I be concerned that I have eight different versions of `zipp`, or fifteen different versions of `numpy`? Maybe: I might return to these environments and execute code for which vulnerabilities have been discovered, potentially putting my system at risk of exploit or malware.
+Should I be concerned that I have on my system eight different versions of `zipp`, or fifteen different versions of `numpy`? Maybe: I might return to these environments and execute code for which vulnerabilities have been discovered, potentially putting my system at risk of exploit or malware.
 
-It might be better to instead enforce environment or system-wide controls on what packages can be installed. This form of Python package allow listing, at a minimum, ensures that all developers work within the same environment; at a maximum, packages can be controlled across entire systems.
+It might be better to instead enforce environment or system-wide controls on what packages can be installed. This form of Python package allow listing, at a minimum, ensures that all developers work within the same environment; at a maximum, packages can be controlled across entire systems. The `fetter` command-line tool offers an efficient utility for this purpose.
+
+
 
 
 
