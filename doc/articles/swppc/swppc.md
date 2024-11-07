@@ -12,7 +12,7 @@ A Python developer's system is likely littered with numerous virtual environment
 
 Even within a single virtual environment, installed packages can drift from the project's specified requirements. A developer might mistakenly install a package in the wrong virtual environment, or install a new package that inadvertently upgrades another package. When installed packages deviate from vetted requirements, unexpected behaviors can result, or worse, malware can be installed.
 
-The `fetter` command-line application searches an entire system (or targeted virtual environments) for installed Python packages. Once found, those packages can be validated against a requirements or lock file, or audited for security vulnerabilities. Deployed as a `pre-commit` hook, these checks can be performed on `git` commit or push and integrated into continuous integration workflows. Going further, with `fetter` teams can enforce environment or system-wide package control. Just as cybersecurity tools such as Airlock Digital offer application allow listing, `fetter` can be used for Python package allow listing.
+The `fetter` command-line application searches an entire system (or targeted virtual environments) for installed Python packages. Once found, those packages can be validated against a requirements or lock file, or audited for security vulnerabilities. Deployed as a `pre-commit` hook, these checks can be performed on `git` commit or push and integrated into continuous integration workflows. Going further, with `fetter` teams can enforce environment or system-wide package allow listing.
 
 Beyond core validation operations, `fetter` permits searching installed packages, deriving new requirements from observed packages across multiple environments, and unpacking and purging package content.
 
@@ -63,7 +63,7 @@ zipp-3.16.2  ~/.env-sf/lib/python3.11/site-packages
 zipp-3.17.0  ~/.env-sq/lib/python3.12/site-packages
 zipp-3.18.1  ~/.env-tp/lib/python3.11/site-packages
              ~/.env-uv/lib/python3.11/site-packages
-             ~/.env-wp/lib/python3.8/site-packages
+             ~/.env-wp/lib/python3.12/site-packages
 zipp-3.20.2  ~/.env-tl/lib/python3.11/site-packages
 ```
 
@@ -81,16 +81,16 @@ Then, after making that environment active, we can scan the `site-packages` dire
 ```shell
 $ fetter -e python3 scan
 Package                   Site
-certifi-2024.8.30         ~/.env-wp/lib/python3.8/site-packages
-charset_normalizer-3.4.0  ~/.env-wp/lib/python3.8/site-packages
-idna-3.10                 ~/.env-wp/lib/python3.8/site-packages
-jinja2-3.1.3              ~/.env-wp/lib/python3.8/site-packages
-markupsafe-2.1.5          ~/.env-wp/lib/python3.8/site-packages
-pip-21.1.1                ~/.env-wp/lib/python3.8/site-packages
-requests-2.32.3           ~/.env-wp/lib/python3.8/site-packages
-setuptools-56.0.0         ~/.env-wp/lib/python3.8/site-packages
-urllib3-2.2.3             ~/.env-wp/lib/python3.8/site-packages
-zipp-3.18.1               ~/.env-wp/lib/python3.8/site-packages
+certifi-2024.8.30         ~/.env-wp/lib/python3.12/site-packages
+charset_normalizer-3.4.0  ~/.env-wp/lib/python3.12/site-packages
+idna-3.10                 ~/.env-wp/lib/python3.12/site-packages
+jinja2-3.1.3              ~/.env-wp/lib/python3.12/site-packages
+markupsafe-2.1.5          ~/.env-wp/lib/python3.12/site-packages
+pip-21.1.1                ~/.env-wp/lib/python3.12/site-packages
+requests-2.32.3           ~/.env-wp/lib/python3.12/site-packages
+setuptools-56.0.0         ~/.env-wp/lib/python3.12/site-packages
+urllib3-2.2.3             ~/.env-wp/lib/python3.12/site-packages
+zipp-3.18.1               ~/.env-wp/lib/python3.12/site-packages
 ```
 
 ## Validating Installed Packages
@@ -102,13 +102,13 @@ For example, to validate that the installed packages match the packages specifie
 ```shell
 $ fetter -e python3 validate --bound requirements.txt
 Package                   Dependency  Explain     Sites
-certifi-2024.8.30                     Unrequired  ~/.env-wp/lib/python3.8/site-packages
-charset_normalizer-3.4.0              Unrequired  ~/.env-wp/lib/python3.8/site-packages
-idna-3.10                             Unrequired  ~/.env-wp/lib/python3.8/site-packages
-markupsafe-2.1.5                      Unrequired  ~/.env-wp/lib/python3.8/site-packages
-pip-21.1.1                            Unrequired  ~/.env-wp/lib/python3.8/site-packages
-setuptools-56.0.0                     Unrequired  ~/.env-wp/lib/python3.8/site-packages
-urllib3-2.2.3                         Unrequired  ~/.env-wp/lib/python3.8/site-packages
+certifi-2024.8.30                     Unrequired  ~/.env-wp/lib/python3.12/site-packages
+charset_normalizer-3.4.0              Unrequired  ~/.env-wp/lib/python3.12/site-packages
+idna-3.10                             Unrequired  ~/.env-wp/lib/python3.12/site-packages
+markupsafe-2.1.5                      Unrequired  ~/.env-wp/lib/python3.12/site-packages
+pip-21.1.1                            Unrequired  ~/.env-wp/lib/python3.12/site-packages
+setuptools-56.0.0                     Unrequired  ~/.env-wp/lib/python3.12/site-packages
+urllib3-2.2.3                         Unrequired  ~/.env-wp/lib/python3.12/site-packages
 ```
 
 As configured, validation fails with numerous "Unrequired" records: `fetter` found  installed packages that are not defined in the "requirements.txt" file. As this is a common scenario when not using a lock file, the `--superset` command can be provided to accept packages that are not defined in the bound requirements.
@@ -122,7 +122,7 @@ If we happen to update a package outside of the specification of the bound requi
 ```shell
 $ fetter -e python3 validate --bound requirements.txt --superset
 Package      Dependency    Explain     Sites
-zipp-3.20.2  zipp==3.18.1  Misdefined  ~/.env-wp/lib/python3.8/site-packages
+zipp-3.20.2  zipp==3.18.1  Misdefined  ~/.env-wp/lib/python3.12/site-packages
 ```
 
 If we remove the the `zipp` package entirely, `fetter` identifies this as a "Missing" record:
@@ -300,9 +300,9 @@ numpy-2.1.2|~/.env-lt/lib/python3.11/site-packages
 
 ## Conclusion
 
-Should I be concerned that I have on my system eight different versions of `zipp`, or fifteen different versions of `numpy`? Maybe: I might return to these environments and execute code for which vulnerabilities have been discovered, potentially putting my system at risk of exploit or malware.
+Should I be concerned that my system has eight different versions of `zipp`, or fifteen different versions of `numpy`? Maybe: I might return to these environments and execute code now known to have security vulnerabilities, potentially putting my system at risk of exploit or malware.
 
-It might be better to instead enforce environment or system-wide controls on what packages can be installed. This form of Python package allow listing, at a minimum, ensures that all developers work within the same environment; at a maximum, packages can be controlled across entire systems. The `fetter` command-line tool offers an efficient utility for this purpose.
+Instead, enforcing environment or system-wide controls on what packages can be installed might be better. This form of Python package allow listing, at a minimum, ensures that all developers work within the same environment; at a maximum, packages can be controlled across entire systems. The `fetter` command-line tool offers an efficient utility for this purpose.
 
 
 

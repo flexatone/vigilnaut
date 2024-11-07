@@ -4,15 +4,44 @@
     <img style="display: inline!important" src="https://img.shields.io/github/actions/workflow/status/flexatone/vigilnaut/ci.yml?branch=default&label=CI&logo=Github"></img>
 </a>
 
-System-wide Python package discovery, validation, and allow-listing.
+## System-wide Python package discovery, validation, and allow-listing.
 
 
+The `fetter` command-line tool scans and validates Python packages across virtual environments or entire systems, ensuring packages conform to specified requirements or lock files. It identifies unapproved or vulnerable packages, supports continuous integration through 'pre-commit', and offers excellent performance thanks to a multi-threaded Rust implementation.
 
+
+* 🔎 System Scanning: Finds Python packages across system environments.
+* ⚖️ Package Validation: Checks installed packages against requirements.txt, pyproject.toml, or lock files sourced locally, via URLs, or via `git` repositories.
+* 🛡️ Vulnerability Audit: Scans packages for security vulnerabilites in the Open Source Vulnerability database.
+* ⚙️ CI Integration: Validate and audit with `pre-commit` hooks.
+* 🚀 Fast: Multi-threaded Rust implementation.
+* 🪢 Bound Requirements: Derive lock-file-like bound requirements from observed system packages.
+* 🧹 Search and Purge: Find and remove packages across environments.
+* 🧩 Flexible Output: Display results in terminal or export to delimited files.
+
+
+## Installing `fetter`
+
+While available as a pure Rust binary ([crates](https://crates.io/crates/fetter)), `fetter` is easily installed via a Python package ([pypi](https://pypi.org/project/fetter)):
+
+```shell
+$ pip install fetter
+$ fetter --help
+```
+
+Alternatively, as `fetter` can operate on multiple virtual environments, installation via [`pipx`](https://pipx.pypa.io) might be desirable:
+
+```shell
+$ pipx install fetter
+$ fetter --version
+```
+
+## Command Line Usage
 
 
 ## Using `fetter` with pre-commit
 
-Two `fetter` commands can be run via [pre-commit](https://pre-commit.com/) hooks.
+Two `fetter` commands can be run via [pre-commit](https://pre-commit.com/) hooks for continuous integration of Python package controls.
 
 
 ### Running `fetter validate` with `pre-commit`.
