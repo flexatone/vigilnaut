@@ -72,6 +72,14 @@ urllib3-2.2.3             ~/.env-wp/lib/python3.12/site-packages
 zipp-3.18.1               ~/.env-wp/lib/python3.12/site-packages
 ```
 
+This evnironment was built from this "requirements.txt":
+
+```
+jinja2==3.1.3
+zipp==3.18.1
+requests==2.32.3
+```
+
 To validate that the installed packages match the packages specified in "requirements.txt", we can use the `fetter validate` command, again targeting our active Python with `-e python3` and providing "requirements.txt" to the `--bound` argument.
 
 ```shell
@@ -91,6 +99,61 @@ The `--superset` command can be provided to accept packages that are not defined
 ```shell
 $ fetter -e python3 validate --bound requirements.txt --superset
 ```
+
+If we update `zipp` to version 3.20.2 and re-run validation, `fetter` will report these as "Misdefined" records
+
+```shell
+$ fetter -e python3 validate --bound requirements.txt --superset
+Package      Dependency    Explain     Sites
+zipp-3.20.2  zipp==3.18.1  Misdefined  ~/.env-wp/lib/python3.12/site-packages
+```
+
+If we remove the the `zipp` package entirely, `fetter` identifies this as a "Missing" record:
+
+```shell
+$ fetter -e python3 validate --bound requirements.txt --superset
+Package  Dependency    Explain  Sites
+         zipp==3.18.1  Missing
+```
+
+If we want to permit the absence of specified packages, the `--subset` flag can be used:
+
+```shell
+fetter -e python3 validate --bound requirements.txt --superset --subset
+```
+
+Using the `fetter audit` command, details are provided for every vulnerability associated with installed packages.
+
+```shell
+$ fetter -e python3 audit
+Package            Vulnerabilities      Attribute  Value
+jinja2-3.1.3       GHSA-h75v-3vvj-5mfj  URL        https://osv.dev/vulnerability/GHSA-h75v-3vvj-5mfj
+                                        Summary    Jinja vulnerable to HTML attribute injection when passing ...
+                                        Reference  https://nvd.nist.gov/vuln/detail/CVE-2024-34064
+                                        Severity   CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N
+pip-21.1.1         GHSA-mq26-g339-26xf  URL        https://osv.dev/vulnerability/GHSA-mq26-g339-26xf
+                                        Summary    Command Injection in pip when used with Mercurial
+                                        Reference  https://nvd.nist.gov/vuln/detail/CVE-2023-5752
+                                        Severity   CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:N/VI:H/VA:N/SC:N/SI:N/SA
+                   PYSEC-2023-228       URL        https://osv.dev/vulnerability/PYSEC-2023-228
+                                        Reference  https://mail.python.org/archives/list/security-announce@py...
+                                        Severity   CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N
+setuptools-56.0.0  GHSA-cx63-2mw6-8hw5  URL        https://osv.dev/vulnerability/GHSA-cx63-2mw6-8hw5
+                                        Summary    setuptools vulnerable to Command Injection via package URL
+                                        Reference  https://nvd.nist.gov/vuln/detail/CVE-2024-6345
+                                        Severity   CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:A/VC:H/VI:H/VA:H/SC:N/SI:N/SA
+                   GHSA-r9hx-vwmv-q579  URL        https://osv.dev/vulnerability/GHSA-r9hx-vwmv-q579
+                                        Summary    pypa/setuptools vulnerable to Regular Expression Denial of...
+                                        Reference  https://nvd.nist.gov/vuln/detail/CVE-2022-40897
+                                        Severity   CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H
+                   PYSEC-2022-43012     URL        https://osv.dev/vulnerability/PYSEC-2022-43012
+                                        Reference  https://github.com/pypa/setuptools/blob/fe8a98e696241487ba...
+zipp-3.18.1        GHSA-jfmj-5v4g-7637  URL        https://osv.dev/vulnerability/GHSA-jfmj-5v4g-7637
+                                        Summary    zipp Denial of Service vulnerability
+                                        Reference  https://nvd.nist.gov/vuln/detail/CVE-2024-5569
+                                        Severity   CVSS:4.0/AV:L/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA
+```
+
 
 
 ## Using `fetter` with pre-commit
