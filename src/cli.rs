@@ -141,6 +141,14 @@ enum Commands {
     },
     /// Search for package security vulnerabilities via the OSV DB.
     Audit {
+        /// Provide a glob-like pattern to select packages.
+        #[arg(short, long, default_value = "*")]
+        pattern: String,
+
+        /// Enable case-sensitive pattern matching.
+        #[arg(long)]
+        case: bool,
+
         #[command(subcommand)]
         subcommands: Option<AuditSubcommand>,
     },
@@ -454,13 +462,17 @@ where
                 }
             }
         }
-        Some(Commands::Audit { subcommands }) => {
+        Some(Commands::Audit {
+            subcommands,
+            pattern,
+            case,
+        }) => {
             // network look makes this potentially slow
             let active = Arc::new(AtomicBool::new(true));
             if !quiet {
                 spin(active.clone(), "vulnerability searching".to_string());
             }
-            let ar = sfs.to_audit_report();
+            let ar = sfs.to_audit_report(&pattern, !case);
             if !quiet {
                 active.store(false, Ordering::Relaxed);
                 thread::sleep(Duration::from_millis(100));
