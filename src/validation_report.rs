@@ -136,16 +136,21 @@ impl ValidationReport {
                 Some(dep_spec) => Some(format!("{}", dep_spec)),
                 None => None,
             };
-            let sites = match &record.sites {
-                // we leave this as a Vec for JSON encoding as an array
-                Some(sites) => Some(
-                    sites
-                        .iter()
-                        .map(|s| s.to_string())
-                        .collect::<Vec<_>>(),
-                ),
-                None => None,
-            };
+            let sites = record
+                .sites
+                .as_ref()
+                .map(|sites| sites.iter().map(|s| s.to_string()).collect::<Vec<_>>());
+
+            // let sites = match &record.sites {
+            //     // we leave this as a Vec for JSON encoding as an array
+            //     Some(sites) => Some(
+            //         sites
+            //             .iter()
+            //             .map(|s| s.to_string())
+            //             .collect::<Vec<_>>(),
+            //     ),
+            //     None => None,
+            // };
             digests.push(ValidationDigestRecord {
                 package: pkg_display,
                 dependency: dep_display,
