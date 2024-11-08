@@ -136,7 +136,7 @@ Package  Dependency    Explain  Sites
 If we want to permit the absence of specified packages, the `--subset` flag can be used:
 
 ```shell
-fetter -e python3 validate --bound requirements.txt --superset --subset
+$ fetter -e python3 validate --bound requirements.txt --superset --subset
 ```
 
 For greater control, bound requirements can be a lock file, which is expected to fully specify all packages and their dependencies. To help derive a bound requirements file from a system (or virtual environment), the `fetter derive` command can be used. Bound requirements can be stored on the local file system, fetched from a URL, or pulled from a `git` repository. Validating installed packages provides an important check that developer environments conform to a  project's expectations.
@@ -204,7 +204,7 @@ repos:
 The `fetter` CLI exposes a number of additional utilities to explore system-wide Python package information. For example, the `fetter count` command can be used to get metrics on discovered executables, site-packages directories:
 
 ```shell
-fetter count
+$ fetter count
              Count
 Executables  67
 Sites        45
@@ -248,7 +248,7 @@ numpy-2.1.2   ~/.env-lt/lib/python3.11/site-packages
 Having 15 different versions of NumPy in 27 virtual environment might be undesirable. Using `fetter unpack-count`, we can view how many files are associated with a particular version.
 
 ```shell
-fetter unpack-count -p numpy-1.18.5
+$ fetter unpack-count -p numpy-1.18.5
 Package       Site                                   Files  Dirs
 numpy-1.18.5  ~/.env-ag/lib/python3.8/site-packages  855    2
 ```
@@ -256,7 +256,7 @@ numpy-1.18.5  ~/.env-ag/lib/python3.8/site-packages  855    2
 Using `fetter purge-pattern`, we can remove all files associated with a Package, equivalent to uninstalling that package. Unlike conventional package managers, it is possible to remove packages across all virtual environments on a system:
 
 ```shell
-fetter purge-pattern -p numpy-1.18.5
+$ fetter purge-pattern -p numpy-1.18.5
 ```
 
 
