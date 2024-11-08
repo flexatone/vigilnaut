@@ -251,8 +251,12 @@ impl ScanFS {
         ValidationReport { records }
     }
 
-    pub(crate) fn to_audit_report(&self) -> AuditReport {
-        let packages = self.get_packages();
+    pub(crate) fn to_audit_report(
+        &self,
+        pattern: &str,
+        case_insensitive: bool,
+    ) -> AuditReport {
+        let packages = self.search_by_match(pattern, case_insensitive);
         AuditReport::from_packages(&UreqClientLive, &packages)
     }
 
