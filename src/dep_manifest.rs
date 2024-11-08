@@ -5,8 +5,8 @@ use std::fs;
 use std::fs::File;
 use std::io;
 use std::io::BufRead;
-use std::path::PathBuf;
 use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 
 use tempfile::tempdir;
@@ -81,38 +81,33 @@ impl DepManifest {
         Ok(DepManifest { dep_specs })
     }
     // Create a DepManifest from a requirements.txt file, which might reference other requirements.txt files.
-    pub(crate) fn from_requirements_file(file_path: &PathBuf) -> ResultDynError<Self> {
+    pub(crate) fn from_requirements_file(file_path: &Path) -> ResultDynError<Self> {
         let mut files: VecDeque<PathBuf> = VecDeque::new();
-        files.push_back(file_path.clone());
+        files.push_back(file_path.to_path_buf());
         let mut dep_specs = HashMap::new();
 
-        while files.len() > 0 {
+        while !files.is_empty() {
             let fp = files.pop_front().unwrap();
             let file = File::open(&fp)
                 .map_err(|e| format!("Failed to open file: {:?} {}", fp, e))?;
             let lines = io::BufReader::new(file).lines();
-            for line in lines {
-                if let Ok(s) = line {
-                    let t = s.trim();
-                    if t.is_empty() || t.starts_with('#') {
-                        continue;
+            for line in lines.map_while(Result::ok) {
+                let t = line.trim();
+                if t.is_empty() || t.starts_with('#') {
+                    continue;
+                }
+                if let Some(post) = t.strip_prefix("-r ") {
+                    files.push_back(file_path.parent().unwrap().join(post.trim()));
+                } else if let Some(post) = t.strip_prefix("--requirement ") {
+                    files.push_back(file_path.parent().unwrap().join(post.trim()));
+                } else {
+                    let ds = DepSpec::from_string(&line)?;
+                    if dep_specs.contains_key(&ds.key) {
+                        return Err(
+                            format!("Duplicate package key found: {}", ds.key).into()
+                        );
                     }
-                    if let Some(post) = t.strip_prefix("-r ") {
-                        files.push_back(file_path.parent().unwrap().join(post.trim()));
-                    } else if let Some(post) = t.strip_prefix("--requirement ") {
-                        files
-                            .push_back(file_path.parent().unwrap().join(post.trim()));
-                    } else {
-                        let ds = DepSpec::from_string(&s)?;
-                        if dep_specs.contains_key(&ds.key) {
-                            return Err(format!(
-                                "Duplicate package key found: {}",
-                                ds.key
-                            )
-                            .into());
-                        }
-                        dep_specs.insert(ds.key.clone(), ds);
-                    }
+                    dep_specs.insert(ds.key.clone(), ds);
                 }
             }
         }
@@ -262,8 +257,7 @@ impl DepManifest {
         permit_superset: bool,
     ) -> (bool, Option<&DepSpec>) {
         if let Some(ds) = self.dep_specs.get(&package.key) {
-            let valid =
-                ds.validate_version(&package.version) && ds.validate_url(package);
+            let valid = ds.validate_version(&package.version) && ds.validate_url(package);
             (valid, Some(ds))
         } else {
             (permit_superset, None) // cannot get a dep spec

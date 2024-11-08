@@ -144,7 +144,7 @@ impl ValidationReport {
                 package: pkg_display,
                 dependency: dep_display,
                 explain: record.explain().to_string(),
-                sites: sites,
+                sites,
             });
         }
         digests

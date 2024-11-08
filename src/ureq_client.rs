@@ -1,5 +1,4 @@
 #![allow(clippy::result_large_err)]
-use ureq;
 
 pub trait UreqClient {
     /// A post request to the given URL with the provided JSON body.
