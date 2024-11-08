@@ -206,9 +206,7 @@ repos:
 - `--quiet, -q`: Disable logging and terminal animation.
 - `--user_site`: Force inclusion of the user site-packages, even if it is not activated. Defaults to only including if the interpreter is configured to use it.
 
-### Command `fetter scan`
-
-#### Description
+### Command: `fetter scan`
 
 Scan the environment to report on installed packages.
 
@@ -219,9 +217,7 @@ Scan the environment to report on installed packages.
   - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
 
 
-### Command `fetter search`
-
-#### Description
+### Command: `fetter search`
 
 Search the environment to report on installed packages based on a pattern.
 
@@ -235,9 +231,7 @@ Search the environment to report on installed packages based on a pattern.
   - `--output, -o <FILE>`: Specify the output file.
   - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
 
-### Command `fetter count`
-
-#### Description
+### Command: `fetter count`
 
 Count discovered executables, sites, and packages.
 
@@ -247,9 +241,7 @@ Count discovered executables, sites, and packages.
   - `--output, -o <FILE>`: Specify the output file.
   - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
 
-### Command `fetter derive`
-
-#### Description
+### Command: `fetter derive`
 
 Derive new requirements from discovered packages.
 
@@ -261,9 +253,7 @@ Derive new requirements from discovered packages.
 - `write`: Save derived requirements to a file.
   - `--output, -o <FILE>`: Specify the output file.
 
-### Command `fetter validate`
-
-#### Description
+### Command: `fetter validate`
 
 Validate if packages conform to a specified validation target.
 
@@ -281,9 +271,7 @@ Validate if packages conform to a specified validation target.
 - `exit`: Return an exit code (0 for success, customizable for errors).
   - `--code, -c <INT>`: Specify the error code (default: `3`).
 
-### Command `fetter audit`
-
-#### Description
+### Command: `fetter audit`
 
 Search for security vulnerabilities in packages via the OSV DB.
 
@@ -297,9 +285,7 @@ Search for security vulnerabilities in packages via the OSV DB.
   - `--output, -o <FILE>`: Specify the output file.
   - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
 
-### Command `fetter unpack_count`
-
-#### Description
+### Command: `fetter unpack_count`
 
 Count all installed package artifacts.
 
@@ -313,9 +299,7 @@ Count all installed package artifacts.
   - `--output, -o <FILE>`: Specify the output file.
   - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
 
-### Command `fetter unpack_files`
-
-#### Description
+### Command: `fetter unpack_files`
 
 List the file names of all installed package artifacts.
 
@@ -329,9 +313,7 @@ List the file names of all installed package artifacts.
   - `--output, -o <FILE>`: Specify the output file.
   - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
 
-### Command `fetter purge_pattern`
-
-#### Description
+### Command: `fetter purge_pattern`
 
 Purge packages that match a specific pattern.
 
@@ -339,9 +321,7 @@ Purge packages that match a specific pattern.
 - `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
 - `--case`: Enable case-sensitive pattern matching.
 
-### Command `fetter purge_invalid`
-
-#### Description
+### Command: `fetter purge_invalid`
 
 Purge packages that are invalid based on dependency specification.
 
