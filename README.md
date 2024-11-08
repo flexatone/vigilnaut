@@ -29,6 +29,8 @@ The `fetter` command-line tool scans and validates Python packages across virtua
 * 🧩 Flexible Output: Display results in terminal or export to delimited files.
 
 
+
+
 ## Installing `fetter`
 
 While available as a pure Rust binary ([crates](https://crates.io/crates/fetter)), `fetter` is easily installed via a Python package ([pypi](https://pypi.org/project/fetter)):
@@ -44,6 +46,8 @@ Alternatively, as `fetter` can operate on multiple virtual environments, install
 $ pipx install fetter
 $ fetter --version
 ```
+
+
 
 ## Using `fetter` from the command line
 
@@ -157,6 +161,8 @@ zipp-3.18.1        GHSA-jfmj-5v4g-7637  URL        https://osv.dev/vulnerability
 For additional discussion and examples of `fetter` commands and functionality, see [System-Wide Python Package Control](https://github.com/fetter-io/fetter-rs/blob/default/doc/articles/swppc/swppc.md).
 
 
+
+
 ## Using `fetter` with pre-commit
 
 Two `fetter` commands can be run via [pre-commit](https://pre-commit.com/) hooks for continuous integration of Python package controls.
@@ -175,7 +181,7 @@ To run `fetter validate` with `pre-commit`, add the following to your `.pre-comm
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v0.13.1
+  rev: v1.0.0
   hooks:
     - id: fetter-validate
       args: [--bound, {FILE}, --superset, --subset]
@@ -192,10 +198,11 @@ To run `fetter audit` with `pre-commit`, add the following to your `.pre-commit-
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v0.13.1
+  rev: v1.0.0
   hooks:
     - id: fetter-audit
 ```
+
 
 
 ## Command Line Interface Documentation
@@ -334,6 +341,19 @@ Purge packages that are invalid based on dependency specification.
 
 
 ## What is New in Fetter
+
+### 1.0.0
+
+Implemented home-path display abbreviation with `~`.
+
+Handle combining multiple `DepSpec` in producing `DepManifest`.
+
+Added `--pattern` and `--case` options to `audit`.
+
+Added support for creating `DepManifest` from `pyproject.toml`.
+
+Permit `DepManifest` to be retrieved from a URL.
+
 
 ### 0.13.0
 
