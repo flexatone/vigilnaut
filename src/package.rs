@@ -61,7 +61,7 @@ impl Package {
             key: name_to_key(&ns),
             name: ns,
             version: VersionSpec::new(version),
-            direct_url: direct_url,
+            direct_url,
         })
     }
     /// Create a Package from a dist-info string. As the name of the package / source dir may be different than the dist-info representation, optionall provide a `name`

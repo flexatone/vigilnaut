@@ -1,6 +1,5 @@
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use ureq;
 
 // use crate::package::Package;
 use crate::{package::Package, ureq_client::UreqClient};

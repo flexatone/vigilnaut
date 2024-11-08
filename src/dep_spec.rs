@@ -99,8 +99,8 @@ impl DepSpec {
                     key: name_to_key(&package_name),
                     name: package_name,
                     url: Some(input.to_string()),
-                    operators: operators,
-                    versions: versions,
+                    operators,
+                    versions,
                 });
             }
         }

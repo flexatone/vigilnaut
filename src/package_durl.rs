@@ -1,7 +1,6 @@
 use crate::util::url_strip_user;
 use crate::util::ResultDynError;
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::fs::File;
 use std::path::PathBuf;
 

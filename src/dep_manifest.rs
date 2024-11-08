@@ -10,7 +10,6 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use tempfile::tempdir;
-use toml;
 
 use crate::table::ColumnFormat;
 use crate::table::Rowable;

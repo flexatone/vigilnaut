@@ -112,16 +112,14 @@ fn optimize_widths(
 fn prepare_field(value: &String, widths: &WidthFormat) -> String {
     if value.len() <= widths.width_chars {
         format!("{:<w$}", value, w = widths.width_pad)
-    } else {
-        if widths.width_chars > 3 && (value.len() - widths.width_chars) > 3 {
+    } else if widths.width_chars > 3 && (value.len() - widths.width_chars) > 3 {
             format!(
                 "{:<w$}",
                 format!("{}...", &value[..(widths.width_chars - 3)]),
                 w = widths.width_pad
             )
-        } else {
-            format!("{:<w$}", &value[..widths.width_chars], w = widths.width_pad)
-        }
+    } else {
+        format!("{:<w$}", &value[..widths.width_chars], w = widths.width_pad)
     }
 }
 

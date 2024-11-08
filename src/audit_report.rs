@@ -89,7 +89,7 @@ pub struct AuditReport {
 impl AuditReport {
     pub(crate) fn from_packages<U: UreqClient + std::marker::Sync>(
         client: &U,
-        packages: &Vec<Package>,
+        packages: &[Package],
     ) -> Self {
         let vulns: Vec<Option<Vec<String>>> = query_osv_batches(client, packages);
         let mut records = Vec::new();
@@ -101,7 +101,7 @@ impl AuditReport {
                 let record = AuditRecord {
                     package: package.clone(),
                     vuln_ids: vuln_ids.clone(),
-                    vuln_infos: vuln_infos, // move
+                    vuln_infos, // move
                 };
                 records.push(record);
             }

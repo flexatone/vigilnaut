@@ -37,7 +37,7 @@ impl CountReport {
         // discover unique packages
         let mut site_packages: HashSet<&PathShared> = HashSet::new();
         for package in scan_fs.package_to_sites.keys() {
-            if let Some(site_paths) = scan_fs.package_to_sites.get(&package) {
+            if let Some(site_paths) = scan_fs.package_to_sites.get(package) {
                 for path in site_paths {
                     site_packages.insert(path);
                 }

@@ -259,8 +259,8 @@ enum DeriveSubcommand {
 enum ValidateSubcommand {
     /// Display validation in the terminal.
     Display,
-    /// Print a JSON representation of validation results.
-    JSON,
+    /// Print a Json representation of validation results.
+    Json,
     /// Write a validation report to a file.
     Write {
         #[arg(short, long, value_name = "FILE")]
@@ -341,18 +341,18 @@ fn get_scan(
 // Given a Path, load a DepManifest. This might branch by extension to handle pyproject.toml and other formats.
 fn get_dep_manifest(bound: &PathBuf) -> Result<DepManifest, Box<dyn std::error::Error>> {
     if bound.to_str().map_or(false, |s| s.ends_with(".git")) {
-        DepManifest::from_git_repo(&bound)
+        DepManifest::from_git_repo(bound)
     } else if bound
         .to_str()
         .map_or(false, |s| s.ends_with("pyproject.toml"))
     {
-        DepManifest::from_pyproject_file(&bound)
+        DepManifest::from_pyproject_file(bound)
     } else if bound.to_str().map_or(false, |s| s.starts_with("http")) {
         // might have URL based requirements or pyproject
-        DepManifest::from_url(&UreqClientLive, &bound)
+        DepManifest::from_url(&UreqClientLive, bound)
     } else {
         // assume all text files are requirements-style
-        let fp = path_normalize(&bound).unwrap_or_else(|_| bound.clone());
+        let fp = path_normalize(bound).unwrap_or_else(|_| bound.clone());
         DepManifest::from_requirements_file(&fp)
     }
 }
@@ -393,12 +393,12 @@ where
             case,
         }) => match subcommands {
             Some(SearchSubcommand::Write { output, delimiter }) => {
-                let sr = sfs.to_search_report(&pattern, !case);
+                let sr = sfs.to_search_report(pattern, !case);
                 let _ = sr.to_file(output, *delimiter);
             }
             Some(SearchSubcommand::Display) | None => {
                 // default
-                let sr = sfs.to_search_report(&pattern, !case);
+                let sr = sfs.to_search_report(pattern, !case);
                 let _ = sr.to_stdout();
             }
         },
@@ -446,7 +446,7 @@ where
                 },
             );
             match subcommands {
-                Some(ValidateSubcommand::JSON) => {
+                Some(ValidateSubcommand::Json) => {
                     println!("{}", serde_json::to_string(&vr.to_validation_digest())?);
                 }
                 Some(ValidateSubcommand::Write { output, delimiter }) => {
@@ -472,7 +472,7 @@ where
             if !quiet {
                 spin(active.clone(), "vulnerability searching".to_string());
             }
-            let ar = sfs.to_audit_report(&pattern, !case);
+            let ar = sfs.to_audit_report(pattern, !case);
             if !quiet {
                 active.store(false, Ordering::Relaxed);
                 thread::sleep(Duration::from_millis(100));
@@ -480,7 +480,7 @@ where
             match subcommands {
                 Some(AuditSubcommand::Write { output, delimiter }) => {
                     let _ = ar.to_file(output, *delimiter);
-                } // NOTE: might add JSON and Exit
+                } // NOTE: might add Json and Exit
                 Some(AuditSubcommand::Display) | None => {
                     // default
                     let _ = ar.to_stdout();
@@ -494,7 +494,7 @@ where
             case,
         }) => {
             let count = true;
-            let ir = sfs.to_unpack_report(&pattern, !case, count);
+            let ir = sfs.to_unpack_report(pattern, !case, count);
             match subcommands {
                 Some(UnpackCountSubcommand::Write { output, delimiter }) => {
                     let _ = ir.to_file(output, *delimiter);
@@ -511,7 +511,7 @@ where
             case,
         }) => {
             let count = false;
-            let ir = sfs.to_unpack_report(&pattern, !case, count);
+            let ir = sfs.to_unpack_report(pattern, !case, count);
             match subcommands {
                 Some(UnpackFilesSubcommand::Write { output, delimiter }) => {
                     let _ = ir.to_file(output, *delimiter);
