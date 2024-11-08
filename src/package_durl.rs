@@ -44,16 +44,16 @@ impl DirectURL {
         vcs: Option<String>,
         commit_id: Option<String>,
     ) -> ResultDynError<Self> {
-        let vcs_info: Option<VcsInfo>;
-        if vcs.is_some() && commit_id.is_some() {
-            vcs_info = Some(VcsInfo {
-                vcs: vcs.unwrap(),
-                commit_id: commit_id.unwrap(),
+        let vcs_info = if let (Some(vcs), Some(commit_id)) = (vcs, commit_id) {
+            Some(VcsInfo {
+                vcs,
+                commit_id,
                 requested_revision: None,
-            });
+            })
         } else {
-            vcs_info = None;
-        }
+            None
+        };
+
         Ok(DirectURL { url, vcs_info })
     }
 
@@ -80,7 +80,7 @@ impl DirectURL {
             }
             return false;
         }
-        return url_durl == url_dep_spec;
+        url_durl == url_dep_spec
     }
 }
 

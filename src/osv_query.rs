@@ -102,12 +102,12 @@ fn query_osv_batch<U: UreqClient + std::marker::Sync>(
 
 pub(crate) fn query_osv_batches<U: UreqClient + std::marker::Sync>(
     client: &U,
-    packages: &Vec<Package>,
+    packages: &[Package],
 ) -> Vec<Option<Vec<String>>> {
     // prepare query structs from Package
     let packages_osv: Vec<OSVPackageQuery> = packages
         .iter()
-        .map(|p| OSVPackageQuery::from_package(p))
+        .map(OSVPackageQuery::from_package)
         .collect();
 
     // par_chunks sends groups of 4 to batch query

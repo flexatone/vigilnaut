@@ -225,10 +225,7 @@ impl ScanFS {
             }
             if !valid {
                 // package should always have defined sites
-                let sites = match self.package_to_sites.get(&package) {
-                    Some(sites) => Some(sites.clone()),
-                    None => None,
-                };
+                let sites = self.package_to_sites.get(&package).cloned();
                 // ds is an Option type, might be None
                 records.push(ValidationRecord::new(
                     Some(package), // can take ownership of Package
@@ -287,7 +284,7 @@ impl ScanFS {
         for package in self.package_to_sites.keys() {
             package_name_to_package
                 .entry(package.name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(package.clone());
         }
         let names: Vec<String> = package_name_to_package.keys().cloned().collect();
@@ -329,7 +326,7 @@ impl ScanFS {
     }
 
     pub(crate) fn to_count_report(&self) -> CountReport {
-        CountReport::from_scan_fs(&self)
+        CountReport::from_scan_fs(self)
     }
 
     pub(crate) fn to_search_report(
@@ -372,7 +369,7 @@ impl ScanFS {
         let packages: Vec<Package> = vr
             .records
             .iter()
-            .filter_map(|r| r.package.as_ref().map(|p| p.clone()))
+            .filter_map(|r| r.package.as_ref().cloned())
             .collect();
         // packages.sort();
         let package_to_sites = packages

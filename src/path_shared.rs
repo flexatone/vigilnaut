@@ -50,7 +50,7 @@ impl fmt::Display for PathShared {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(home) = path_home() {
             let pre = Path::new(&home);
-            if let Ok(post) = self.0.strip_prefix(&pre) {
+            if let Ok(post) = self.0.strip_prefix(pre) {
                 return write!(f, "~{}{}", MAIN_SEPARATOR, post.display());
             }
         }

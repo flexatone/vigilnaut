@@ -34,7 +34,7 @@ impl OSVReferences {
                 return s.url.clone();
             }
         }
-        return self.0[0].url.clone(); // just get the first
+        self.0[0].url.clone() // just get the first
     }
 }
 

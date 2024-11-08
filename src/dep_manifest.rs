@@ -6,6 +6,7 @@ use std::fs::File;
 use std::io;
 use std::io::BufRead;
 use std::path::PathBuf;
+use std::path::Path;
 use std::process::Command;
 
 use tempfile::tempdir;
@@ -96,11 +97,11 @@ impl DepManifest {
                     if t.is_empty() || t.starts_with('#') {
                         continue;
                     }
-                    if t.starts_with("-r ") {
-                        files.push_back(file_path.parent().unwrap().join(&t[3..].trim()));
-                    } else if t.starts_with("--requirement ") {
+                    if let Some(post) = t.strip_prefix("-r ") {
+                        files.push_back(file_path.parent().unwrap().join(post.trim()));
+                    } else if let Some(post) = t.strip_prefix("--requirement ") {
                         files
-                            .push_back(file_path.parent().unwrap().join(&t[14..].trim()));
+                            .push_back(file_path.parent().unwrap().join(post.trim()));
                     } else {
                         let ds = DepSpec::from_string(&s)?;
                         if dep_specs.contains_key(&ds.key) {
@@ -132,7 +133,7 @@ impl DepManifest {
         Ok(DepManifest { dep_specs: ds })
     }
 
-    pub(crate) fn from_pyproject(content: &String) -> ResultDynError<Self> {
+    pub(crate) fn from_pyproject(content: &str) -> ResultDynError<Self> {
         let value: toml::Value = content
             .parse::<toml::Value>()
             .map_err(|e| format!("Failed to parse TOML: {}", e))?;
@@ -185,7 +186,7 @@ impl DepManifest {
     // Create a DepManifest from a URL point to a requirements.txt or pyproject.toml file.
     pub(crate) fn from_url<U: UreqClient>(
         client: &U,
-        url: &PathBuf,
+        url: &Path,
     ) -> ResultDynError<Self> {
         let url_str = url.to_str().ok_or("Invalid URL")?;
         let content = client.get(url_str)?;
@@ -197,13 +198,13 @@ impl DepManifest {
         }
     }
 
-    pub(crate) fn from_git_repo(url: &PathBuf) -> ResultDynError<Self> {
+    pub(crate) fn from_git_repo(url: &Path) -> ResultDynError<Self> {
         let tmp_dir = tempdir()
             .map_err(|e| format!("Failed to create temporary directory: {}", e))?;
         let repo_path = tmp_dir.path().join("repo");
 
         let status = Command::new("git")
-            .args(&[
+            .args([
                 "clone",
                 "--depth",
                 "1",
@@ -262,7 +263,7 @@ impl DepManifest {
     ) -> (bool, Option<&DepSpec>) {
         if let Some(ds) = self.dep_specs.get(&package.key) {
             let valid =
-                ds.validate_version(&package.version) && ds.validate_url(&package);
+                ds.validate_version(&package.version) && ds.validate_url(package);
             (valid, Some(ds))
         } else {
             (permit_superset, None) // cannot get a dep spec

@@ -104,7 +104,7 @@ impl DepSpec {
                 });
             }
         }
-        return Err("Invalid .whl".into());
+        Err("Invalid .whl".into())
     }
 
     /// Given a string as found in a requirements.txt or similar, create a DepSpec.
@@ -173,7 +173,7 @@ impl DepSpec {
         let key = name_to_key(&package_name);
         // if url is defined and it is wheel, take definition from the wheel
         if let Some(ref url) = url {
-            if let Ok(ds) = DepSpec::from_whl(&url) {
+            if let Ok(ds) = DepSpec::from_whl(url) {
                 if ds.key != key {
                     return Err(format!(
                         "Provided name {} does not match whl name {}",
@@ -275,7 +275,7 @@ impl DepSpec {
     pub(crate) fn validate_package(&self, package: &Package) -> bool {
         self.key == package.key
             && self.validate_version(&package.version)
-            && self.validate_url(&package)
+            && self.validate_url(package)
     }
 }
 
@@ -283,7 +283,7 @@ impl fmt::Display for DepSpec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut parts = Vec::new();
         // if we have versions, we do not need URL
-        if self.versions.len() > 0 {
+        if !self.versions.is_empty() {
             for (op, ver) in self.operators.iter().zip(self.versions.iter()) {
                 parts.push(format!("{}{}", op, ver));
             }
