@@ -1,5 +1,6 @@
 use pest::Parser;
 use pest_derive::Parser;
+use std::collections::HashSet;
 use std::error::Error;
 use std::fmt;
 use std::path::Path;
@@ -208,7 +209,32 @@ impl DepSpec {
             versions,
         })
     }
-    // TODO: from_dep_specs: if all have the same name, combine operators and versions?
+
+    /// If, in evaluating multiple sources of DepSpec, we find the same package, this derives a new DepSpec based on (an intersection) of the others.
+    pub(crate) fn from_dep_specs(dep_specs: Vec<&DepSpec>) -> ResultDynError<Self> {
+        let mut names = HashSet::new();
+        let mut keys = HashSet::new();
+        let mut operators = Vec::new();
+        let mut versions = Vec::new();
+        for ds in &dep_specs {
+            names.insert(&ds.name);
+            keys.insert(&ds.key);
+            operators.extend(ds.operators.iter().cloned());
+            versions.extend(ds.versions.iter().cloned());
+        }
+        if keys.len() == 1 {
+            let name = names.iter().next().unwrap();
+            let key = keys.iter().next().unwrap();
+            return Ok(DepSpec {
+                name: name.to_string(),
+                key: key.to_string(),
+                url: None,
+                operators,
+                versions,
+            });
+        }
+        Err(format!("Unreconcilable dependency specifiers: {:?}", dep_specs).into())
+    }
 
     //--------------------------------------------------------------------------
     pub(crate) fn validate_version(&self, version: &VersionSpec) -> bool {

@@ -120,12 +120,14 @@ impl DepManifest {
     pub(crate) fn from_dep_specs(dep_specs: &Vec<DepSpec>) -> ResultDynError<Self> {
         let mut ds: HashMap<String, DepSpec> = HashMap::new();
         for dep_spec in dep_specs {
-            if ds.contains_key(&dep_spec.key) {
-                return Err(
-                    format!("Duplicate DepSpec key found: {}", dep_spec.key).into()
-                );
+            if let Some(dep_spec_prev) = ds.remove(&dep_spec.key) {
+                // remove and replace with composite
+                let dep_spec_new =
+                    DepSpec::from_dep_specs(vec![&dep_spec_prev, &dep_spec])?;
+                ds.insert(dep_spec_new.key.clone(), dep_spec_new);
+            } else {
+                ds.insert(dep_spec.key.clone(), dep_spec.clone());
             }
-            ds.insert(dep_spec.key.clone(), dep_spec.clone());
         }
         Ok(DepManifest { dep_specs: ds })
     }
