@@ -21,7 +21,7 @@ pub(crate) struct AuditRecord {
 
 impl Rowable for AuditRecord {
     fn to_rows(&self, context: &RowableContext) -> Vec<Vec<String>> {
-        let is_tty = *context == RowableContext::TTY;
+        let is_tty = *context == RowableContext::Tty;
 
         let mut rows = Vec::new();
         let mut package_set = false;

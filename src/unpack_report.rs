@@ -27,7 +27,7 @@ impl Artifacts {
     fn from_package(package: &Package, site: &PathShared) -> ResultDynError<Self> {
         let dir_dist_info = package
             .to_dist_info_dir(site)
-            .ok_or_else(|| "Cannot find dist-info dir")?;
+            .ok_or("Cannot find dist-info dir")?;
         // parent of dist-info dir is site packages; all RECORD paths are relative to this
         let dir_site = dir_dist_info.parent().unwrap();
         let fp_record = dir_dist_info.join("RECORD");
@@ -66,7 +66,7 @@ impl Artifacts {
     fn remove(&self, log: bool) -> io::Result<()> {
         for (fp, exists) in &self.files {
             if *exists {
-                if let Err(e) = fs::remove_file(&fp) {
+                if let Err(e) = fs::remove_file(fp) {
                     eprintln!("Failed to remove file {:?}: {}", fp, e);
                 } else if log {
                     eprintln!("Removing file: {:?}", fp);
@@ -74,7 +74,7 @@ impl Artifacts {
             }
         }
         for dir in &self.dirs {
-            if let Err(e) = fs::remove_dir_all(&dir) {
+            if let Err(e) = fs::remove_dir_all(dir) {
                 eprintln!("Failed to remove directory {:?}: {}", dir, e);
             } else if log {
                 eprintln!("Removing directory: {:?}", dir);
@@ -110,7 +110,7 @@ impl UnpackRecordTrait for UnpackFullRecord {
 
 impl Rowable for UnpackFullRecord {
     fn to_rows(&self, context: &RowableContext) -> Vec<Vec<String>> {
-        let is_tty = *context == RowableContext::TTY;
+        let is_tty = *context == RowableContext::Tty;
 
         let mut package_set = false;
         let mut package_display = || {
@@ -195,7 +195,7 @@ where
         .par_iter()
         .flat_map(|(package, sites)| {
             sites.par_iter().filter_map(move |site| {
-                if let Ok(artifacts) = Artifacts::from_package(&package, &site) {
+                if let Ok(artifacts) = Artifacts::from_package(package, site) {
                     Some(R::new(package.clone(), site.clone(), artifacts))
                 } else {
                     eprintln!("Failed to read artifacts: {:?}", package);

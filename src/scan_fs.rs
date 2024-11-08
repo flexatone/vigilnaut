@@ -372,10 +372,7 @@ impl ScanFS {
         let packages: Vec<Package> = vr
             .records
             .iter()
-            .filter_map(|r| match &r.package {
-                Some(p) => Some(p.clone()),
-                None => None,
-            })
+            .filter_map(|r| r.package.as_ref().map(|p| p.clone()))
             .collect();
         // packages.sort();
         let package_to_sites = packages
