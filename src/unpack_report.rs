@@ -126,7 +126,7 @@ impl Rowable for UnpackFullRecord {
         let mut site_display = || {
             if !is_tty || !site_set {
                 site_set = true;
-                self.site.display().to_string()
+                self.site.to_string()
             } else {
                 "".to_string()
             }
@@ -176,7 +176,7 @@ impl Rowable for UnpackCountRecord {
     fn to_rows(&self, _context: &RowableContext) -> Vec<Vec<String>> {
         vec![vec![
             self.package.to_string(),
-            self.site.display().to_string(),
+            self.site.to_string(),
             self.artifacts.files.len().to_string(),
             self.artifacts.dirs.len().to_string(),
         ]]

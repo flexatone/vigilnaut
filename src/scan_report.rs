@@ -31,7 +31,7 @@ impl Rowable for ScanRecord {
             } else {
                 pkg_display.clone()
             };
-            rows.push(vec![p, path.display().to_string()]);
+            rows.push(vec![p, path.to_string()]);
         }
         rows
     }

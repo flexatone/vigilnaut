@@ -85,7 +85,7 @@ impl Rowable for ValidationRecord {
         let sites_display = match &self.sites {
             Some(sites) => sites
                 .iter()
-                .map(|s| format!("{}", s.display()))
+                .map(|s| format!("{}", s.to_string()))
                 .collect::<Vec<_>>()
                 .join(","),
             None => "".to_string(),
@@ -141,7 +141,7 @@ impl ValidationReport {
                 Some(sites) => Some(
                     sites
                         .iter()
-                        .map(|s| format!("{}", s.display()))
+                        .map(|s| format!("{}", s.to_string()))
                         .collect::<Vec<_>>(),
                 ),
                 None => None,
