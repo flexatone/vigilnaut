@@ -121,8 +121,9 @@ impl DepManifest {
         let mut ds: HashMap<String, DepSpec> = HashMap::new();
         for dep_spec in dep_specs {
             if ds.contains_key(&dep_spec.key) {
+                let dep_spec_prev = ds.get(&dep_spec.key).unwrap();
                 return Err(
-                    format!("Duplicate DepSpec key found: {}", dep_spec.key).into()
+                    format!("Duplicate DepSpec: old: {}; new: {}", dep_spec_prev, dep_spec).into()
                 );
             }
             ds.insert(dep_spec.key.clone(), dep_spec.clone());
