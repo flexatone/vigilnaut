@@ -5,14 +5,14 @@
 # Scan Your Entire System for Python Packages with Vulnerabilities
 -->
 
-# System-Wide Python Package Control: Enforce Allow Lists, Find Vulnerabilities, and More
-
+# System-Wide Python Package Control: Enforce Allow Lists & Find Vulnerabilities
+<!-- Introducing the `fetter` command line application -->
 
 A Python developer's system is likely littered with numerous virtual environments and hundreds of packages. Many of these virtual environments might be abandoned, holding out-of-date packages with known security vulnerabilities.
 
 Even within a single virtual environment, installed packages can drift from the project's specified requirements. A developer might mistakenly install a package in the wrong virtual environment, or install a new package that inadvertently upgrades another package. When installed packages deviate from vetted requirements, unexpected behavior can result, or worse, malware can be installed.
 
-The [[`fetter`](https://github.com/fetter-io/fetter-rs)] command-line application searches an entire system (or targeted virtual environments) for installed Python packages. Once found, those packages can be validated against a requirements or lock file, or audited for security vulnerabilities in the Open Source Vulnerability database. Deployed as a `pre-commit` hook, these checks can be performed on `git` commit or push and integrated into continuous integration workflows. Going further, with `fetter` teams can enforce environment or system-wide package allow listing.
+The [[`fetter`](https://github.com/fetter-io/fetter-rs)] command-line application searches an entire system (or targeted virtual environments) for installed Python packages. Once found, those packages can be validated against a requirements or lock file, or audited for security vulnerabilities in the Open Source Vulnerability (OSV) database. Deployed as a `pre-commit` hook, these checks can be performed on `git` commit or push and integrated into continuous integration workflows. Going further, with `fetter` teams can enforce environment or system-wide package allow listing.
 
 Beyond core validation operations, `fetter` permits searching installed packages, deriving new requirements from observed packages across multiple environments, and unpacking and purging package content.
 
@@ -95,7 +95,7 @@ zipp-3.18.1               ~/.env-wp/lib/python3.12/site-packages
 
 ## Validating Installed Packages
 
-Having discovered installed packages, `fetter` can validate them against a list of expected packages. That list, or "bound requirements", can be a "requirements.txt" file, a "pyproject.toml" file, or a lock file created by `uv` or other tool.
+Having discovered installed packages, `fetter` can validate them against a list of expected packages. That list, or "bound requirements", can be a "requirements.txt" file, a "pyproject.toml" file, or a lock file created by `uv` or another tool.
 
 For example, to validate that the installed packages match the packages specified in "requirements.txt", we can use the `fetter validate` command, again targeting our active Python with `-e python3`, and providing "requirements.txt" to the `--bound` argument.
 
@@ -146,7 +146,7 @@ The `fetter validate` command can be deployed as a `git` hook with `pre-commit`:
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v0.13.1
+  rev: v1.0.0
   hooks:
     - id: fetter-validate
       args: [--bound, requirements.txt, --superset]
@@ -194,24 +194,24 @@ Just as with `fetter validate`, this operation can be configured to run as a `gi
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v0.13.1
+  rev: v1.0.0
   hooks:
     - id: fetter-audit
 ```
 
 ## Other Utilities
 
-The `fetter` CLI exposes a number of additional utilities to explore system-wide Python package information. For example, the `fetter count` command can be used to get metrics on discovered executables, site-packages directories:
+The `fetter` CLI exposes a number of additional utilities to explore system-wide Python package information. For example, the `fetter count` command can be used to get metrics on discovered executables, site-packages directories, and packages:
 
 ```shell
-fetter count
+$ fetter count
              Count
 Executables  67
 Sites        45
 Packages     1420
 ```
 
-To discover, for example, all versions of NumPy installed on my system, I can use `fetter search` with a glob-style pattern.
+To discover, for example, all versions of NumPy installed on my system, I can use `fetter search` with with the glob-style pattern "numpy-*".
 
 ```shell
 $ fetter search -p numpy-*
@@ -245,7 +245,7 @@ numpy-2.0.0   ~/.env-tt/lib/python3.12/site-packages
 numpy-2.1.2   ~/.env-lt/lib/python3.11/site-packages
 ```
 
-Having 15 different versions of NumPy in 27 virtual environment might be undesirable. Using `fetter unpack-count`, we can view how many files are associated with a particular version.
+Having 15 different versions of NumPy in 27 virtual environment might be undesirable. Using `fetter unpack-count`, we can view how many files are associated with a particular package.
 
 ```shell
 fetter unpack-count -p numpy-1.18.5
@@ -253,7 +253,7 @@ Package       Site                                   Files  Dirs
 numpy-1.18.5  ~/.env-ag/lib/python3.8/site-packages  855    2
 ```
 
-Using `fetter purge-pattern`, we can remove all files associated with a Package, equivalent to uninstalling that package. Unlike conventional package managers, it is possible to remove packages across all virtual environments on a system:
+Using `fetter purge-pattern`, we can remove all files associated with a package, equivalent to uninstalling that package. Unlike conventional package managers, it is possible to remove packages across all virtual environments on a system:
 
 ```shell
 fetter purge-pattern -p numpy-1.18.5
@@ -298,9 +298,9 @@ numpy-2.1.2,~/.env-lt/lib/python3.11/site-packages
 
 ## Conclusion
 
-Should I be concerned that my system has eight different versions of `zipp`, or fifteen different versions of `numpy`? Maybe: I might return to these environments and execute code now known to have security vulnerabilities, potentially putting my system at risk of exploit or malware.
+Should I be concerned that my system has eight different versions of `zipp`, or fifteen different versions of `numpy`? Maybe: both of those packages have documented vulnerabilities across numerous versions. I might return to these environments and execute code now known to have security vulnerabilities, potentially putting my system at risk of exploit or malware.
 
-Rather than building-up this out-of-date package debt, enforcing environment or system-wide controls on what packages can be installed might be better. This form of Python package allow listing, at a minimum, ensures that all developers work within the same environment; at a maximum, packages can be controlled across entire systems. The `fetter` command-line tool offers an efficient utility for this purpose.
+Rather than building-up this out-of-date package "debt," enforcing environment or system-wide controls on what packages can be installed might be better. This form of Python package allow listing, at a minimum, ensures that all developers work within the same environment; at a maximum, packages can be controlled across entire systems. The `fetter` command-line tool offers an efficient utility for this purpose.
 
 
 
