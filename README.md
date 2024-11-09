@@ -215,8 +215,7 @@ repos:
 
 ### Command: `fetter scan`
 
-Scan the environment to report on installed packages.
-
+- Description: Scan the environment to report on installed packages.
 - Subcommands
   - `display`: Show scan results in the terminal.
   - `write`: Save scan results to a file.
@@ -225,8 +224,7 @@ Scan the environment to report on installed packages.
 
 ### Command: `fetter search`
 
-Search the environment to report on installed packages based on a pattern.
-
+- Description: Search the environment to report on installed packages based on a pattern.
 - Options
   - `--pattern, -p <STRING>`: Specify a glob-like pattern to match packages.
   - `--case`: Enable case-sensitive pattern matching.
@@ -238,8 +236,7 @@ Search the environment to report on installed packages based on a pattern.
 
 ### Command: `fetter count`
 
-Count discovered executables, sites, and packages.
-
+- Description: Count discovered executables, sites, and packages.
 - Subcommands
   - `display`: Show count results in the terminal.
   - `write`: Save count results to a file.
@@ -248,8 +245,7 @@ Count discovered executables, sites, and packages.
 
 ### Command: `fetter derive`
 
-Derive new requirements from discovered packages.
-
+- Description: Derive new requirements from discovered packages.
 - Options
   - `--anchor, -a <BOUND>`: Set the nature of the bound in the derived requirements. (Use a value from `CliAnchor`)
 - Subcommands
@@ -259,8 +255,7 @@ Derive new requirements from discovered packages.
 
 ### Command: `fetter validate`
 
-Validate if packages conform to a specified validation target.
-
+- Description: Validate if packages conform to a specified validation target.
 - Options
   - `--bound, -b <FILE>`: Path to the file containing bound requirements.
   - `--subset`: Allow the observed packages to be a subset of the bound requirements.
@@ -276,8 +271,7 @@ Validate if packages conform to a specified validation target.
 
 ### Command: `fetter audit`
 
-Search for security vulnerabilities in packages via the OSV DB.
-
+- Description: Search for security vulnerabilities in packages via the OSV DB.
 - Options
   - `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
   - `--case`: Enable case-sensitive pattern matching.
@@ -289,8 +283,7 @@ Search for security vulnerabilities in packages via the OSV DB.
 
 ### Command: `fetter unpack-count`
 
-Count all installed package artifacts.
-
+- Description: Count all installed package artifacts.
 - Options
   - `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
   - `--case`: Enable case-sensitive pattern matching.
@@ -303,8 +296,7 @@ Count all installed package artifacts.
 
 ### Command: `fetter unpack-files`
 
-List the file names of all installed package artifacts.
-
+- Description: List the file names of all installed package artifacts.
 - Options
   - `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
   - `--case`: Enable case-sensitive pattern matching.
@@ -316,16 +308,14 @@ List the file names of all installed package artifacts.
 
 ### Command: `fetter purge-pattern`
 
-Purge packages that match a specific pattern.
-
+- Description: Purge packages that match a specific pattern.
 - Options
   - `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
   - `--case`: Enable case-sensitive pattern matching.
 
 ### Command: `fetter purge-invalid`
 
-Purge packages that are invalid based on dependency specification.
-
+- Description: Purge packages that are invalid based on dependency specification.
 - Options
   - `--bound, -b <FILE>`: Path to the file containing bound requirements.
   - `--subset`: Allow the observed packages to be a subset of the bound requirements.
