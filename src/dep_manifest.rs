@@ -127,23 +127,46 @@ impl DepManifest {
         Ok(DepManifest { dep_specs: ds })
     }
 
-    pub(crate) fn from_pyproject(content: &str) -> ResultDynError<Self> {
+    pub(crate) fn from_pyproject(
+        content: &str,
+        options: Option<&Vec<String>>,
+    ) -> ResultDynError<Self> {
         let value: toml::Value = content
             .parse::<toml::Value>()
             .map_err(|e| format!("Failed to parse TOML: {}", e))?;
 
+        // `[project.dependencies]`
         if let Some(dependencies) = value
             .get("project")
             .and_then(|project| project.get("dependencies"))
             .and_then(|deps| deps.as_array())
         {
-            let deps_list: Vec<_> = dependencies
+            let mut deps_list: Vec<_> = dependencies
                 .iter()
                 .filter_map(|dep| dep.as_str().map(String::from))
                 .collect();
+
+            // Collect optional dependencies from `[project.optional-dependencies]`
+            if let Some(options_requested) = options {
+                if let Some(dependencies_optional) = value
+                    .get("project")
+                    .and_then(|project| project.get("optional-dependencies"))
+                    .and_then(|dep_opt| dep_opt.as_table())
+                {
+                    for (key, deps) in dependencies_optional {
+                        if options_requested.contains(key) {
+                            if let Some(array) = deps.as_array() {
+                                for dep in array.iter().filter_map(|d| d.as_str()) {
+                                    deps_list.push(dep.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             return Self::from_iter(deps_list.iter());
         }
-
+        // fallback on looking for poetry dependencies
         if let Some(dependencies) = value
             .get("tool")
             .and_then(|tool| tool.get("poetry"))
@@ -171,28 +194,35 @@ impl DepManifest {
         Err("Dependencies section not found in pyproject.toml".into())
     }
 
-    pub(crate) fn from_pyproject_file(file_path: &PathBuf) -> ResultDynError<Self> {
+    pub(crate) fn from_pyproject_file(
+        file_path: &PathBuf,
+        bound_options: Option<&Vec<String>>,
+    ) -> ResultDynError<Self> {
         let content = fs::read_to_string(file_path)
             .map_err(|e| format!("Failed to read file: {}", e))?;
-        Self::from_pyproject(&content)
+        Self::from_pyproject(&content, bound_options)
     }
 
     // Create a DepManifest from a URL point to a requirements.txt or pyproject.toml file.
     pub(crate) fn from_url<U: UreqClient>(
         client: &U,
         url: &Path,
+        bound_options: Option<&Vec<String>>,
     ) -> ResultDynError<Self> {
         let url_str = url.to_str().ok_or("Invalid URL")?;
         let content = client.get(url_str)?;
         if url_str.ends_with(".toml") {
-            Self::from_pyproject(&content)
+            Self::from_pyproject(&content, bound_options)
         } else {
             // assume txt
             Self::from_iter(content.lines())
         }
     }
 
-    pub(crate) fn from_git_repo(url: &Path) -> ResultDynError<Self> {
+    pub(crate) fn from_git_repo(
+        url: &Path,
+        _bound_options: Option<&Vec<String>>,
+    ) -> ResultDynError<Self> {
         let tmp_dir = tempdir()
             .map_err(|e| format!("Failed to create temporary directory: {}", e))?;
         let repo_path = tmp_dir.path().join("repo");
@@ -211,7 +241,7 @@ impl DepManifest {
         if !status.success() {
             return Err("Git clone failed".into());
         }
-        // might look for pyproject first
+        // TODO: look for pyproject first
         let requirements_path = repo_path.join("requirements.txt");
         let manifest = DepManifest::from_requirements_file(&requirements_path)?;
         Ok(manifest)
@@ -575,7 +605,7 @@ dependencies = [
         let mut file = File::create(&file_path).unwrap();
         write!(file, "{}", content).unwrap();
 
-        let dm = DepManifest::from_pyproject_file(&file_path).unwrap();
+        let dm = DepManifest::from_pyproject_file(&file_path, None).unwrap();
         assert_eq!(dm.keys(), vec!["django", "gidgethub", "httpx"])
     }
 
@@ -648,7 +678,7 @@ pytest-github-actions-annotate-failures = "==0.1.7"
         let mut file = File::create(&file_path).unwrap();
         write!(file, "{}", content).unwrap();
 
-        let dm = DepManifest::from_pyproject_file(&file_path).unwrap();
+        let dm = DepManifest::from_pyproject_file(&file_path, None).unwrap();
         assert_eq!(
             dm.keys(),
             vec![
@@ -823,7 +853,7 @@ numpy>= 2.0
         };
 
         let url = PathBuf::from("http://example.com/requirements.txt");
-        let dm = DepManifest::from_url(&client, &url).unwrap();
+        let dm = DepManifest::from_url(&client, &url, None).unwrap();
         assert_eq!(dm.keys(), vec!["dill", "numpy", "six"])
     }
 
