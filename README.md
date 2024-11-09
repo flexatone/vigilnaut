@@ -123,7 +123,7 @@ Package  Dependency    Explain  Sites
 If we want to permit the absence of specified packages, the `--subset` flag can be used:
 
 ```shell
-fetter -e python3 validate --bound requirements.txt --superset --subset
+$ fetter -e python3 validate --bound requirements.txt --superset --subset
 ```
 
 Using the `fetter audit` command, details are provided for every vulnerability associated with installed packages.
