@@ -154,6 +154,7 @@ impl DepManifest {
                     .and_then(|dep_opt| dep_opt.as_table())
                 {
                     for (key, deps) in dependencies_optional {
+                        // NOTE: we do not fail of options_requested does not match any observed option groups
                         if options_requested.contains(key) {
                             if let Some(array) = deps.as_array() {
                                 for dep in array.iter().filter_map(|d| d.as_str()) {
@@ -644,21 +645,26 @@ cli = [
         write!(file, "{}", content).unwrap();
 
         let bound_options = vec!["cli".to_string()];
-        let dm1 = DepManifest::from_pyproject_file(&file_path,
-            Some(&bound_options)).unwrap();
-        assert_eq!(dm1.keys(), vec!["click", "django", "gidgethub", "httpx", "rich"]);
+        let dm1 =
+            DepManifest::from_pyproject_file(&file_path, Some(&bound_options)).unwrap();
+        assert_eq!(
+            dm1.keys(),
+            vec!["click", "django", "gidgethub", "httpx", "rich"]
+        );
 
         let bound_options = vec!["cli".to_string(), "gui".to_string()];
-        let dm2 = DepManifest::from_pyproject_file(&file_path,
-            Some(&bound_options)).unwrap();
-        assert_eq!(dm2.keys(), vec!["click", "django", "gidgethub", "httpx", "pyqt5", "rich"]);
+        let dm2 =
+            DepManifest::from_pyproject_file(&file_path, Some(&bound_options)).unwrap();
+        assert_eq!(
+            dm2.keys(),
+            vec!["click", "django", "gidgethub", "httpx", "pyqt5", "rich"]
+        );
 
         let bound_options = vec!["gui".to_string()];
-        let dm3 = DepManifest::from_pyproject_file(&file_path,
-            Some(&bound_options)).unwrap();
+        let dm3 =
+            DepManifest::from_pyproject_file(&file_path, Some(&bound_options)).unwrap();
         assert_eq!(dm3.keys(), vec!["django", "gidgethub", "httpx", "pyqt5"]);
     }
-
 
     #[test]
     fn test_from_pyproject_c() {
