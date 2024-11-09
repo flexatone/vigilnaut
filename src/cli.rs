@@ -124,7 +124,7 @@ enum Commands {
     },
     /// Validate if packages conform to a validation target.
     Validate {
-        /// File path from which to read bound requirements.
+        /// File path or URL from which to read bound requirements.
         #[arg(short, long, value_name = "FILE")]
         bound: PathBuf,
 
@@ -190,7 +190,7 @@ enum Commands {
     },
     /// Purge packages that are invalid based on dependency specification.
     PurgeInvalid {
-        /// File path from which to read bound requirements.
+        /// File path or URL from which to read bound requirements.
         #[arg(short, long, value_name = "FILE")]
         bound: PathBuf,
 
