@@ -205,7 +205,7 @@ repos:
 
 
 
-## Command Line Interface Documentation
+## Command-Line-Interface Documentation
 
 ### Global Options
 
