@@ -612,6 +612,57 @@ dependencies = [
     #[test]
     fn test_from_pyproject_b() {
         let content = r#"
+[project]
+name = "example_package_YOUR_USERNAME_HERE"
+version = "0.0.1"
+authors = [
+  { name="Example Author", email="author@example.com" },
+]
+description = "A small example package"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  "httpx",
+  "gidgethub[httpx]>4.0.0",
+  "django>2.1; os_name != 'nt'",
+]
+[project.optional-dependencies]
+gui = ["PyQt5"]
+cli = [
+  "rich",
+  "click",
+]
+"#;
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("pyproject.toml");
+        let mut file = File::create(&file_path).unwrap();
+        write!(file, "{}", content).unwrap();
+
+        let bound_options = vec!["cli".to_string()];
+        let dm1 = DepManifest::from_pyproject_file(&file_path,
+            Some(&bound_options)).unwrap();
+        assert_eq!(dm1.keys(), vec!["click", "django", "gidgethub", "httpx", "rich"]);
+
+        let bound_options = vec!["cli".to_string(), "gui".to_string()];
+        let dm2 = DepManifest::from_pyproject_file(&file_path,
+            Some(&bound_options)).unwrap();
+        assert_eq!(dm2.keys(), vec!["click", "django", "gidgethub", "httpx", "pyqt5", "rich"]);
+
+        let bound_options = vec!["gui".to_string()];
+        let dm3 = DepManifest::from_pyproject_file(&file_path,
+            Some(&bound_options)).unwrap();
+        assert_eq!(dm3.keys(), vec!["django", "gidgethub", "httpx", "pyqt5"]);
+    }
+
+
+    #[test]
+    fn test_from_pyproject_c() {
+        let content = r#"
 [tool.poetry]
 name = "poetry"
 readme = "README.md"
