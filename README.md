@@ -292,7 +292,7 @@ Search for security vulnerabilities in packages via the OSV DB.
   - `--output, -o <FILE>`: Specify the output file.
   - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
 
-### Command: `fetter unpack_count`
+### Command: `fetter unpack-count`
 
 Count all installed package artifacts.
 
@@ -306,7 +306,7 @@ Count all installed package artifacts.
   - `--output, -o <FILE>`: Specify the output file.
   - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
 
-### Command: `fetter unpack_files`
+### Command: `fetter unpack-files`
 
 List the file names of all installed package artifacts.
 
@@ -320,7 +320,7 @@ List the file names of all installed package artifacts.
   - `--output, -o <FILE>`: Specify the output file.
   - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
 
-### Command: `fetter purge_pattern`
+### Command: `fetter purge-pattern`
 
 Purge packages that match a specific pattern.
 
@@ -328,7 +328,7 @@ Purge packages that match a specific pattern.
 - `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
 - `--case`: Enable case-sensitive pattern matching.
 
-### Command: `fetter purge_invalid`
+### Command: `fetter purge-invalid`
 
 Purge packages that are invalid based on dependency specification.
 
