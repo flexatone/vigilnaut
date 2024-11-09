@@ -240,100 +240,96 @@ Search the environment to report on installed packages based on a pattern.
 
 Count discovered executables, sites, and packages.
 
-#### Subcommands
-- `display`: Show count results in the terminal.
-- `write`: Save count results to a file.
-  - `--output, -o <FILE>`: Specify the output file.
-  - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
+- Subcommands
+  - `display`: Show count results in the terminal.
+  - `write`: Save count results to a file.
+    - `--output, -o <FILE>`: Specify the output file.
+    - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
 
 ### Command: `fetter derive`
 
 Derive new requirements from discovered packages.
 
-#### Options
-- `--anchor, -a <BOUND>`: Set the nature of the bound in the derived requirements. (Use a value from `CliAnchor`)
-
-#### Subcommands
-- `display`: Show derived requirements in the terminal.
-- `write`: Save derived requirements to a file.
-  - `--output, -o <FILE>`: Specify the output file.
+- Options
+  - `--anchor, -a <BOUND>`: Set the nature of the bound in the derived requirements. (Use a value from `CliAnchor`)
+- Subcommands
+  - `display`: Show derived requirements in the terminal.
+  - `write`: Save derived requirements to a file.
+    - `--output, -o <FILE>`: Specify the output file.
 
 ### Command: `fetter validate`
 
 Validate if packages conform to a specified validation target.
 
-#### Options
-- `--bound, -b <FILE>`: Path to the file containing bound requirements.
-- `--subset`: Allow the observed packages to be a subset of the bound requirements.
-- `--superset`: Allow the observed packages to be a superset of the bound requirements.
-
-#### Subcommands
-- `display`: Show validation results in the terminal.
-- `json`: Print validation results in JSON format.
-- `write`: Save validation results to a file.
-  - `--output, -o <FILE>`: Specify the output file.
-  - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
-- `exit`: Return an exit code (0 for success, customizable for errors).
-  - `--code, -c <INT>`: Specify the error code (default: `3`).
+- Options
+  - `--bound, -b <FILE>`: Path to the file containing bound requirements.
+  - `--subset`: Allow the observed packages to be a subset of the bound requirements.
+  - `--superset`: Allow the observed packages to be a superset of the bound requirements.
+- Subcommands
+  - `display`: Show validation results in the terminal.
+  - `json`: Print validation results in JSON format.
+  - `write`: Save validation results to a file.
+    - `--output, -o <FILE>`: Specify the output file.
+    - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
+  - `exit`: Return an exit code (0 for success, customizable for errors).
+    - `--code, -c <INT>`: Specify the error code (default: `3`).
 
 ### Command: `fetter audit`
 
 Search for security vulnerabilities in packages via the OSV DB.
 
-#### Options
-- `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
-- `--case`: Enable case-sensitive pattern matching.
-
-#### Subcommands
-- `display`: Show audit results in the terminal.
-- `write`: Save audit results to a file.
-  - `--output, -o <FILE>`: Specify the output file.
-  - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
+- Options
+  - `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
+  - `--case`: Enable case-sensitive pattern matching.
+- Subcommands
+  - `display`: Show audit results in the terminal.
+  - `write`: Save audit results to a file.
+    - `--output, -o <FILE>`: Specify the output file.
+    - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
 
 ### Command: `fetter unpack-count`
 
 Count all installed package artifacts.
 
-#### Options
-- `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
-- `--case`: Enable case-sensitive pattern matching.
+- Options
+  - `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
+  - `--case`: Enable case-sensitive pattern matching.
 
-#### Subcommands
-- `display`: Show artifact counts in the terminal.
-- `write`: Save artifact counts to a file.
-  - `--output, -o <FILE>`: Specify the output file.
-  - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
+- Subcommands
+  - `display`: Show artifact counts in the terminal.
+  - `write`: Save artifact counts to a file.
+    - `--output, -o <FILE>`: Specify the output file.
+    - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
 
 ### Command: `fetter unpack-files`
 
 List the file names of all installed package artifacts.
 
-#### Options
-- `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
-- `--case`: Enable case-sensitive pattern matching.
-
-#### Subcommands
-- `display`: Show artifact file names in the terminal.
-- `write`: Save artifact file names to a file.
-  - `--output, -o <FILE>`: Specify the output file.
-  - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
+- Options
+  - `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
+  - `--case`: Enable case-sensitive pattern matching.
+- Subcommands
+  - `display`: Show artifact file names in the terminal.
+  - `write`: Save artifact file names to a file.
+    - `--output, -o <FILE>`: Specify the output file.
+    - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
 
 ### Command: `fetter purge-pattern`
 
 Purge packages that match a specific pattern.
 
-#### Options
-- `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
-- `--case`: Enable case-sensitive pattern matching.
+- Options
+  - `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
+  - `--case`: Enable case-sensitive pattern matching.
 
 ### Command: `fetter purge-invalid`
 
 Purge packages that are invalid based on dependency specification.
 
-#### Options
-- `--bound, -b <FILE>`: Path to the file containing bound requirements.
-- `--subset`: Allow the observed packages to be a subset of the bound requirements.
-- `--superset`: Allow the observed packages to be a superset of the bound requirements.
+- Options
+  - `--bound, -b <FILE>`: Path to the file containing bound requirements.
+  - `--subset`: Allow the observed packages to be a subset of the bound requirements.
+  - `--superset`: Allow the observed packages to be a superset of the bound requirements.
 
 
 
