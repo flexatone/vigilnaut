@@ -21,7 +21,7 @@ pub(crate) struct AuditRecord {
 
 impl Rowable for AuditRecord {
     fn to_rows(&self, context: &RowableContext) -> Vec<Vec<String>> {
-        let is_tty = *context == RowableContext::TTY;
+        let is_tty = *context == RowableContext::Tty;
 
         let mut rows = Vec::new();
         let mut package_set = false;
@@ -89,7 +89,7 @@ pub struct AuditReport {
 impl AuditReport {
     pub(crate) fn from_packages<U: UreqClient + std::marker::Sync>(
         client: &U,
-        packages: &Vec<Package>,
+        packages: &[Package],
     ) -> Self {
         let vulns: Vec<Option<Vec<String>>> = query_osv_batches(client, packages);
         let mut records = Vec::new();
@@ -101,7 +101,7 @@ impl AuditReport {
                 let record = AuditRecord {
                     package: package.clone(),
                     vuln_ids: vuln_ids.clone(),
-                    vuln_infos: vuln_infos, // move
+                    vuln_infos, // move
                 };
                 records.push(record);
             }

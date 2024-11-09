@@ -12,7 +12,7 @@ A Python developer's system is likely littered with numerous virtual environment
 
 Even within a single virtual environment, installed packages can drift from the project's specified requirements. A developer might mistakenly install a package in the wrong virtual environment, or install a new package that inadvertently upgrades another package. When installed packages deviate from vetted requirements, unexpected behavior can result, or worse, malware can be installed.
 
-The [[`fetter`](https://github.com/fetter-io/fetter-rs)] command-line application searches an entire system (or targeted virtual environments) for installed Python packages. Once found, those packages can be validated against a requirements or lock file, or audited for security vulnerabilities in the Open Source Vulnerability (OSV) database. Deployed as a `pre-commit` hook, these checks can be performed on `git` commit or push and integrated into continuous integration workflows. Going further, with `fetter` teams can enforce environment or system-wide package allow listing.
+The [`fetter`](https://github.com/fetter-io/fetter-rs) command-line application searches an entire system (or targeted virtual environments) for installed Python packages. Once found, those packages can be validated against a requirements or lock file, or audited for security vulnerabilities in the Open Source Vulnerability database. Deployed as a `pre-commit` hook, these checks can be performed on `git` commit or push and integrated into continuous integration workflows. Going further, with `fetter` teams can enforce environment or system-wide package allow listing.
 
 Beyond core validation operations, `fetter` permits searching installed packages, deriving new requirements from observed packages across multiple environments, and unpacking and purging package content.
 
@@ -136,7 +136,7 @@ Package  Dependency    Explain  Sites
 If we want to permit the absence of specified packages, the `--subset` flag can be used:
 
 ```shell
-fetter -e python3 validate --bound requirements.txt --superset --subset
+$ fetter -e python3 validate --bound requirements.txt --superset --subset
 ```
 
 For greater control, bound requirements can be a lock file, which is expected to fully specify all packages and their dependencies. To help derive a bound requirements file from a system (or virtual environment), the `fetter derive` command can be used. Bound requirements can be stored on the local file system, fetched from a URL, or pulled from a `git` repository. Validating installed packages provides an important check that developer environments conform to a  project's expectations.
@@ -248,7 +248,7 @@ numpy-2.1.2   ~/.env-lt/lib/python3.11/site-packages
 Having 15 different versions of NumPy in 27 virtual environment might be undesirable. Using `fetter unpack-count`, we can view how many files are associated with a particular package.
 
 ```shell
-fetter unpack-count -p numpy-1.18.5
+$ fetter unpack-count -p numpy-1.18.5
 Package       Site                                   Files  Dirs
 numpy-1.18.5  ~/.env-ag/lib/python3.8/site-packages  855    2
 ```
@@ -256,7 +256,7 @@ numpy-1.18.5  ~/.env-ag/lib/python3.8/site-packages  855    2
 Using `fetter purge-pattern`, we can remove all files associated with a package, equivalent to uninstalling that package. Unlike conventional package managers, it is possible to remove packages across all virtual environments on a system:
 
 ```shell
-fetter purge-pattern -p numpy-1.18.5
+$ fetter purge-pattern -p numpy-1.18.5
 ```
 
 

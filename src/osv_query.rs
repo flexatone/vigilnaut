@@ -1,6 +1,5 @@
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use ureq;
 
 // use crate::package::Package;
 use crate::{package::Package, ureq_client::UreqClient};
@@ -102,13 +101,11 @@ fn query_osv_batch<U: UreqClient + std::marker::Sync>(
 
 pub(crate) fn query_osv_batches<U: UreqClient + std::marker::Sync>(
     client: &U,
-    packages: &Vec<Package>,
+    packages: &[Package],
 ) -> Vec<Option<Vec<String>>> {
     // prepare query structs from Package
-    let packages_osv: Vec<OSVPackageQuery> = packages
-        .iter()
-        .map(|p| OSVPackageQuery::from_package(p))
-        .collect();
+    let packages_osv: Vec<OSVPackageQuery> =
+        packages.iter().map(OSVPackageQuery::from_package).collect();
 
     // par_chunks sends groups of 4 to batch query
     let results: Vec<Option<Vec<String>>> = packages_osv

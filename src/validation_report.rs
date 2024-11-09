@@ -85,17 +85,17 @@ impl Rowable for ValidationRecord {
         let sites_display = match &self.sites {
             Some(sites) => sites
                 .iter()
-                .map(|s| format!("{}", s.display()))
+                .map(|s| s.to_string())
                 .collect::<Vec<_>>()
                 .join(","),
             None => "".to_string(),
         };
-        return vec![vec![
+        vec![vec![
             pkg_display,
             dep_display,
             self.explain().to_string(),
             sites_display,
-        ]];
+        ]]
     }
 }
 
@@ -128,29 +128,23 @@ impl ValidationReport {
 
         let mut digests: ValidationDigest = Vec::new();
         for record in &records {
-            let pkg_display = match &record.package {
-                Some(package) => Some(format!("{}", package)),
-                None => None,
-            };
-            let dep_display = match &record.dep_spec {
-                Some(dep_spec) => Some(format!("{}", dep_spec)),
-                None => None,
-            };
-            let sites = match &record.sites {
-                // we leave this as a Vec for JSON encoding as an array
-                Some(sites) => Some(
-                    sites
-                        .iter()
-                        .map(|s| format!("{}", s.display()))
-                        .collect::<Vec<_>>(),
-                ),
-                None => None,
-            };
+            let pkg_display = record
+                .package
+                .as_ref()
+                .map(|package| format!("{}", package));
+            let dep_display = record
+                .dep_spec
+                .as_ref()
+                .map(|dep_spec| format!("{}", dep_spec));
+            let sites = record
+                .sites
+                .as_ref()
+                .map(|sites| sites.iter().map(|s| s.to_string()).collect::<Vec<_>>());
             digests.push(ValidationDigestRecord {
                 package: pkg_display,
                 dependency: dep_display,
                 explain: record.explain().to_string(),
-                sites: sites,
+                sites,
             });
         }
         digests

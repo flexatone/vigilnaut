@@ -29,6 +29,8 @@ The `fetter` command-line tool scans and validates Python packages across virtua
 * 🧩 Flexible Output: Display results in terminal or export to delimited files.
 
 
+
+
 ## Installing `fetter`
 
 While available as a pure Rust binary ([crates](https://crates.io/crates/fetter)), `fetter` is easily installed via a Python package ([pypi](https://pypi.org/project/fetter)):
@@ -44,6 +46,8 @@ Alternatively, as `fetter` can operate on multiple virtual environments, install
 $ pipx install fetter
 $ fetter --version
 ```
+
+
 
 ## Using `fetter` from the command line
 
@@ -119,7 +123,7 @@ Package  Dependency    Explain  Sites
 If we want to permit the absence of specified packages, the `--subset` flag can be used:
 
 ```shell
-fetter -e python3 validate --bound requirements.txt --superset --subset
+$ fetter -e python3 validate --bound requirements.txt --superset --subset
 ```
 
 Using the `fetter audit` command, details are provided for every vulnerability associated with installed packages.
@@ -157,6 +161,8 @@ zipp-3.18.1        GHSA-jfmj-5v4g-7637  URL        https://osv.dev/vulnerability
 For additional discussion and examples of `fetter` commands and functionality, see [System-Wide Python Package Control](https://github.com/fetter-io/fetter-rs/blob/default/doc/articles/swppc/swppc.md).
 
 
+
+
 ## Using `fetter` with pre-commit
 
 Two `fetter` commands can be run via [pre-commit](https://pre-commit.com/) hooks for continuous integration of Python package controls.
@@ -175,7 +181,7 @@ To run `fetter validate` with `pre-commit`, add the following to your `.pre-comm
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v0.13.1
+  rev: v1.0.0
   hooks:
     - id: fetter-validate
       args: [--bound, {FILE}, --superset, --subset]
@@ -192,16 +198,160 @@ To run `fetter audit` with `pre-commit`, add the following to your `.pre-commit-
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v0.13.1
+  rev: v1.0.0
   hooks:
     - id: fetter-audit
 ```
 
 
+
 ## Command Line Interface Documentation
+
+### Global Options
+
+- `--exe, -e <FILES>`: Provide zero or more executable paths to derive site package locations. If omitted, all discoverable executables will be used.
+- `--quiet, -q`: Disable logging and terminal animation.
+- `--user_site`: Force inclusion of the user site-packages, even if it is not activated. Defaults to only including if the interpreter is configured to use it.
+
+### Command: `fetter scan`
+
+Scan the environment to report on installed packages.
+
+- Subcommands
+  - `display`: Show scan results in the terminal.
+  - `write`: Save scan results to a file.
+    - `--output, -o <FILE>`: Specify the output file.
+    - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
+
+### Command: `fetter search`
+
+Search the environment to report on installed packages based on a pattern.
+
+- Options
+  - `--pattern, -p <STRING>`: Specify a glob-like pattern to match packages.
+  - `--case`: Enable case-sensitive pattern matching.
+- Subcommands
+  - `display`: Show search results in the terminal.
+  - `write`: Save search results to a file.
+    - `--output, -o <FILE>`: Specify the output file.
+    - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
+
+### Command: `fetter count`
+
+Count discovered executables, sites, and packages.
+
+#### Subcommands
+- `display`: Show count results in the terminal.
+- `write`: Save count results to a file.
+  - `--output, -o <FILE>`: Specify the output file.
+  - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
+
+### Command: `fetter derive`
+
+Derive new requirements from discovered packages.
+
+#### Options
+- `--anchor, -a <BOUND>`: Set the nature of the bound in the derived requirements. (Use a value from `CliAnchor`)
+
+#### Subcommands
+- `display`: Show derived requirements in the terminal.
+- `write`: Save derived requirements to a file.
+  - `--output, -o <FILE>`: Specify the output file.
+
+### Command: `fetter validate`
+
+Validate if packages conform to a specified validation target.
+
+#### Options
+- `--bound, -b <FILE>`: Path to the file containing bound requirements.
+- `--subset`: Allow the observed packages to be a subset of the bound requirements.
+- `--superset`: Allow the observed packages to be a superset of the bound requirements.
+
+#### Subcommands
+- `display`: Show validation results in the terminal.
+- `json`: Print validation results in JSON format.
+- `write`: Save validation results to a file.
+  - `--output, -o <FILE>`: Specify the output file.
+  - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
+- `exit`: Return an exit code (0 for success, customizable for errors).
+  - `--code, -c <INT>`: Specify the error code (default: `3`).
+
+### Command: `fetter audit`
+
+Search for security vulnerabilities in packages via the OSV DB.
+
+#### Options
+- `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
+- `--case`: Enable case-sensitive pattern matching.
+
+#### Subcommands
+- `display`: Show audit results in the terminal.
+- `write`: Save audit results to a file.
+  - `--output, -o <FILE>`: Specify the output file.
+  - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
+
+### Command: `fetter unpack-count`
+
+Count all installed package artifacts.
+
+#### Options
+- `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
+- `--case`: Enable case-sensitive pattern matching.
+
+#### Subcommands
+- `display`: Show artifact counts in the terminal.
+- `write`: Save artifact counts to a file.
+  - `--output, -o <FILE>`: Specify the output file.
+  - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
+
+### Command: `fetter unpack-files`
+
+List the file names of all installed package artifacts.
+
+#### Options
+- `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
+- `--case`: Enable case-sensitive pattern matching.
+
+#### Subcommands
+- `display`: Show artifact file names in the terminal.
+- `write`: Save artifact file names to a file.
+  - `--output, -o <FILE>`: Specify the output file.
+  - `--delimiter, -d <char>`: Set the delimiter for the file (default: `,`).
+
+### Command: `fetter purge-pattern`
+
+Purge packages that match a specific pattern.
+
+#### Options
+- `--pattern, -p <STRING>`: Specify a glob-like pattern to select packages (default: `*`).
+- `--case`: Enable case-sensitive pattern matching.
+
+### Command: `fetter purge-invalid`
+
+Purge packages that are invalid based on dependency specification.
+
+#### Options
+- `--bound, -b <FILE>`: Path to the file containing bound requirements.
+- `--subset`: Allow the observed packages to be a subset of the bound requirements.
+- `--superset`: Allow the observed packages to be a superset of the bound requirements.
+
+
 
 
 ## What is New in Fetter
+
+### 1.0.0
+
+Implemented home-path display abbreviation with `~`.
+
+Handle combining multiple `DepSpec` in producing `DepManifest`.
+
+Added `--pattern` and `--case` options to `audit`.
+
+Added support for creating `DepManifest` from `pyproject.toml`.
+
+Permit `DepManifest` to be retrieved from a URL.
+
 
 ### 0.13.0
 

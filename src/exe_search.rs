@@ -16,16 +16,16 @@ fn get_search_exclude_paths() -> HashSet<PathBuf> {
     let mut paths: HashSet<PathBuf> = HashSet::new();
     match path_home() {
         Some(home) => {
-            paths.insert(PathBuf::from(home.clone()).join(".cache"));
-            paths.insert(PathBuf::from(home.clone()).join(".npm"));
+            paths.insert(home.clone().join(".cache"));
+            paths.insert(home.clone().join(".npm"));
 
             if env::consts::OS == "macos" {
-                paths.insert(PathBuf::from(home.clone()).join("Library"));
-                paths.insert(PathBuf::from(home.clone()).join("Photos"));
-                paths.insert(PathBuf::from(home.clone()).join("Downloads"));
-                paths.insert(PathBuf::from(home.clone()).join(".Trash"));
+                paths.insert(home.clone().join("Library"));
+                paths.insert(home.clone().join("Photos"));
+                paths.insert(home.clone().join("Downloads"));
+                paths.insert(home.clone().join(".Trash"));
             } else if env::consts::OS == "linux" {
-                paths.insert(PathBuf::from(home.clone()).join(".local/share/Trash"));
+                paths.insert(home.clone().join(".local/share/Trash"));
             }
         }
         None => {
@@ -47,9 +47,9 @@ fn get_search_origins() -> HashSet<(PathBuf, bool)> {
     }
     match path_home() {
         Some(home) => {
-            paths.insert((PathBuf::from(home.clone()), false));
+            paths.insert((home.clone(), false));
             // collect all directories in the user's home directory
-            match fs::read_dir(PathBuf::from(home)) {
+            match fs::read_dir(home) {
                 Ok(entries) => {
                     for entry in entries {
                         let path = entry.unwrap().path();

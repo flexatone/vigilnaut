@@ -49,10 +49,10 @@ jobs:
           rustup component add rustfmt
           cargo fmt -- --check
 
-    #   - name: Lint with Clippy
-    #     run: |
-    #       rustup component add clippy
-    #       cargo clippy -- -D warnings
+      - name: Lint with Clippy
+        run: |
+          rustup component add clippy
+          cargo clippy -- -D warnings
 
   #-----------------------------------------------------------------------------
 #   coverage:

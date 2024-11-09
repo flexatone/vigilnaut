@@ -1,4 +1,5 @@
 use std::env;
+use std::path::Path;
 use std::path::PathBuf;
 
 //------------------------------------------------------------------------------
@@ -8,8 +9,8 @@ pub(crate) type ResultDynError<T> = Result<T, Box<dyn std::error::Error>>;
 //------------------------------------------------------------------------------
 
 // Normalize all names
-pub(crate) fn name_to_key(name: &String) -> String {
-    name.to_lowercase().replace("-", "_")
+pub(crate) fn name_to_key(name: &str) -> String {
+    name.to_lowercase().replace('-', "_")
 }
 
 /// Remove whitespace and a leading "@" if found. Note: this owns the passed String as this is appropriate for the context in which it is used.
@@ -46,12 +47,12 @@ pub(crate) fn path_home() -> Option<PathBuf> {
     }
 }
 
-pub(crate) fn path_normalize(path: &PathBuf) -> ResultDynError<PathBuf> {
-    let mut fp = path.clone();
+pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
+    let mut fp = path.to_path_buf();
     if let Some(path_str) = fp.to_str() {
-        if path_str.starts_with("~") {
+        if path_str.starts_with('~') {
             if let Some(home) = path_home() {
-                fp = home.join(path_str.trim_start_matches("~"));
+                fp = home.join(path_str.trim_start_matches('~'));
             } else {
                 return Err("Usage of `~` unresolved.".into());
             }

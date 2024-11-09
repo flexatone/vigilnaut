@@ -37,22 +37,17 @@ impl CountReport {
         // discover unique packages
         let mut site_packages: HashSet<&PathShared> = HashSet::new();
         for package in scan_fs.package_to_sites.keys() {
-            if let Some(site_paths) = scan_fs.package_to_sites.get(&package) {
+            if let Some(site_paths) = scan_fs.package_to_sites.get(package) {
                 for path in site_paths {
                     site_packages.insert(path);
                 }
             }
         }
-        let mut records: Vec<CountRecord> = Vec::new();
-        records.push(CountRecord::new(
-            "Executables".to_string(),
-            scan_fs.exe_to_sites.len(),
-        ));
-        records.push(CountRecord::new("Sites".to_string(), site_packages.len()));
-        records.push(CountRecord::new(
-            "Packages".to_string(),
-            scan_fs.package_to_sites.len(),
-        ));
+        let records = vec![
+            CountRecord::new("Executables".to_string(), scan_fs.exe_to_sites.len()),
+            CountRecord::new("Sites".to_string(), site_packages.len()),
+            CountRecord::new("Packages".to_string(), scan_fs.package_to_sites.len()),
+        ];
         CountReport { records }
     }
 }

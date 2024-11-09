@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::fmt;
 use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -14,13 +15,11 @@ use crate::version_spec::VersionSpec;
 // Given a name from the dist-info dir, try to find the src dir in the site dir doing a case-insensitive search. Then, return the case-sensitve name of the src dir. Note that some packages might only have source file ending in .py; we will not find it but it will be defined in RECORD.
 fn find_dir_src(site: &PathBuf, name_from_di: &str) -> Option<String> {
     if let Ok(entries) = fs::read_dir(site) {
-        for entry in entries {
-            if let Ok(entry) = entry {
-                let path = entry.path();
-                if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
-                    if file_name.eq_ignore_ascii_case(name_from_di) {
-                        return Some(file_name.to_string());
-                    }
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                if file_name.eq_ignore_ascii_case(name_from_di) {
+                    return Some(file_name.to_string());
                 }
             }
         }
@@ -62,7 +61,7 @@ impl Package {
             key: name_to_key(&ns),
             name: ns,
             version: VersionSpec::new(version),
-            direct_url: direct_url,
+            direct_url,
         })
     }
     /// Create a Package from a dist-info string. As the name of the package / source dir may be different than the dist-info representation, optionall provide a `name`
@@ -83,7 +82,7 @@ impl Package {
         None
     }
     /// Create a Package from a dist_info file path. This is the main constructor for live usage.
-    pub(crate) fn from_file_path(file_path: &PathBuf) -> Option<Self> {
+    pub(crate) fn from_file_path(file_path: &Path) -> Option<Self> {
         let file_name = file_path.file_name().and_then(|name| name.to_str())?;
 
         if file_name.ends_with(".dist-info") && file_path.is_dir() {

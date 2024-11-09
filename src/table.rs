@@ -42,7 +42,7 @@ pub fn write_color<W: Write + IsTty>(writer: &mut W, hex_color: &str, message: &
 #[derive(PartialEq)]
 pub(crate) enum RowableContext {
     Delimited,
-    TTY,
+    Tty,
     // Undefined, // not delimited or tty
 }
 
@@ -59,8 +59,8 @@ pub(crate) struct WidthFormat {
 }
 
 fn optimize_widths(
-    widths_max: &Vec<usize>,
-    ellipsisable: &Vec<bool>,
+    widths_max: &[usize],
+    ellipsisable: &[bool],
     w_gutter: usize,
 ) -> Vec<WidthFormat> {
     // total characters needed; we add a gutter after all columns, even the last one
@@ -112,16 +112,14 @@ fn optimize_widths(
 fn prepare_field(value: &String, widths: &WidthFormat) -> String {
     if value.len() <= widths.width_chars {
         format!("{:<w$}", value, w = widths.width_pad)
+    } else if widths.width_chars > 3 && (value.len() - widths.width_chars) > 3 {
+        format!(
+            "{:<w$}",
+            format!("{}...", &value[..(widths.width_chars - 3)]),
+            w = widths.width_pad
+        )
     } else {
-        if widths.width_chars > 3 && (value.len() - widths.width_chars) > 3 {
-            format!(
-                "{:<w$}",
-                format!("{}...", &value[..(widths.width_chars - 3)]),
-                w = widths.width_pad
-            )
-        } else {
-            format!("{:<w$}", &value[..widths.width_chars], w = widths.width_pad)
-        }
+        format!("{:<w$}", &value[..widths.width_chars], w = widths.width_pad)
     }
 }
 
@@ -165,7 +163,7 @@ fn to_table_display<W: Write + AsRawFd, T: Rowable>(
     }
     let mut rows = Vec::new();
     for record in records {
-        for row in record.to_rows(&RowableContext::TTY) {
+        for row in record.to_rows(&RowableContext::Tty) {
             for (i, element) in row.iter().enumerate() {
                 widths_max[i] = widths_max[i].max(element.len());
             }
@@ -217,7 +215,7 @@ impl ColumnFormat {
         message: &String,
         width_format: &WidthFormat,
     ) -> Result<(), Error> {
-        let field = prepare_field(&message, width_format);
+        let field = prepare_field(message, width_format);
         if self.header == "Package" {
             // split on hyphen
             let parts: Vec<&str> = field.split('-').collect();
@@ -234,7 +232,7 @@ impl ColumnFormat {
         } else {
             write!(writer, "{}", field)?;
         }
-        return Ok(());
+        Ok(())
     }
 }
 

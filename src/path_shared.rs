@@ -1,8 +1,12 @@
 use std::hash::{Hash, Hasher};
-use std::path::Display;
+// use std::path::Display;
+use std::fmt;
 use std::path::Path;
 use std::path::PathBuf;
+use std::path::MAIN_SEPARATOR;
 use std::sync::Arc;
+
+use crate::util::path_home;
 
 /// As a normal Arc-wrapped PathBuf cannot be a key in a mapping or set, we create this wrapped Arc PathBuf that implements hashability. Cloning this type will increment the reference count.
 #[derive(Debug, Clone)]
@@ -30,14 +34,27 @@ impl PathShared {
         self.0.join(part)
     }
 
-    pub(crate) fn display(&self) -> Display {
-        self.0.display()
-    }
+    // pub(crate) fn display(&self) -> Display {
+    //     self.0.display()
+    // }
 }
 
 impl PartialEq for PathShared {
     fn eq(&self, other: &Self) -> bool {
         self.0.as_path() == other.0.as_path()
+    }
+}
+
+/// Specialized Path display that replaces home directories with `~`
+impl fmt::Display for PathShared {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(home) = path_home() {
+            let pre = Path::new(&home);
+            if let Ok(post) = self.0.strip_prefix(pre) {
+                return write!(f, "~{}{}", MAIN_SEPARATOR, post.display());
+            }
+        }
+        write!(f, "{}", self.0.display())
     }
 }
 
@@ -77,7 +94,7 @@ mod tests {
     #[test]
     fn test_b() {
         let path1 = PathShared::from_str("/home/user1");
-        assert_eq!(format!("{}", path1.display()), "/home/user1");
+        assert_eq!(format!("{}", path1.to_string()), "/home/user1");
     }
 
     #[test]
