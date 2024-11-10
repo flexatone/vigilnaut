@@ -135,7 +135,7 @@ impl DepManifest {
             .parse::<toml::Value>()
             .map_err(|e| format!("Failed to parse TOML: {}", e))?;
 
-        // `[project.dependencies]`
+        // [project.dependencies]
         if let Some(dependencies) = value
             .get("project")
             .and_then(|project| project.get("dependencies"))
@@ -146,16 +146,16 @@ impl DepManifest {
                 .filter_map(|dep| dep.as_str().map(String::from))
                 .collect();
 
-            // Collect optional dependencies from `[project.optional-dependencies]`
-            if let Some(options_requested) = options {
+            // [project.optional-dependencies]
+            if let Some(opt) = options {
+                let mut opt_set: HashSet<&String> = opt.iter().collect();
                 if let Some(dependencies_optional) = value
                     .get("project")
                     .and_then(|project| project.get("optional-dependencies"))
                     .and_then(|dep_opt| dep_opt.as_table())
                 {
                     for (key, deps) in dependencies_optional {
-                        // NOTE: we do not fail of options_requested does not match any observed option groups
-                        if options_requested.contains(key) {
+                        if opt_set.take(key).is_some() {
                             if let Some(array) = deps.as_array() {
                                 for dep in array.iter().filter_map(|d| d.as_str()) {
                                     deps_list.push(dep.to_string());
@@ -163,6 +163,13 @@ impl DepManifest {
                             }
                         }
                     }
+                }
+                if !opt_set.is_empty() {
+                    let msg = format!(
+                        "Requested optional dependencies not found: {:?}",
+                        opt_set
+                    );
+                    return Err(msg.into());
                 }
             }
             return Self::from_iter(deps_list.iter());
@@ -611,7 +618,7 @@ dependencies = [
     }
 
     #[test]
-    fn test_from_pyproject_b() {
+    fn test_from_pyproject_b1() {
         let content = r#"
 [project]
 name = "example_package_YOUR_USERNAME_HERE"
@@ -664,6 +671,57 @@ cli = [
         let dm3 =
             DepManifest::from_pyproject_file(&file_path, Some(&bound_options)).unwrap();
         assert_eq!(dm3.keys(), vec!["django", "gidgethub", "httpx", "pyqt5"]);
+    }
+
+    #[test]
+    fn test_from_pyproject_b2() {
+        let content = r#"
+[project]
+name = "example_package_YOUR_USERNAME_HERE"
+version = "0.0.1"
+authors = [
+  { name="Example Author", email="author@example.com" },
+]
+description = "A small example package"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  "httpx",
+  "gidgethub[httpx]>4.0.0",
+  "django>2.1; os_name != 'nt'",
+]
+[project.optional-dependencies]
+gui = ["PyQt5"]
+cli = [
+  "rich",
+  "click",
+]
+"#;
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("pyproject.toml");
+        let mut file = File::create(&file_path).unwrap();
+        write!(file, "{}", content).unwrap();
+
+        let bo = vec!["cli".to_string()];
+        let dm1 = DepManifest::from_pyproject_file(&file_path, Some(&bo)).unwrap();
+        assert_eq!(
+            dm1.keys(),
+            vec!["click", "django", "gidgethub", "httpx", "rich"]
+        );
+
+        let bo1 = vec!["cli".to_string(), "gu".to_string()];
+        assert!(DepManifest::from_pyproject_file(&file_path, Some(&bo1)).is_err());
+
+        let bo2 = vec!["cli".to_string(), "gui".to_string()];
+        assert!(DepManifest::from_pyproject_file(&file_path, Some(&bo2)).is_ok());
+
+        let bo3 = vec!["cli".to_string(), "gui".to_string(), "foo".to_string()];
+        assert!(DepManifest::from_pyproject_file(&file_path, Some(&bo3)).is_err());
     }
 
     #[test]
