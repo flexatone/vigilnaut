@@ -174,14 +174,14 @@ impl DepManifest {
             }
             return Self::from_iter(deps_list.iter());
         }
-        // fallback on looking for poetry dependencies
+        // [tool.poetry.dependencies]
         if let Some(dependencies) = value
             .get("tool")
             .and_then(|tool| tool.get("poetry"))
             .and_then(|poetry| poetry.get("dependencies"))
             .and_then(|deps| deps.as_table())
         {
-            let deps_list: Vec<_> = dependencies
+            let mut deps_list: Vec<_> = dependencies
                 .iter()
                 .map(|(name, value)| {
                     let version = match value {
@@ -193,10 +193,42 @@ impl DepManifest {
                             .to_string(),
                         _ => String::new(),
                     };
-                    // println!("got version: {} {:?}", name, version);
                     format!("{}{}", name, version)
                 })
                 .collect();
+
+            // [tool.poetry.group.*.dependencies]
+            if let Some(opt_vec) = options {
+                for opt in opt_vec {
+                    if let Some(dependencies) = value
+                        .get("tool")
+                        .and_then(|tool| tool.get("poetry"))
+                        .and_then(|poetry| poetry.get("group"))
+                        .and_then(|group| group.get(opt))
+                        .and_then(|group| group.get("dependencies"))
+                        .and_then(|deps| deps.as_table())
+                    {
+                        deps_list.extend(dependencies.iter().map(|(name, value)| {
+                            let version = match value {
+                                toml::Value::String(v) => v.clone(),
+                                toml::Value::Table(t) => t
+                                    .get("version")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                                    .to_string(),
+                                _ => String::new(),
+                            };
+                            format!("{}{}", name, version)
+                        }));
+                    } else {
+                        return Err(format!(
+                            "Requested optional dependency not found: {}",
+                            opt
+                        )
+                        .into());
+                    }
+                }
+            }
             return Self::from_iter(deps_list.iter());
         }
         Err("Dependencies section not found in pyproject.toml".into())
