@@ -969,6 +969,11 @@ pytest-github-actions-annotate-failures = "==0.1.7"
                 "xattr"
             ]
         );
+        assert_eq!(
+            dm2.get_dep_spec("coverage").unwrap().to_string(),
+            "coverage>=7.2.0"
+        );
+
         let opts3 = vec!["typing".to_string()];
         let dm3 = DepManifest::from_pyproject_file(&file_path, Some(&opts3)).unwrap();
         assert_eq!(
@@ -988,6 +993,7 @@ pytest-github-actions-annotate-failures = "==0.1.7"
                 "xattr"
             ]
         );
+        assert_eq!(dm3.get_dep_spec("mypy").unwrap().to_string(), "mypy>=1.8.0");
         let opts4 = vec!["typing".to_string(), "test".to_string()];
         let dm4 = DepManifest::from_pyproject_file(&file_path, Some(&opts4)).unwrap();
         assert_eq!(
