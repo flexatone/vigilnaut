@@ -757,7 +757,7 @@ cli = [
     }
 
     #[test]
-    fn test_from_pyproject_c() {
+    fn test_from_pyproject_c1() {
         let content = r#"
 [tool.poetry]
 name = "poetry"
@@ -873,6 +873,149 @@ pytest-github-actions-annotate-failures = "==0.1.7"
             dm.get_dep_spec("importlib_metadata").unwrap().to_string(),
             "importlib-metadata>=4.4"
         );
+    }
+
+    #[test]
+    fn test_from_pyproject_c2() {
+        let content = r#"
+[tool.poetry]
+name = "poetry"
+readme = "README.md"
+include = [{ path = "tests", format = "sdist" }]
+homepage = "https://python-poetry.org/"
+
+[tool.poetry.urls]
+Changelog = "https://python-poetry.org/history/"
+
+[tool.poetry.dependencies]
+python = "==3.9"
+
+poetry-core = { git = "https://github.com/python-poetry/poetry-core.git", branch = "main" }
+build = "==1.2.1"
+cachecontrol = { version = "==0.14.0", extras = ["filecache"] }
+cleo = "==2.1.0"
+importlib-metadata = { version = ">=4.4", python = "<3.10" }
+installer = "==0.7.0"
+keyring = "==25.1.0"
+trove-classifiers = ">=2022.5.19"
+xattr = { version = "==1.0.0", markers = "sys_platform == 'darwin'" }
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = ">=2.10"
+setuptools = { version = ">=60", python = "<3.10" }
+
+[tool.poetry.group.test.dependencies]
+coverage = ">=7.2.0"
+deepdiff = ">=6.3"
+httpretty = ">=1.1"
+jaraco-classes = ">=3.3.1"
+pytest = ">=8.0"
+pytest-cov = ">=4.0"
+pytest-xdist = { version = ">=3.1", extras = ["psutil"] }
+
+[tool.poetry.group.typing.dependencies]
+mypy = ">=1.8.0"
+types-requests = ">=2.28.8"
+
+# only used in github actions
+[tool.poetry.group.github-actions]
+optional = true
+[tool.poetry.group.github-actions.dependencies]
+pytest-github-actions-annotate-failures = "==0.1.7"
+    "#;
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("pyproject.toml");
+        let mut file = File::create(&file_path).unwrap();
+        write!(file, "{}", content).unwrap();
+
+        let dm1 = DepManifest::from_pyproject_file(&file_path, None).unwrap();
+        assert_eq!(
+            dm1.keys(),
+            vec![
+                "build",
+                "cachecontrol",
+                "cleo",
+                "importlib_metadata",
+                "installer",
+                "keyring",
+                "poetry_core",
+                "python",
+                "trove_classifiers",
+                "xattr"
+            ]
+        );
+
+        let opts2 = vec!["test".to_string()];
+        let dm2 = DepManifest::from_pyproject_file(&file_path, Some(&opts2)).unwrap();
+        assert_eq!(
+            dm2.keys(),
+            vec![
+                "build",
+                "cachecontrol",
+                "cleo",
+                "coverage",
+                "deepdiff",
+                "httpretty",
+                "importlib_metadata",
+                "installer",
+                "jaraco_classes",
+                "keyring",
+                "poetry_core",
+                "pytest",
+                "pytest_cov",
+                "pytest_xdist",
+                "python",
+                "trove_classifiers",
+                "xattr"
+            ]
+        );
+        let opts3 = vec!["typing".to_string()];
+        let dm3 = DepManifest::from_pyproject_file(&file_path, Some(&opts3)).unwrap();
+        assert_eq!(
+            dm3.keys(),
+            vec![
+                "build",
+                "cachecontrol",
+                "cleo",
+                "importlib_metadata",
+                "installer",
+                "keyring",
+                "mypy",
+                "poetry_core",
+                "python",
+                "trove_classifiers",
+                "types_requests",
+                "xattr"
+            ]
+        );
+        let opts4 = vec!["typing".to_string(), "test".to_string()];
+        let dm4 = DepManifest::from_pyproject_file(&file_path, Some(&opts4)).unwrap();
+        assert_eq!(
+            dm4.keys(),
+            vec![
+                "build",
+                "cachecontrol",
+                "cleo",
+                "coverage",
+                "deepdiff",
+                "httpretty",
+                "importlib_metadata",
+                "installer",
+                "jaraco_classes",
+                "keyring",
+                "mypy",
+                "poetry_core",
+                "pytest",
+                "pytest_cov",
+                "pytest_xdist",
+                "python",
+                "trove_classifiers",
+                "types_requests",
+                "xattr"
+            ]
+        );
+        let opts5 = vec!["typing".to_string(), "test".to_string(), "foo".to_string()];
+        assert!(DepManifest::from_pyproject_file(&file_path, Some(&opts5)).is_err());
     }
 
     //     #[test]
