@@ -51,6 +51,21 @@ impl Tableable<DepManifestRecord> for DepManifestReport {
 }
 
 //------------------------------------------------------------------------------
+
+fn poetry_toml_value_to_string((name, value): (&String, &toml::Value)) -> String {
+    let version = match value {
+        toml::Value::String(v) => v.clone(),
+        toml::Value::Table(t) => t
+            .get("version")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        _ => String::new(),
+    };
+    format!("{}{}", name, version)
+}
+
+//------------------------------------------------------------------------------
 // A DepManifest is a requirements listing, implemented as HashMap for quick lookup by package name.
 #[derive(Debug, Clone)]
 pub(crate) struct DepManifest {
@@ -183,18 +198,7 @@ impl DepManifest {
         {
             let mut deps_list: Vec<_> = dependencies
                 .iter()
-                .map(|(name, value)| {
-                    let version = match value {
-                        toml::Value::String(v) => v.clone(),
-                        toml::Value::Table(t) => t
-                            .get("version")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string(),
-                        _ => String::new(),
-                    };
-                    format!("{}{}", name, version)
-                })
+                .map(poetry_toml_value_to_string)
                 .collect();
 
             // [tool.poetry.group.*.dependencies]
@@ -208,18 +212,8 @@ impl DepManifest {
                         .and_then(|group| group.get("dependencies"))
                         .and_then(|deps| deps.as_table())
                     {
-                        deps_list.extend(dependencies.iter().map(|(name, value)| {
-                            let version = match value {
-                                toml::Value::String(v) => v.clone(),
-                                toml::Value::Table(t) => t
-                                    .get("version")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("")
-                                    .to_string(),
-                                _ => String::new(),
-                            };
-                            format!("{}{}", name, version)
-                        }));
+                        deps_list
+                            .extend(dependencies.iter().map(poetry_toml_value_to_string));
                     } else {
                         return Err(format!(
                             "Requested optional dependency not found: {}",
