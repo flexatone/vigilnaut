@@ -124,9 +124,13 @@ enum Commands {
     },
     /// Validate if packages conform to a validation target.
     Validate {
-        /// File path from which to read bound requirements.
+        /// File path or URL from which to read bound requirements.
         #[arg(short, long, value_name = "FILE")]
         bound: PathBuf,
+
+        /// Names of additional optional dependency groups.
+        #[arg(long, value_name = "OPTIONS")]
+        bound_options: Option<Vec<String>>,
 
         /// If the subset flag is set, the observed packages can be a subset of the bound requirements.
         #[arg(long)]
@@ -190,9 +194,13 @@ enum Commands {
     },
     /// Purge packages that are invalid based on dependency specification.
     PurgeInvalid {
-        /// File path from which to read bound requirements.
+        /// File path or URL from which to read bound requirements.
         #[arg(short, long, value_name = "FILE")]
         bound: PathBuf,
+
+        /// Names of additional optional dependency groups.
+        #[arg(long, value_name = "OPTIONS")]
+        bound_options: Option<Vec<String>>,
 
         /// If the subset flag is set, the observed packages can be a subset of the bound requirements.
         #[arg(long)]
@@ -339,17 +347,20 @@ fn get_scan(
 }
 
 // Given a Path, load a DepManifest. This might branch by extension to handle pyproject.toml and other formats.
-fn get_dep_manifest(bound: &PathBuf) -> Result<DepManifest, Box<dyn std::error::Error>> {
+fn get_dep_manifest(
+    bound: &PathBuf,
+    bound_options: Option<&Vec<String>>,
+) -> Result<DepManifest, Box<dyn std::error::Error>> {
     if bound.to_str().map_or(false, |s| s.ends_with(".git")) {
-        DepManifest::from_git_repo(bound)
+        DepManifest::from_git_repo(bound, bound_options)
     } else if bound
         .to_str()
         .map_or(false, |s| s.ends_with("pyproject.toml"))
     {
-        DepManifest::from_pyproject_file(bound)
+        DepManifest::from_pyproject_file(bound, bound_options)
     } else if bound.to_str().map_or(false, |s| s.starts_with("http")) {
         // might have URL based requirements or pyproject
-        DepManifest::from_url(&UreqClientLive, bound)
+        DepManifest::from_url(&UreqClientLive, bound, bound_options)
     } else {
         // assume all text files are requirements-style
         let fp = path_normalize(bound).unwrap_or_else(|_| bound.clone());
@@ -431,11 +442,12 @@ where
         },
         Some(Commands::Validate {
             bound,
+            bound_options,
             subset,
             superset,
             subcommands,
         }) => {
-            let dm = get_dep_manifest(bound)?;
+            let dm = get_dep_manifest(bound, bound_options.as_ref())?;
             let permit_superset = *superset;
             let permit_subset = *subset;
             let vr = sfs.to_validation_report(
@@ -527,10 +539,11 @@ where
         }
         Some(Commands::PurgeInvalid {
             bound,
+            bound_options,
             subset,
             superset,
         }) => {
-            let dm = get_dep_manifest(bound)?;
+            let dm = get_dep_manifest(bound, bound_options.as_ref())?;
             let permit_superset = *superset;
             let permit_subset = *subset;
             let _ = sfs.to_purge_invalid(

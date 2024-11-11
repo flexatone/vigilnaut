@@ -257,7 +257,8 @@ repos:
 
 - Description: Validate if packages conform to a specified validation target.
 - Options
-  - `--bound, -b <FILE>`: Path to the file containing bound requirements.
+  - `--bound, -b <FILE>`: Path or URL to the file containing bound requirements.
+  - `--bound-options <OPTIONS>`: Names of additional optional dependency groups.
   - `--subset`: Allow the observed packages to be a subset of the bound requirements.
   - `--superset`: Allow the observed packages to be a superset of the bound requirements.
 - Subcommands
@@ -317,7 +318,8 @@ repos:
 
 - Description: Purge packages that are invalid based on dependency specification.
 - Options
-  - `--bound, -b <FILE>`: Path to the file containing bound requirements.
+  - `--bound, -b <FILE>`: Path or URL to the file containing bound requirements.
+  - `--bound-options <OPTIONS>`: Names of additional optional dependency groups.
   - `--subset`: Allow the observed packages to be a subset of the bound requirements.
   - `--superset`: Allow the observed packages to be a superset of the bound requirements.
 
