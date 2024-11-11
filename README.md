@@ -181,7 +181,7 @@ To run `fetter validate` with `pre-commit`, add the following to your `.pre-comm
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v1.0.0
+  rev: v1.1.0
   hooks:
     - id: fetter-validate
       args: [--bound, {FILE}, --superset, --subset]
@@ -198,7 +198,7 @@ To run `fetter audit` with `pre-commit`, add the following to your `.pre-commit-
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v1.0.0
+  rev: v1.1.0
   hooks:
     - id: fetter-audit
 ```
@@ -328,6 +328,10 @@ repos:
 
 ## What is New in Fetter
 
+### 1.1.0
+
+Implemented `bound-options` to permit selecting optional dependencies in pyproject.toml files.
+
 ### 1.0.0
 
 Implemented home-path display abbreviation with `~`.
@@ -336,7 +340,7 @@ Handle combining multiple `DepSpec` in producing `DepManifest`.
 
 Added `--pattern` and `--case` options to `audit`.
 
-Added support for creating `DepManifest` from `pyproject.toml`.
+Added support for creating `DepManifest` from pyproject.toml.
 
 Permit `DepManifest` to be retrieved from a URL.
 
