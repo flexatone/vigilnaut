@@ -245,7 +245,7 @@ numpy-2.0.0   ~/.env-tt/lib/python3.12/site-packages
 numpy-2.1.2   ~/.env-lt/lib/python3.11/site-packages
 ```
 
-Having 15 different versions of NumPy in 27 virtual environment might be undesirable. Using `fetter unpack-count`, we can view how many files are associated with a particular package.
+Having 15 different versions of NumPy in 27 virtual environments might be undesirable. Using `fetter unpack-count`, we can view how many files are associated with a particular package.
 
 ```shell
 $ fetter unpack-count -p numpy-1.18.5
