@@ -42,7 +42,7 @@ impl From<CliAnchor> for Anchor {
 //------------------------------------------------------------------------------
 
 const ERROR_EXIT_CODE: i32 = 3;
-const TITLE: &str = "◎○◉ fetter: System-wide Python package discovery and validation";
+const TITLE: &str = "fetter: System-wide Python package discovery and validation";
 
 const AFTER_HELP: &str = "\
 Examples:
