@@ -60,7 +60,7 @@ Examples:
   fetter -e python3 validate --superset --bound git@github.com:fetter-io/bound-test.git
 
   fetter audit
-  fetter -e python3 audit write -o /tmp/audit.txt  -d '|'
+  fetter -e python3 -e /usr/bin/python audit write -o /tmp/audit.txt  -d '|'
 
   fetter -e python3 unpack-count
   fetter unpack-count -p pip*
