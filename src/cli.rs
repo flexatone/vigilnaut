@@ -46,26 +46,26 @@ const TITLE: &str = "fetter: System-wide Python package discovery and validation
 
 const AFTER_HELP: &str = "\
 Examples:
-  fetter scan display
+  fetter scan
   fetter scan write -o /tmp/pkgscan.txt --delimiter '|'
 
-  fetter search --pattern pip* display
+  fetter search --pattern pip*
 
-  fetter count display
+  fetter count
 
   fetter --exe python3 derive -a lower write -o /tmp/bound_requirements.txt
 
-  fetter validate --bound /tmp/bound_requirements.txt display
-  fetter --exe python3 validate --bound /tmp/bound_requirements.txt display
-  fetter --exe python3 validate --superset --bound git@github.com:fetter-io/bound-test.git display
+  fetter validate --bound /tmp/bound_requirements.txt
+  fetter -e python3 validate --bound /tmp/bound_requirements.txt
+  fetter -e python3 validate --superset --bound git@github.com:fetter-io/bound-test.git
 
-  fetter audit display
-  fetter --exe python3 audit display
+  fetter audit
+  fetter -e python3 audit write -o /tmp/audit.txt  -d '|'
 
-  fetter --exe python3 unpack-count display
-  fetter unpack-count -p pip* display
+  fetter -e python3 unpack-count
+  fetter unpack-count -p pip*
 
-  fetter --exe /usr/bin/python purge-pattern -p numpy*
+  fetter -e /usr/bin/python purge-pattern -p numpy*
 
   fetter purge-invalid --bound /tmp/bound_requirements.txt
 ";
