@@ -51,11 +51,11 @@ pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
     let mut fp = path.to_path_buf();
     if let Some(path_str) = fp.to_str() {
         if path_str.starts_with('~') {
-            if let Some(home) = path_home() {
-                fp = home.join(path_str.trim_start_matches('~'));
-            } else {
-                return Err("Usage of `~` unresolved.".into());
-            }
+            let home = path_home().ok_or("Cannot get home directory")?;
+            let path_stripped =
+                fp.strip_prefix("~").map_err(|_| "Failed to strip prefix")?;
+            fp = home.join(path_stripped);
+            println!("post conversion: {:?}", fp);
         }
     }
     // Only expand relative paths if there is more than one component
@@ -111,5 +111,13 @@ mod tests {
         let s1 = "git+https://foo@github.com/pypa/packaging.git@cf2cbe2aec28f87c6228a6fb136c27931c9af407".to_string();
         let s2 = url_strip_user(&s1);
         assert_eq!(s2, "git+https://github.com/pypa/packaging.git@cf2cbe2aec28f87c6228a6fb136c27931c9af407")
+    }
+
+    #[test]
+    fn test_path_normalize_a() {
+        let p1 = Path::new("~/foo/bar");
+        let p2 = path_normalize(&p1).unwrap();
+        let home = path_home().unwrap();
+        assert!(p2.starts_with(home));
     }
 }

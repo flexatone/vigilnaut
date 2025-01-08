@@ -81,7 +81,7 @@ fn get_search_origins() -> HashSet<(PathBuf, bool)> {
 
 // Return True if the path points to a python executable. We assume this has already been proven to exist.
 fn is_exe(path: &Path) -> bool {
-    return match path.file_name().and_then(|f| f.to_str()) {
+    match path.file_name().and_then(|f| f.to_str()) {
         Some(file_name) if file_name.starts_with("python") => {
             let suffix = &file_name[6..];
             if suffix.is_empty() || suffix.chars().all(|c| c.is_ascii_digit() || c == '.')
@@ -95,7 +95,7 @@ fn is_exe(path: &Path) -> bool {
             }
         }
         _ => false,
-    };
+    }
 }
 
 fn is_symlink(path: &Path) -> bool {
@@ -105,19 +105,17 @@ fn is_symlink(path: &Path) -> bool {
     }
 }
 
+const PY_SYS_EXE: &str = "import sys;print(sys.executable)";
+
 // Use the default Python to get its executable path.
 fn get_exe_default() -> Option<PathBuf> {
-    return match Command::new("python3")
-        .arg("-c")
-        .arg("import sys;print(sys.executable)")
-        .output()
-    {
+    match Command::new("python3").arg("-c").arg(PY_SYS_EXE).output() {
         Ok(output) => match std::str::from_utf8(&output.stdout) {
             Ok(s) => Some(PathBuf::from(s.trim())),
             Err(_) => None,
         },
         Err(_) => None,
-    };
+    }
 }
 /// Try to find all Python executables given a starting directory. This will recursively search all directories that are not symlinks.
 fn find_exe_inner(
