@@ -105,13 +105,11 @@ fn is_symlink(path: &Path) -> bool {
     }
 }
 
+const PY_SYS_EXE: &str = "import sys;print(sys.executable)";
+
 // Use the default Python to get its executable path.
 fn get_exe_default() -> Option<PathBuf> {
-    return match Command::new("python3")
-        .arg("-c")
-        .arg("import sys;print(sys.executable)")
-        .output()
-    {
+    return match Command::new("python3").arg("-c").arg(PY_SYS_EXE).output() {
         Ok(output) => match std::str::from_utf8(&output.stdout) {
             Ok(s) => Some(PathBuf::from(s.trim())),
             Err(_) => None,
