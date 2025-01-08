@@ -64,10 +64,11 @@ impl<'de> Deserialize<'de> for PathShared {
         impl<'de> Visitor<'de> for PathSharedVisitor {
             type Value = PathShared;
 
+            // called if serialization fails
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("a valid UTF-8 encoded path string")
             }
-
+            // called when target is a string
             fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
             where
                 E: de::Error,
