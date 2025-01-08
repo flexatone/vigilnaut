@@ -60,7 +60,7 @@ fn get_site_package_dirs(executable: &Path, force_usite: bool) -> Vec<PathShared
             paths
         }
         Err(e) => {
-            eprintln!("Failed to execute command: {}", e); // log this
+            eprintln!("Failed to execute command with {:?}: {}", executable, e); // log this
             Vec::with_capacity(0)
         }
     };
