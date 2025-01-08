@@ -174,3 +174,8 @@ Antother application of traits: testing APIs
 
 Find Python Package Vulnerabilties in OSV Faster than pip-audit
 
+The Fastest Way to Search the Open Source Vulnerability DB for Python Vulnerabilities.
+
+A Faster Way to find Python Packages in the Open Source Vulnerability Database
+
+
