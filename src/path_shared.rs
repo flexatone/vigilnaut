@@ -61,7 +61,8 @@ impl<'de> Deserialize<'de> for PathShared {
     {
         struct PathSharedVisitor;
 
-        impl<'de> Visitor<'de> for PathSharedVisitor {
+        // use elided (inferred) lifetime
+        impl Visitor<'_> for PathSharedVisitor {
             type Value = PathShared;
 
             // called if serialization fails
