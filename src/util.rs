@@ -111,4 +111,14 @@ mod tests {
         let s2 = url_strip_user(&s1);
         assert_eq!(s2, "git+https://github.com/pypa/packaging.git@cf2cbe2aec28f87c6228a6fb136c27931c9af407")
     }
+
+
+    #[test]
+    fn test_path_normalize_a() {
+        let p1 = Path::new("~/foo/bar");
+        let p2 = path_normalize(&s1).unwrap();
+        let home = path_home();
+        assert! p2.starts_with(home);
+    }
+
 }
