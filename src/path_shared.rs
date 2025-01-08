@@ -54,16 +54,6 @@ impl Serialize for PathShared {
     }
 }
 
-// impl<'de> Deserialize<'de> for PathShared {
-//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-//     where
-//         D: Deserializer<'de>,
-//     {
-//         // Deserialize the string directly and map it to PathShared
-//         deserializer.deserialize_str(|s: &str| Ok(PathShared(Arc::new(PathBuf::from(s)))))
-//     }
-// }
-
 impl<'de> Deserialize<'de> for PathShared {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
