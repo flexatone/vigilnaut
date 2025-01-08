@@ -6,8 +6,8 @@ use std::path::PathBuf;
 use std::path::MAIN_SEPARATOR;
 use std::sync::Arc;
 
-use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use serde::de::{self, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::util::path_home;
 
@@ -47,7 +47,10 @@ impl Serialize for PathShared {
     where
         S: Serializer,
     {
-        self.0.to_str().ok_or_else(|| serde::ser::Error::custom("Invalid UTF-8 in path"))?.serialize(serializer)
+        self.0
+            .to_str()
+            .ok_or_else(|| serde::ser::Error::custom("Invalid UTF-8 in path"))?
+            .serialize(serializer)
     }
 }
 
@@ -87,7 +90,6 @@ impl<'de> Deserialize<'de> for PathShared {
     }
 }
 
-
 impl PartialEq for PathShared {
     fn eq(&self, other: &Self) -> bool {
         self.0.as_path() == other.0.as_path()
@@ -119,8 +121,8 @@ impl Hash for PathShared {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use serde_json;
+    use std::collections::HashMap;
 
     #[test]
     fn test_a() {
@@ -166,6 +168,4 @@ mod tests {
         let deserialized: PathShared = serde_json::from_str(&json).unwrap();
         assert_eq!(*deserialized.0, path);
     }
-
-
 }
