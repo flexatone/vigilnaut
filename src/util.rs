@@ -51,7 +51,7 @@ pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
     let mut fp = path.to_path_buf();
     if let Some(path_str) = fp.to_str() {
         if path_str.starts_with('~') {
-            let home = path_home().ok_or_else(|| "Cannot get home directory")?;
+            let home = path_home().ok_or("Cannot get home directory")?;
             let path_stripped =
                 fp.strip_prefix("~").map_err(|_| "Failed to strip prefix")?;
             fp = home.join(path_stripped);
