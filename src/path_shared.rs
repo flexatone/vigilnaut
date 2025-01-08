@@ -6,6 +6,9 @@ use std::path::PathBuf;
 use std::path::MAIN_SEPARATOR;
 use std::sync::Arc;
 
+use serde::{Serialize, Deserialize, Serializer, Deserializer};
+use serde::de::{self, Visitor};
+
 use crate::util::path_home;
 
 /// As a normal Arc-wrapped PathBuf cannot be a key in a mapping or set, we create this wrapped Arc PathBuf that implements hashability. Cloning this type will increment the reference count.
@@ -39,6 +42,52 @@ impl PathShared {
     // }
 }
 
+impl Serialize for PathShared {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.to_str().ok_or_else(|| serde::ser::Error::custom("Invalid UTF-8 in path"))?.serialize(serializer)
+    }
+}
+
+// impl<'de> Deserialize<'de> for PathShared {
+//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//     where
+//         D: Deserializer<'de>,
+//     {
+//         // Deserialize the string directly and map it to PathShared
+//         deserializer.deserialize_str(|s: &str| Ok(PathShared(Arc::new(PathBuf::from(s)))))
+//     }
+// }
+
+impl<'de> Deserialize<'de> for PathShared {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct PathSharedVisitor;
+
+        impl<'de> Visitor<'de> for PathSharedVisitor {
+            type Value = PathShared;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a valid UTF-8 encoded path string")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(PathShared(Arc::new(PathBuf::from(value))))
+            }
+        }
+        // Use Serde's built-in string deserialization and map it to PathShared
+        deserializer.deserialize_str(PathSharedVisitor)
+    }
+}
+
+
 impl PartialEq for PathShared {
     fn eq(&self, other: &Self) -> bool {
         self.0.as_path() == other.0.as_path()
@@ -71,6 +120,7 @@ impl Hash for PathShared {
 mod tests {
     use super::*;
     use std::collections::HashMap;
+    use serde_json;
 
     #[test]
     fn test_a() {
@@ -102,4 +152,20 @@ mod tests {
         let path1 = PathShared::from_str("/home/user1");
         assert_eq!(path1.as_path(), Path::new("/home/user1"));
     }
+
+    #[test]
+    fn test_serialization_a() {
+        let path = PathBuf::from("/some/example/path");
+        let path_shared = PathShared(Arc::new(path.clone()));
+
+        // Serialize PathShared to a JSON string
+        let json = serde_json::to_string(&path_shared).unwrap();
+        assert_eq!(json, "\"/some/example/path\"");
+
+        // Deserialize the JSON string back to PathShared
+        let deserialized: PathShared = serde_json::from_str(&json).unwrap();
+        assert_eq!(*deserialized.0, path);
+    }
+
+
 }
