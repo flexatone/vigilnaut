@@ -52,7 +52,8 @@ pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
     if let Some(path_str) = fp.to_str() {
         if path_str.starts_with('~') {
             let home = path_home().ok_or_else(|| "Cannot get home directory")?;
-            let path_stripped = fp.strip_prefix("~").map_err(|_| "Failed to strip prefix")?;
+            let path_stripped =
+                fp.strip_prefix("~").map_err(|_| "Failed to strip prefix")?;
             fp = home.join(path_stripped);
             println!("post conversion: {:?}", fp);
         }
@@ -112,7 +113,6 @@ mod tests {
         assert_eq!(s2, "git+https://github.com/pypa/packaging.git@cf2cbe2aec28f87c6228a6fb136c27931c9af407")
     }
 
-
     #[test]
     fn test_path_normalize_a() {
         let p1 = Path::new("~/foo/bar");
@@ -120,5 +120,4 @@ mod tests {
         let home = path_home().unwrap();
         assert!(p2.starts_with(home));
     }
-
 }
