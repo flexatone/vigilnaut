@@ -116,9 +116,9 @@ mod tests {
     #[test]
     fn test_path_normalize_a() {
         let p1 = Path::new("~/foo/bar");
-        let p2 = path_normalize(&s1).unwrap();
-        let home = path_home();
-        assert! p2.starts_with(home);
+        let p2 = path_normalize(&p1).unwrap();
+        let home = path_home().unwrap();
+        assert!(p2.starts_with(home));
     }
 
 }
