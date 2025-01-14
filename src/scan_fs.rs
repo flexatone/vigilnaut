@@ -733,4 +733,24 @@ mod tests {
         let matched = sfs.search_by_match("*frame*", true);
         assert_eq!(matched, vec![packages[1].clone()]);
     }
+
+    //--------------------------------------------------------------------------
+
+    #[test]
+    fn test_serialize_a() {
+        let exe = PathBuf::from("/usr/bin/python3");
+        let site = PathBuf::from("/usr/lib/python3/site-packages");
+        let packages = vec![
+            Package::from_name_version_durl("numpy", "1.19.3", None).unwrap(),
+            Package::from_name_version_durl("static-frame", "2.13.0", None).unwrap(),
+            Package::from_name_version_durl("flask", "1.1.3", None).unwrap(),
+        ];
+        let sfs = ScanFS::from_exe_site_packages(exe, site, packages.clone()).unwrap();
+        // let json = serde_json::to_string(&sfs).unwrap();
+        // assert_eq!(json, "");
+    }
+
 }
+
+
+
