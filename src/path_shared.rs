@@ -156,4 +156,30 @@ mod tests {
         let deserialized: PathShared = serde_json::from_str(&json).unwrap();
         assert_eq!(*deserialized.0, path);
     }
+
+    #[test]
+    fn test_serialization_b() {
+        let v: Vec<PathShared> = vec![
+                PathShared(Arc::new(PathBuf::from("/some/ex/a"))),
+                PathShared(Arc::new(PathBuf::from("/some/ex/b"))),
+                ];
+        let json = serde_json::to_string(&v).unwrap();
+        assert_eq!(json, "[\"/some/ex/a\",\"/some/ex/b\"]");
+    }
+
+    #[test]
+    fn test_serialization_c() {
+        let v: Vec<PathShared> = vec![
+                PathShared::from_str("/some/ex/a"),
+                PathShared::from_str("/some/ex/b"),
+                ];
+        let mut hm: HashMap<PathBuf, Vec<PathShared>> = HashMap::new();
+        hm.insert(PathBuf::from("/usr/bin/py"), v.clone());
+
+        let json = serde_json::to_string(&hm).unwrap();
+        assert_eq!(json, "{\"/usr/bin/py\":[\"/some/ex/a\",\"/some/ex/b\"]}");
+    }
+
+
+
 }

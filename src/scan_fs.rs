@@ -88,8 +88,31 @@ fn get_packages(site_packages: &Path) -> Vec<Package> {
 }
 
 //------------------------------------------------------------------------------
-// The result of a file-system scan.
+
+// The result of a file-system scan in a format that is serializable.
 #[derive(Serialize, Deserialize)]
+pub(crate) struct ScanFSFlat {
+    exe_to_sites: HashMap<PathBuf, Vec<PathShared>>,
+    packages: Vec<Package>,
+    sites: Vec<Vec<PathShared>>,
+}
+impl ScanFSFlat {
+
+    pub(crate) fn from_scan_fs(
+        scan_fs: ScanFS,
+    ) -> ResultDynError<Self> {
+        // get ordered packages
+        let packages = scan_fs.get_packages();
+        let sites = packages.iter().map(|p| scan_fs.package_to_sites.get(p).unwrap().clone()).collect();
+        Ok(ScanFSFlat {
+            exe_to_sites: scan_fs.exe_to_sites.clone(),
+            packages,
+            sites,
+        })
+    }
+}
+
+// The result of a file-system scan.
 pub(crate) struct ScanFS {
     // NOTE: these attributes used by reporters
     /// A mapping of exe path to site packages paths
@@ -746,8 +769,9 @@ mod tests {
             Package::from_name_version_durl("flask", "1.1.3", None).unwrap(),
         ];
         let sfs = ScanFS::from_exe_site_packages(exe, site, packages.clone()).unwrap();
-        // let json = serde_json::to_string(&sfs).unwrap();
-        // assert_eq!(json, "");
+        let sfsf = ScanFSFlat::from_scan_fs(sfs).unwrap();
+        let json = serde_json::to_string(&sfsf).unwrap();
+        assert_eq!(json, "{\"exe_to_sites\":{\"/usr/bin/python3\":[\"/usr/lib/python3/site-packages\"]},\"packages\":[{\"name\":\"flask\",\"key\":\"flask\",\"version\":[{\"Number\":1},{\"Number\":1},{\"Number\":3}],\"direct_url\":null},{\"name\":\"numpy\",\"key\":\"numpy\",\"version\":[{\"Number\":1},{\"Number\":19},{\"Number\":3}],\"direct_url\":null},{\"name\":\"static-frame\",\"key\":\"static_frame\",\"version\":[{\"Number\":2},{\"Number\":13},{\"Number\":0}],\"direct_url\":null}],\"sites\":[[\"/usr/lib/python3/site-packages\"],[\"/usr/lib/python3/site-packages\"],[\"/usr/lib/python3/site-packages\"]]}");
     }
 
 }
