@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::audit_report::AuditReport;
 use crate::count_report::CountReport;
@@ -88,6 +89,7 @@ fn get_packages(site_packages: &Path) -> Vec<Package> {
 
 //------------------------------------------------------------------------------
 // The result of a file-system scan.
+#[derive(Serialize, Deserialize)]
 pub(crate) struct ScanFS {
     // NOTE: these attributes used by reporters
     /// A mapping of exe path to site packages paths

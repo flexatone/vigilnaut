@@ -36,10 +36,6 @@ impl PathShared {
     pub(crate) fn join(&self, part: &str) -> PathBuf {
         self.0.join(part)
     }
-
-    // pub(crate) fn display(&self) -> Display {
-    //     self.0.display()
-    // }
 }
 
 impl Serialize for PathShared {
