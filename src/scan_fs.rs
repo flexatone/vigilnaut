@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::audit_report::AuditReport;
 use crate::count_report::CountReport;
@@ -89,29 +89,6 @@ fn get_packages(site_packages: &Path) -> Vec<Package> {
 
 //------------------------------------------------------------------------------
 
-// The result of a file-system scan in a format that is serializable.
-// #[derive(Serialize, Deserialize)]
-// pub(crate) struct ScanFSFlat {
-//     exe_to_sites: HashMap<PathBuf, Vec<PathShared>>,
-//     packages: Vec<Package>,
-//     sites: Vec<Vec<PathShared>>,
-// }
-// impl ScanFSFlat {
-
-//     pub(crate) fn from_scan_fs(
-//         scan_fs: ScanFS,
-//     ) -> ResultDynError<Self> {
-//         // get ordered packages
-//         let packages = scan_fs.get_packages();
-//         let sites = packages.iter().map(|p| scan_fs.package_to_sites.get(p).unwrap().clone()).collect();
-//         Ok(ScanFSFlat {
-//             exe_to_sites: scan_fs.exe_to_sites.clone(),
-//             packages,
-//             sites,
-//         })
-//     }
-// }
-
 // The result of a file-system scan.
 pub(crate) struct ScanFS {
     // NOTE: these attributes are used by reporters
@@ -136,6 +113,30 @@ impl Serialize for ScanFS {
         // Serialize as tuple of sorted vectors
         let data = (&exe_to_sites, &package_to_sites);
         data.serialize(serializer)
+    }
+}
+
+///Flattened data representation used for serialization
+type ScanFSData = (
+    Vec<(PathBuf, Vec<PathShared>)>,
+    Vec<(Package, Vec<PathShared>)>,
+);
+
+impl<'de> Deserialize<'de> for ScanFS {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let (exe_to_sites, package_to_sites): ScanFSData =
+            Deserialize::deserialize(deserializer)?;
+
+        let exe_to_sites = exe_to_sites.into_iter().collect();
+        let package_to_sites = package_to_sites.into_iter().collect();
+
+        Ok(ScanFS {
+            exe_to_sites,
+            package_to_sites,
+        })
     }
 }
 
@@ -789,5 +790,9 @@ mod tests {
         let sfs = ScanFS::from_exe_site_packages(exe, site, packages.clone()).unwrap();
         let json = serde_json::to_string(&sfs).unwrap();
         assert_eq!(json, "[[[\"/usr/bin/python3\",[\"/usr/lib/python3/site-packages\"]]],[[{\"name\":\"flask\",\"key\":\"flask\",\"version\":[{\"Number\":1},{\"Number\":1},{\"Number\":3}],\"direct_url\":null},[\"/usr/lib/python3/site-packages\"]],[{\"name\":\"numpy\",\"key\":\"numpy\",\"version\":[{\"Number\":1},{\"Number\":19},{\"Number\":3}],\"direct_url\":null},[\"/usr/lib/python3/site-packages\"]],[{\"name\":\"static-frame\",\"key\":\"static_frame\",\"version\":[{\"Number\":2},{\"Number\":13},{\"Number\":0}],\"direct_url\":null},[\"/usr/lib/python3/site-packages\"]]]]");
+
+        let sfsd: ScanFS = serde_json::from_str(&json).unwrap();
+        assert_eq!(sfsd.exe_to_sites.len(), 1);
+        assert_eq!(sfsd.package_to_sites.len(), 3);
     }
 }
