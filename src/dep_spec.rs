@@ -720,6 +720,6 @@ mod tests {
     fn test_dep_spec_json_a() {
         let ds = DepSpec::from_whl("https://example.com/app-1.0.whl").unwrap();
         let json = serde_json::to_string(&ds).unwrap();
-        assert_eq!(json, "{\"name\":\"app\",\"key\":\"app\",\"url\":\"https://example.com/app-1.0.whl\",\"operators\":[\"Eq\"],\"versions\":[[{\"Number\":1},{\"Number\":0}]]}")
+        assert_eq!(json, "{\"name\":\"app\",\"key\":\"app\",\"url\":\"https://example.com/app-1.0.whl\",\"operators\":[\"Eq\"],\"versions\":[\"1.0\"]}")
     }
 }
