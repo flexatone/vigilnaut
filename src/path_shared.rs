@@ -1,6 +1,5 @@
-use std::hash::{Hash, Hasher};
-// use std::path::Display;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::path::PathBuf;
 use std::path::MAIN_SEPARATOR;
@@ -160,9 +159,9 @@ mod tests {
     #[test]
     fn test_serialization_b() {
         let v: Vec<PathShared> = vec![
-                PathShared(Arc::new(PathBuf::from("/some/ex/a"))),
-                PathShared(Arc::new(PathBuf::from("/some/ex/b"))),
-                ];
+            PathShared(Arc::new(PathBuf::from("/some/ex/a"))),
+            PathShared(Arc::new(PathBuf::from("/some/ex/b"))),
+        ];
         let json = serde_json::to_string(&v).unwrap();
         assert_eq!(json, "[\"/some/ex/a\",\"/some/ex/b\"]");
     }
@@ -170,16 +169,13 @@ mod tests {
     #[test]
     fn test_serialization_c() {
         let v: Vec<PathShared> = vec![
-                PathShared::from_str("/some/ex/a"),
-                PathShared::from_str("/some/ex/b"),
-                ];
+            PathShared::from_str("/some/ex/a"),
+            PathShared::from_str("/some/ex/b"),
+        ];
         let mut hm: HashMap<PathBuf, Vec<PathShared>> = HashMap::new();
         hm.insert(PathBuf::from("/usr/bin/py"), v.clone());
 
         let json = serde_json::to_string(&hm).unwrap();
         assert_eq!(json, "{\"/usr/bin/py\":[\"/some/ex/a\",\"/some/ex/b\"]}");
     }
-
-
-
 }

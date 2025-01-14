@@ -11,7 +11,6 @@ use crate::path_shared::PathShared;
 use crate::util::name_to_key;
 use crate::version_spec::VersionSpec;
 
-
 //------------------------------------------------------------------------------
 // Given a name from the dist-info dir, try to find the src dir in the site dir doing a case-insensitive search. Then, return the case-sensitve name of the src dir. Note that some packages might only have source file ending in .py; we will not find it but it will be defined in RECORD.
 fn find_dir_src(site: &PathBuf, name_from_di: &str) -> Option<String> {
@@ -225,6 +224,5 @@ mod tests {
 
         let p2: Package = serde_json::from_str(&json).unwrap();
         assert_eq!(p2.to_string(), "dill-0.3.8");
-
     }
 }

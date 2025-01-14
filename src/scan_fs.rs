@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 
 use crate::audit_report::AuditReport;
 use crate::count_report::CountReport;
@@ -90,35 +90,53 @@ fn get_packages(site_packages: &Path) -> Vec<Package> {
 //------------------------------------------------------------------------------
 
 // The result of a file-system scan in a format that is serializable.
-#[derive(Serialize, Deserialize)]
-pub(crate) struct ScanFSFlat {
-    exe_to_sites: HashMap<PathBuf, Vec<PathShared>>,
-    packages: Vec<Package>,
-    sites: Vec<Vec<PathShared>>,
-}
-impl ScanFSFlat {
+// #[derive(Serialize, Deserialize)]
+// pub(crate) struct ScanFSFlat {
+//     exe_to_sites: HashMap<PathBuf, Vec<PathShared>>,
+//     packages: Vec<Package>,
+//     sites: Vec<Vec<PathShared>>,
+// }
+// impl ScanFSFlat {
 
-    pub(crate) fn from_scan_fs(
-        scan_fs: ScanFS,
-    ) -> ResultDynError<Self> {
-        // get ordered packages
-        let packages = scan_fs.get_packages();
-        let sites = packages.iter().map(|p| scan_fs.package_to_sites.get(p).unwrap().clone()).collect();
-        Ok(ScanFSFlat {
-            exe_to_sites: scan_fs.exe_to_sites.clone(),
-            packages,
-            sites,
-        })
-    }
-}
+//     pub(crate) fn from_scan_fs(
+//         scan_fs: ScanFS,
+//     ) -> ResultDynError<Self> {
+//         // get ordered packages
+//         let packages = scan_fs.get_packages();
+//         let sites = packages.iter().map(|p| scan_fs.package_to_sites.get(p).unwrap().clone()).collect();
+//         Ok(ScanFSFlat {
+//             exe_to_sites: scan_fs.exe_to_sites.clone(),
+//             packages,
+//             sites,
+//         })
+//     }
+// }
 
 // The result of a file-system scan.
 pub(crate) struct ScanFS {
-    // NOTE: these attributes used by reporters
+    // NOTE: these attributes are used by reporters
     /// A mapping of exe path to site packages paths
     pub(crate) exe_to_sites: HashMap<PathBuf, Vec<PathShared>>,
     /// A mapping of Package tp a site package paths
     pub(crate) package_to_sites: HashMap<Package, Vec<PathShared>>,
+}
+
+impl Serialize for ScanFS {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // Collect and sort by keys for stable ordering
+        let mut exe_to_sites: Vec<_> = self.exe_to_sites.iter().collect();
+        exe_to_sites.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
+
+        let mut package_to_sites: Vec<_> = self.package_to_sites.iter().collect();
+        package_to_sites.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
+
+        // Serialize as tuple of sorted vectors
+        let data = (&exe_to_sites, &package_to_sites);
+        data.serialize(serializer)
+    }
 }
 
 impl ScanFS {
@@ -769,12 +787,7 @@ mod tests {
             Package::from_name_version_durl("flask", "1.1.3", None).unwrap(),
         ];
         let sfs = ScanFS::from_exe_site_packages(exe, site, packages.clone()).unwrap();
-        let sfsf = ScanFSFlat::from_scan_fs(sfs).unwrap();
-        let json = serde_json::to_string(&sfsf).unwrap();
-        assert_eq!(json, "{\"exe_to_sites\":{\"/usr/bin/python3\":[\"/usr/lib/python3/site-packages\"]},\"packages\":[{\"name\":\"flask\",\"key\":\"flask\",\"version\":[{\"Number\":1},{\"Number\":1},{\"Number\":3}],\"direct_url\":null},{\"name\":\"numpy\",\"key\":\"numpy\",\"version\":[{\"Number\":1},{\"Number\":19},{\"Number\":3}],\"direct_url\":null},{\"name\":\"static-frame\",\"key\":\"static_frame\",\"version\":[{\"Number\":2},{\"Number\":13},{\"Number\":0}],\"direct_url\":null}],\"sites\":[[\"/usr/lib/python3/site-packages\"],[\"/usr/lib/python3/site-packages\"],[\"/usr/lib/python3/site-packages\"]]}");
+        let json = serde_json::to_string(&sfs).unwrap();
+        assert_eq!(json, "[[[\"/usr/bin/python3\",[\"/usr/lib/python3/site-packages\"]]],[[{\"name\":\"flask\",\"key\":\"flask\",\"version\":[{\"Number\":1},{\"Number\":1},{\"Number\":3}],\"direct_url\":null},[\"/usr/lib/python3/site-packages\"]],[{\"name\":\"numpy\",\"key\":\"numpy\",\"version\":[{\"Number\":1},{\"Number\":19},{\"Number\":3}],\"direct_url\":null},[\"/usr/lib/python3/site-packages\"]],[{\"name\":\"static-frame\",\"key\":\"static_frame\",\"version\":[{\"Number\":2},{\"Number\":13},{\"Number\":0}],\"direct_url\":null},[\"/usr/lib/python3/site-packages\"]]]]");
     }
-
 }
-
-
-
