@@ -351,14 +351,15 @@ fn get_dep_manifest(
     bound: &PathBuf,
     bound_options: Option<&Vec<String>>,
 ) -> Result<DepManifest, Box<dyn std::error::Error>> {
-    if bound.to_str().map_or(false, |s| s.ends_with(".git")) {
+    if bound.to_str().is_some_and(|s| s.ends_with(".git")) {
+        // if bound.to_str().map_or(false, |s| s.ends_with(".git")) {
         DepManifest::from_git_repo(bound, bound_options)
     } else if bound
         .to_str()
-        .map_or(false, |s| s.ends_with("pyproject.toml"))
+        .is_some_and(|s| s.ends_with("pyproject.toml"))
     {
         DepManifest::from_pyproject_file(bound, bound_options)
-    } else if bound.to_str().map_or(false, |s| s.starts_with("http")) {
+    } else if bound.to_str().is_some_and(|s| s.starts_with("http")) {
         // might have URL based requirements or pyproject
         DepManifest::from_url(&UreqClientLive, bound, bound_options)
     } else {
