@@ -61,16 +61,14 @@ pub(crate) fn path_cache() -> Option<PathBuf> {
             path
         })
     } else if env::consts::OS == "macos" {
-        path_home().map(|home| {
-            let mut path = PathBuf::from(home);
+        path_home().map(|mut path| {
             path.push("Library");
             path.push("Caches");
             path.push(IO_FETTER);
             path
         })
     } else {
-        path_home().map(|home| {
-            let mut path = PathBuf::from(home);
+        path_home().map(|mut path| {
             path.push(".cache");
             path.push(IO_FETTER);
             path

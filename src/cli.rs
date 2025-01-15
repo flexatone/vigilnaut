@@ -4,6 +4,10 @@ use crate::validation_report::ValidationFlags;
 use clap::{Parser, Subcommand, ValueEnum};
 use std::env;
 use std::ffi::OsString;
+use std::fs::File;
+use std::io::Read;
+use std::io::Write;
+use std::path::Path;
 use std::path::PathBuf;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -324,6 +328,26 @@ enum UnpackFilesSubcommand {
 
 //------------------------------------------------------------------------------
 // Utility constructors specialized fro CLI contexts
+
+fn scan_cache_read<P: AsRef<Path>>(
+    path: P,
+) -> Result<ScanFS, Box<dyn std::error::Error>> {
+    let mut file = File::open(path)?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+    let data = serde_json::from_str(&contents)?;
+    Ok(data)
+}
+
+fn scan_cache_write<P: AsRef<Path>>(
+    path: P,
+    data: &ScanFS,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let json = serde_json::to_string(data)?;
+    let mut file = File::create(path)?;
+    file.write_all(json.as_bytes())?;
+    Ok(())
+}
 
 // Get a ScanFS, optionally using exe_paths if provided
 fn get_scan(
