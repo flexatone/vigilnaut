@@ -1,6 +1,9 @@
 use std::env;
+use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
+use std::time::Duration;
+use std::time::SystemTime;
 
 //------------------------------------------------------------------------------
 
@@ -94,11 +97,28 @@ pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
     Ok(fp)
 }
 
+pub(crate) fn path_within_duration<P: AsRef<Path>>(
+    cache_path: P,
+    max_dur: Duration,
+) -> bool {
+    if let Ok(metadata) = fs::metadata(&cache_path) {
+        if let Ok(modified) = metadata.modified() {
+            if let Ok(dur) = SystemTime::now().duration_since(modified) {
+                return dur <= max_dur;
+            }
+        }
+    }
+    false
+}
+
 //------------------------------------------------------------------------------
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs::File;
     use std::path::Component;
+
+    use tempfile::tempdir;
 
     #[test]
     fn test_url_strip_user_a() {
@@ -160,4 +180,12 @@ mod tests {
         assert_eq!(result, true);
     }
 
+    #[test]
+    fn test_path_within_duration_a() {
+        let temp_dir = tempdir().unwrap();
+        let fp = temp_dir.path().join("foo.txt");
+        let _ = File::create(fp.clone()).unwrap();
+        assert!(path_within_duration(&fp, Duration::from_secs(60)));
+        assert!(!path_within_duration(&fp, Duration::from_nanos(1)));
+    }
 }
