@@ -47,6 +47,34 @@ pub(crate) fn path_home() -> Option<PathBuf> {
     }
 }
 
+const IO_FETTER: &str = "io.fetter";
+
+pub(crate) fn path_cache() -> Option<PathBuf> {
+    if env::consts::OS == "windows" {
+        env::var_os("LOCALAPPDATA").map(|local_app_data| {
+            let mut path = PathBuf::from(local_app_data);
+            path.push(IO_FETTER);
+            path.push("Cache");
+            path
+        })
+    } else if env::consts::OS == "macos" {
+        path_home().map(|home| {
+            let mut path = PathBuf::from(home);
+            path.push("Library");
+            path.push("Caches");
+            path.push(IO_FETTER);
+            path
+        })
+    } else {
+        path_home().map(|home| {
+            let mut path = PathBuf::from(home);
+            path.push(".cache");
+            path.push(IO_FETTER);
+            path
+        })
+    }
+}
+
 pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
     let mut fp = path.to_path_buf();
     if let Some(path_str) = fp.to_str() {
@@ -70,6 +98,7 @@ pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Component;
 
     #[test]
     fn test_url_strip_user_a() {
@@ -120,4 +149,15 @@ mod tests {
         let home = path_home().unwrap();
         assert!(p2.starts_with(home));
     }
+
+    #[test]
+    fn test_path_cache_a() {
+        let p1 = path_cache().unwrap();
+        let result = p1.components().any(|component| match component {
+            Component::Normal(name) => name == IO_FETTER,
+            _ => false,
+        });
+        assert_eq!(result, true);
+    }
+
 }
