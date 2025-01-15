@@ -84,6 +84,7 @@ fn is_exe(path: &Path) -> bool {
     match path.file_name().and_then(|f| f.to_str()) {
         Some(file_name) if file_name.starts_with("python") => {
             let suffix = &file_name[6..];
+            // NOTE: this will not work for windows .exe
             if suffix.is_empty() || suffix.chars().all(|c| c.is_ascii_digit() || c == '.')
             {
                 match fs::metadata(path) {

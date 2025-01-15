@@ -141,6 +141,8 @@ impl<'de> Deserialize<'de> for ScanFS {
 }
 
 impl ScanFS {
+
+    /// Main entry point for creatin a ScanFS
     fn from_exe_to_sites(
         exe_to_sites: HashMap<PathBuf, Vec<PathShared>>,
     ) -> ResultDynError<Self> {
@@ -185,6 +187,8 @@ impl ScanFS {
             .collect();
         Self::from_exe_to_sites(exe_to_sites)
     }
+
+    /// Create a ScanFS from discovered exe; assume that all exes found here are given with absolute paths
     pub(crate) fn from_exe_scan(force_usite: bool) -> ResultDynError<Self> {
         // For every unique exe, we hae a list of site packages; some site packages might be associated with more than one exe, meaning that a reverse lookup would have to be site-package to Vec of exe
         let exe_to_sites: HashMap<PathBuf, Vec<PathShared>> = find_exe()
@@ -196,7 +200,8 @@ impl ScanFS {
             .collect();
         Self::from_exe_to_sites(exe_to_sites)
     }
-    // Alternative constructor from in-memory objects, mostly for testing. Here we provide notional exe and site paths, and focus just on collecting Packages.
+
+    /// Alternative constructor from in-memory objects, only for testing. Here we provide notional exe and site paths, and focus just on collecting Packages.
     #[allow(dead_code)]
     pub(crate) fn from_exe_site_packages(
         exe: PathBuf,
@@ -248,12 +253,6 @@ impl ScanFS {
         let mut packages: Vec<Package> = self.package_to_sites.keys().cloned().collect();
         packages.sort();
         packages
-    }
-
-    /// The length of the scan is the number of unique packages.
-    #[allow(dead_code)]
-    pub(crate) fn len(&self) -> usize {
-        self.package_to_sites.len()
     }
 
     //--------------------------------------------------------------------------
@@ -468,7 +467,7 @@ mod tests {
             vec![PathShared::from_path_buf(fp_sp.to_path_buf())],
         );
         let sfs = ScanFS::from_exe_to_sites(exe_to_sites).unwrap();
-        assert_eq!(sfs.len(), 2);
+        assert_eq!(sfs.package_to_sites.len(), 2);
 
         let dm1 = DepManifest::from_iter(vec!["numpy >= 1.19", "foo==3"]).unwrap();
         assert_eq!(dm1.len(), 2);
@@ -506,7 +505,7 @@ mod tests {
             Package::from_name_version_durl("flask", "1.1.3", None).unwrap(),
         ];
         let sfs = ScanFS::from_exe_site_packages(exe, site, packages).unwrap();
-        assert_eq!(sfs.len(), 7);
+        assert_eq!(sfs.package_to_sites.len(), 7);
         // sfs.report();
         let dm = sfs.to_dep_manifest(Anchor::Lower).unwrap();
         assert_eq!(dm.len(), 3);
@@ -775,6 +774,7 @@ mod tests {
         let matched = sfs.search_by_match("*frame*", true);
         assert_eq!(matched, vec![packages[1].clone()]);
     }
+
 
     //--------------------------------------------------------------------------
 

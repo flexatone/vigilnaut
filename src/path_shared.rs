@@ -54,26 +54,8 @@ impl<'de> Deserialize<'de> for PathShared {
     where
         D: Deserializer<'de>,
     {
-        struct PathSharedVisitor;
-
-        // use elided (inferred) lifetime
-        impl Visitor<'_> for PathSharedVisitor {
-            type Value = PathShared;
-
-            // called if serialization fails
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a valid UTF-8 encoded path string")
-            }
-            // called when target is a string
-            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(PathShared(Arc::new(PathBuf::from(value))))
-            }
-        }
-        // Use Serde's built-in string deserialization and map it to PathShared
-        deserializer.deserialize_str(PathSharedVisitor)
+        let path_str = String::deserialize(deserializer)?;
+        Ok(PathShared(Arc::new(PathBuf::from(path_str))))
     }
 }
 
