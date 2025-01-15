@@ -4,6 +4,9 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::time::Duration;
 use std::time::SystemTime;
+use std::process::Command;
+
+use std::os::unix::fs::PermissionsExt;
 
 //------------------------------------------------------------------------------
 
@@ -40,7 +43,45 @@ pub(crate) fn url_strip_user(url: &String) -> String {
     url.to_string()
 }
 
+const PY_SYS_EXE: &str = "import sys;print(sys.executable)";
+
+// Use the default Python to get absolute path to the exe.
+pub(crate) fn get_absolute_path_from_exe(name: &str) -> Option<PathBuf> {
+    match Command::new(name).arg("-c").arg(PY_SYS_EXE).output() {
+        Ok(output) => match std::str::from_utf8(&output.stdout) {
+            Ok(s) => Some(PathBuf::from(s.trim())),
+            Err(_) => None,
+        },
+        Err(_) => None,
+    }
+}
+
 //------------------------------------------------------------------------------
+
+// Determine if the Path is an exe; must be an absolute path.
+fn is_python_exe_file_name(path: &Path) -> bool {
+    match path.file_name().and_then(|f| f.to_str()) {
+        Some(name) if name.starts_with("python") => {
+            let suffix = &name[6..];
+            // NOTE: this will not work for windows .exe
+            suffix.is_empty() || suffix.chars().all(|c| c.is_ascii_digit() || c == '.')
+        },
+        _ => false,
+    }
+}
+
+// Return True if the absolute path points to a python executable. We assume this has already been proven to exist.
+pub(crate) fn is_python_exe(path: &Path) -> bool {
+    if is_python_exe_file_name(path) {
+        match fs::metadata(path) {
+            Ok(md) => md.permissions().mode() & 0o111 != 0,
+            Err(_) => false,
+        }
+    }
+    else {
+        false
+    }
+}
 
 pub(crate) fn path_home() -> Option<PathBuf> {
     if env::consts::OS == "windows" {
@@ -87,13 +128,35 @@ pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
             println!("post conversion: {:?}", fp);
         }
     }
-    // Only expand relative paths if there is more than one component
-    if fp.is_relative() && fp.components().count() > 1 {
+    if fp.is_relative() {
         let cwd = env::current_dir().map_err(|e| e.to_string())?;
         fp = cwd.join(fp);
     }
+    if !fp.is_absolute() {
+        panic!("Could not derive absolute path {:?}", fp);
+    }
     Ok(fp)
 }
+
+
+pub(crate) fn exe_path_normalize(path: &Path) -> ResultDynError<PathBuf> {
+    let mut fp = path.to_path_buf();
+    // if given a single-component path that is a Python name, call it to get the full path to the exe
+    if is_python_exe_file_name(path) && path.components().count() == 1 {
+        match path.file_name().and_then(|f| f.to_str()) {
+            Some(name) => {
+                // TODO: do not unwrap()
+                fp = get_absolute_path_from_exe(name).unwrap();
+            },
+            _ => {
+                let msg = format!("cannot get absolute path from exe: {:?}", path);
+                return Err(msg.into());
+            }
+        }
+    }
+    path_normalize(&fp)
+}
+
 
 pub(crate) fn path_within_duration<P: AsRef<Path>>(
     cache_path: P,
@@ -186,4 +249,26 @@ mod tests {
         assert!(path_within_duration(&fp, Duration::from_secs(60)));
         assert!(!path_within_duration(&fp, Duration::from_nanos(1)));
     }
+
+    #[test]
+    fn test_is_python_exe_file_name_a() {
+        let temp_dir = tempdir().unwrap();
+        let fp = temp_dir.path().join("python3");
+        assert!(is_python_exe_file_name(&fp));
+    }
+
+    #[test]
+    fn test_is_python_exe_file_name_b() {
+        let temp_dir = tempdir().unwrap();
+        let fp = temp_dir.path().join("python--");
+        assert!(!is_python_exe_file_name(&fp));
+    }
+
+    #[test]
+    fn test_is_python_exe_file_name_c() {
+        let temp_dir = tempdir().unwrap();
+        let fp = temp_dir.path().join("python3.12.1000");
+        assert!(is_python_exe_file_name(&fp));
+    }
+
 }

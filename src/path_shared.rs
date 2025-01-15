@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use std::path::MAIN_SEPARATOR;
 use std::sync::Arc;
 
-use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::util::path_home;

@@ -21,7 +21,7 @@ use crate::path_shared::PathShared;
 use crate::scan_report::ScanReport;
 use crate::unpack_report::UnpackReport;
 use crate::ureq_client::UreqClientLive;
-use crate::util::path_normalize;
+use crate::util::exe_path_normalize;
 use crate::util::ResultDynError;
 use crate::validation_report::ValidationFlags;
 use crate::validation_report::ValidationRecord;
@@ -141,8 +141,7 @@ impl<'de> Deserialize<'de> for ScanFS {
 }
 
 impl ScanFS {
-
-    /// Main entry point for creatin a ScanFS
+    /// Main entry point for creating a ScanFS. All public creation should go through this interface.
     fn from_exe_to_sites(
         exe_to_sites: HashMap<PathBuf, Vec<PathShared>>,
     ) -> ResultDynError<Self> {
@@ -180,7 +179,7 @@ impl ScanFS {
             .into_par_iter()
             .map(|exe| {
                 // if normalization fails, just copy the pre-norm
-                let exe_norm = path_normalize(&exe).unwrap_or_else(|_| exe.clone());
+                let exe_norm = exe_path_normalize(&exe).unwrap_or_else(|_| exe.clone());
                 let dirs = get_site_package_dirs(&exe_norm, force_usite);
                 (exe_norm, dirs)
             })
@@ -774,7 +773,6 @@ mod tests {
         let matched = sfs.search_by_match("*frame*", true);
         assert_eq!(matched, vec![packages[1].clone()]);
     }
-
 
     //--------------------------------------------------------------------------
 
