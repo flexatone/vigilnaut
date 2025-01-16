@@ -1,3 +1,4 @@
+use sha2::{Digest, Sha256};
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -166,6 +167,22 @@ pub(crate) fn path_within_duration<P: AsRef<Path>>(
     false
 }
 
+fn hash_paths(paths: Vec<PathBuf>) -> String {
+    let mut paths = paths;
+    paths.sort();
+    let concatenated = paths
+        .iter()
+        .map(|path| path.to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    // Step 3: Compute the SHA-256 hash
+    let mut hasher = Sha256::new();
+    hasher.update(concatenated.as_bytes());
+    let hash = hasher.finalize();
+    hash.iter().map(|byte| format!("{:02x}", byte)).collect()
+}
+
 //------------------------------------------------------------------------------
 #[cfg(test)]
 mod tests {
@@ -263,5 +280,18 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let fp = temp_dir.path().join("python3.12.1000");
         assert!(is_python_exe_file_name(&fp));
+    }
+
+    #[test]
+    fn test_hash_paths_a() {
+        let paths = vec![
+            Path::new("/a/foo/bar").to_path_buf(),
+            Path::new("/b/foo/bar").to_path_buf(),
+        ];
+        let hashed = hash_paths(paths);
+        assert_eq!(
+            hashed,
+            "8bfde7be15ae137ce1a5c2224bb827aa9713d93bd65cadeaede9df451b88c4ad"
+        )
     }
 }

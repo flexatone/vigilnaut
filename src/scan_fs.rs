@@ -170,18 +170,21 @@ impl ScanFS {
             package_to_sites,
         })
     }
+
     // Given a Vec of PathBuf to executables, use them to collect site packages.
     pub(crate) fn from_exes(
         exes: Vec<PathBuf>,
         force_usite: bool,
     ) -> ResultDynError<Self> {
-        let exe_to_sites: HashMap<PathBuf, Vec<PathShared>> = exes
+        let exes_norm: Vec<_> = exes
+            .iter()
+            .map(|e| exe_path_normalize(e))
+            .collect::<Result<Vec<_>, _>>()?;
+        let exe_to_sites: HashMap<PathBuf, Vec<PathShared>> = exes_norm
             .into_par_iter()
             .map(|exe| {
-                // if normalization fails, just copy the pre-norm
-                let exe_norm = exe_path_normalize(&exe).unwrap_or_else(|_| exe.clone());
-                let dirs = get_site_package_dirs(&exe_norm, force_usite);
-                (exe_norm, dirs)
+                let dirs = get_site_package_dirs(&exe, force_usite);
+                (exe, dirs)
             })
             .collect();
         Self::from_exe_to_sites(exe_to_sites)
@@ -189,8 +192,10 @@ impl ScanFS {
 
     /// Create a ScanFS from discovered exe; assume that all exes found here are given with absolute paths
     pub(crate) fn from_exe_scan(force_usite: bool) -> ResultDynError<Self> {
+        // NOTE: strong assumption that find_exe always returns absolute paths.
+        let exes = find_exe();
         // For every unique exe, we hae a list of site packages; some site packages might be associated with more than one exe, meaning that a reverse lookup would have to be site-package to Vec of exe
-        let exe_to_sites: HashMap<PathBuf, Vec<PathShared>> = find_exe()
+        let exe_to_sites: HashMap<PathBuf, Vec<PathShared>> = exes
             .into_par_iter()
             .map(|exe| {
                 let dirs = get_site_package_dirs(&exe, force_usite);
