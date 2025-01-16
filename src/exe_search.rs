@@ -6,9 +6,9 @@ use std::path::PathBuf;
 
 use rayon::prelude::*;
 
-use crate::util::path_home;
-use crate::util::is_python_exe;
 use crate::util::get_absolute_path_from_exe;
+use crate::util::is_python_exe;
+use crate::util::path_home;
 
 //------------------------------------------------------------------------------
 // Provide absolute paths for directories that should be excluded from executable search.
@@ -86,7 +86,6 @@ fn is_symlink(path: &Path) -> bool {
     }
 }
 
-
 /// Try to find all Python executables given a starting directory. This will recursively search all directories that are not symlinks. All exe should be returned as absolute paths.
 fn find_exe_inner(
     path: &Path,
@@ -153,8 +152,8 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::os::unix::fs::symlink;
-    use tempfile::tempdir;
     use std::os::unix::fs::PermissionsExt;
+    use tempfile::tempdir;
 
     #[test]
     fn test_get_search_exclude_paths_a() {

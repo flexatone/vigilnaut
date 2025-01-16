@@ -2,9 +2,9 @@ use std::env;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
 use std::time::Duration;
 use std::time::SystemTime;
-use std::process::Command;
 
 use std::os::unix::fs::PermissionsExt;
 
@@ -65,7 +65,7 @@ fn is_python_exe_file_name(path: &Path) -> bool {
             let suffix = &name[6..];
             // NOTE: this will not work for windows .exe
             suffix.is_empty() || suffix.chars().all(|c| c.is_ascii_digit() || c == '.')
-        },
+        }
         _ => false,
     }
 }
@@ -77,8 +77,7 @@ pub(crate) fn is_python_exe(path: &Path) -> bool {
             Ok(md) => md.permissions().mode() & 0o111 != 0,
             Err(_) => false,
         }
-    }
-    else {
+    } else {
         false
     }
 }
@@ -117,6 +116,7 @@ pub(crate) fn path_cache() -> Option<PathBuf> {
     }
 }
 
+/// Given a Path, make it absolute, either expanding `~` or prepending current working directory.
 pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
     let mut fp = path.to_path_buf();
     if let Some(path_str) = fp.to_str() {
@@ -132,31 +132,25 @@ pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
         let cwd = env::current_dir().map_err(|e| e.to_string())?;
         fp = cwd.join(fp);
     }
-    if !fp.is_absolute() {
-        panic!("Could not derive absolute path {:?}", fp);
-    }
     Ok(fp)
 }
-
 
 pub(crate) fn exe_path_normalize(path: &Path) -> ResultDynError<PathBuf> {
     let mut fp = path.to_path_buf();
     // if given a single-component path that is a Python name, call it to get the full path to the exe
     if is_python_exe_file_name(path) && path.components().count() == 1 {
-        match path.file_name().and_then(|f| f.to_str()) {
-            Some(name) => {
-                // TODO: do not unwrap()
-                fp = get_absolute_path_from_exe(name).unwrap();
-            },
-            _ => {
+        fp = match path.file_name().and_then(|f| f.to_str()) {
+            Some(name) => get_absolute_path_from_exe(name).ok_or_else(|| {
+                format!("cannot get absolute path from exe: {:?}", path)
+            })?,
+            None => {
                 let msg = format!("cannot get absolute path from exe: {:?}", path);
                 return Err(msg.into());
             }
-        }
+        };
     }
     path_normalize(&fp)
 }
-
 
 pub(crate) fn path_within_duration<P: AsRef<Path>>(
     cache_path: P,
@@ -270,5 +264,4 @@ mod tests {
         let fp = temp_dir.path().join("python3.12.1000");
         assert!(is_python_exe_file_name(&fp));
     }
-
 }

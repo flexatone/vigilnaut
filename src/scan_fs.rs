@@ -219,7 +219,6 @@ impl ScanFS {
                 .or_insert_with(Vec::new)
                 .push(site_shared.clone());
         }
-
         Ok(ScanFS {
             exe_to_sites,
             package_to_sites,
