@@ -13,13 +13,13 @@ use std::thread;
 use std::time::Duration;
 
 use crate::dep_manifest::DepManifest;
+use crate::exe_search::find_exe;
 use crate::scan_fs::Anchor;
 use crate::scan_fs::ScanFS;
 use crate::spin::spin;
 use crate::table::Tableable;
 use crate::ureq_client::UreqClientLive;
 use crate::util::path_normalize;
-use crate::exe_search::find_exe;
 
 //------------------------------------------------------------------------------
 // utility enums
@@ -356,22 +356,14 @@ fn get_scan(
     log: bool,
     cache_dur: Duration,
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
-
-    let exes_vec: Vec<PathBuf> = match exe_paths.is_none() {
+    let exes: Vec<PathBuf> = match exe_paths.is_none() {
         true => find_exe().into_iter().collect(),
         false => exe_paths.unwrap(),
     };
 
-    // if exe_paths.is_none() {
-    //     let exes_vec: Vec<PathBuf> = find_exe().into_iter().collect();
-    // }
-    // else {
-    //     let exes_vec: Vec<PathBuf> = exe_paths.unwrap();
-    // }
-
     if cache_dur > DURATION_0 {
         // TODO: avoid this clone
-        let sfs = ScanFS::from_cache(exes_vec.clone(), force_usite);
+        let sfs = ScanFS::from_cache(exes.clone(), force_usite);
         if sfs.is_ok() {
             return sfs;
         }
@@ -382,10 +374,10 @@ fn get_scan(
     if log {
         spin(active.clone(), "scanning".to_string());
     }
-    let sfs = ScanFS::from_exes(exes_vec, force_usite);
+    let sfs = ScanFS::from_exes(exes, force_usite);
     if cache_dur > DURATION_0 {
         if let Ok(ref sfsl) = sfs {
-            sfsl.to_cache();
+            sfsl.to_cache()?;
         }
     }
     if log {

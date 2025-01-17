@@ -18,7 +18,7 @@ use crate::count_report::CountReport;
 use crate::dep_manifest::DepManifest;
 use crate::dep_spec::DepOperator;
 use crate::dep_spec::DepSpec;
-use crate::exe_search::find_exe;
+// use crate::exe_search::find_exe;
 use crate::package::Package;
 use crate::package_match::match_str;
 use crate::path_shared::PathShared;
@@ -183,7 +183,7 @@ impl ScanFS {
         I: IntoIterator<Item = PathBuf>,
     {
         if let Some(mut cache_dir) = path_cache(true) {
-            let key = hash_paths(exes);
+            let key = hash_paths(exes, force_usite);
             cache_dir.push(key);
             let cache_fp = cache_dir.with_extension("json");
             eprintln!("attempting to load {:?}", cache_fp);
@@ -217,12 +217,12 @@ impl ScanFS {
         Self::from_exe_to_sites(exe_to_sites)
     }
 
-    /// Create a ScanFS from discovered exe; assume that all exes found here are given with absolute paths
-    pub(crate) fn from_exe_scan(force_usite: bool) -> ResultDynError<Self> {
-        // NOTE: strong assumption that find_exe always returns absolute paths.
-        let exes = find_exe();
-        Self::from_exes(exes, force_usite)
-    }
+    // Create a ScanFS from discovered exe; assume that all exes found here are given with absolute paths
+    // pub(crate) fn from_exe_scan(force_usite: bool) -> ResultDynError<Self> {
+    //     // NOTE: strong assumption that find_exe always returns absolute paths.
+    //     let exes = find_exe();
+    //     Self::from_exes(exes, force_usite)
+    // }
 
     /// Alternative constructor from in-memory objects, only for testing. Here we provide notional exe and site paths, and focus just on collecting Packages.
     #[allow(dead_code)]
@@ -281,7 +281,7 @@ impl ScanFS {
 
     pub(crate) fn to_hash_exes(&self) -> String {
         let paths = self.exe_to_sites.keys().cloned(); // an iterator
-        hash_paths(paths)
+        hash_paths(paths, false) // store usite config!
     }
 
     pub(crate) fn to_cache(&self) -> ResultDynError<()> {
@@ -854,7 +854,7 @@ mod tests {
         let hash = sfs.to_hash_exes();
         assert_eq!(
             hash,
-            "31f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6"
+            "35cc8bbf5f965f99f2ed716a23e0cfbb70b8977ba65e837708e960fc13e51da2"
         );
     }
 
@@ -871,7 +871,7 @@ mod tests {
         let hash = sfs.to_hash_exes();
         assert_eq!(
             hash,
-            "aee8b7b246df8f9039afb4144a1f6fd8d2ca17a180786b69acc140d282b71a49"
+            "973122597250deea4e62e359208ab4335782561c12032746ce044a387a201d09"
         );
     }
 }

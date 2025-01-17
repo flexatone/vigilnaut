@@ -222,7 +222,31 @@ pub(crate) fn path_within_duration<P: AsRef<Path>>(
 //     })
 // }
 
-pub(crate) fn hash_paths<I>(paths: I) -> String
+// pub(crate) fn hash_paths<I>(paths: I) -> String
+// where
+//     I: IntoIterator<Item = PathBuf>,
+// {
+//     // Collect and sort the paths (clone is required to take ownership)
+//     let mut ps: Vec<PathBuf> = paths.into_iter().collect();
+//     ps.sort();
+
+//     let concatenated = ps
+//         .iter()
+//         .map(|path| path.to_string_lossy())
+//         .collect::<Vec<_>>()
+//         .join("\n");
+
+//     let mut hasher = Sha256::new();
+//     hasher.update(concatenated.as_bytes());
+//     let hash = hasher.finalize();
+
+//     hash.iter().fold(String::new(), |mut acc, byte| {
+//         write!(&mut acc, "{:02x}", byte).unwrap();
+//         acc
+//     })
+// }
+
+pub(crate) fn hash_paths<I>(paths: I, flag: bool) -> String
 where
     I: IntoIterator<Item = PathBuf>,
 {
@@ -236,8 +260,9 @@ where
         .collect::<Vec<_>>()
         .join("\n");
 
+    let input = format!("{concatenated}\n{}", flag);
     let mut hasher = Sha256::new();
-    hasher.update(concatenated.as_bytes());
+    hasher.update(input.as_bytes());
     let hash = hasher.finalize();
 
     hash.iter().fold(String::new(), |mut acc, byte| {
@@ -351,10 +376,10 @@ mod tests {
             Path::new("/a/foo/bar").to_path_buf(),
             Path::new("/b/foo/bar").to_path_buf(),
         ];
-        let hashed = hash_paths(paths);
+        let hashed = hash_paths(paths, true);
         assert_eq!(
             hashed,
-            "8bfde7be15ae137ce1a5c2224bb827aa9713d93bd65cadeaede9df451b88c4ad"
+            "aa1e51b6cc2de01f6180c646bd9fe6e5c548bdee475a212747588edc5b0d741b"
         )
     }
 }
