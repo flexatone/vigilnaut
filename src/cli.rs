@@ -475,8 +475,6 @@ where
                 let _ = sr.to_file(output, *delimiter);
             }
             Some(ScanSubcommand::Display) | None => {
-                // default
-                // default
                 let sr = sfs.to_scan_report();
                 let _ = sr.to_stdout();
             }
