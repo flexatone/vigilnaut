@@ -122,12 +122,11 @@ pub(crate) fn path_cache(create: bool) -> Option<PathBuf> {
                 eprintln!("Failed to create cache directory: {}", e);
                 return None;
             }
-        return None;
+            return None;
         }
     }
     cache_path
 }
-
 
 // pub(crate) fn path_cache() -> Option<PathBuf> {
 //     if env::consts::OS == "windows" {

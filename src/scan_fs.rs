@@ -805,7 +805,6 @@ mod tests {
         assert_eq!(sfsd.package_to_sites.len(), 3);
     }
 
-
     #[test]
     fn test_to_hash_a() {
         let exe = PathBuf::from("/usr/bin/python3");
@@ -817,7 +816,10 @@ mod tests {
         ];
         let sfs = ScanFS::from_exe_site_packages(exe, site, packages.clone()).unwrap();
         let hash = sfs.to_hash_exes();
-        assert_eq!(hash, "31f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6");
+        assert_eq!(
+            hash,
+            "31f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6"
+        );
     }
 
     #[test]
@@ -831,6 +833,9 @@ mod tests {
         ];
         let sfs = ScanFS::from_exe_site_packages(exe, site, packages.clone()).unwrap();
         let hash = sfs.to_hash_exes();
-        assert_eq!(hash, "aee8b7b246df8f9039afb4144a1f6fd8d2ca17a180786b69acc140d282b71a49");
+        assert_eq!(
+            hash,
+            "aee8b7b246df8f9039afb4144a1f6fd8d2ca17a180786b69acc140d282b71a49"
+        );
     }
 }

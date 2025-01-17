@@ -22,10 +22,9 @@ use crate::scan_fs::ScanFS;
 use crate::spin::spin;
 use crate::table::Tableable;
 use crate::ureq_client::UreqClientLive;
-use crate::util::path_normalize;
-use crate::util::path_cache;
 use crate::util::hash_paths;
-
+use crate::util::path_cache;
+use crate::util::path_normalize;
 
 //------------------------------------------------------------------------------
 // utility enums
@@ -355,7 +354,6 @@ fn scan_cache_write<P: AsRef<Path> + std::fmt::Debug>(
 
 const DURATION_0: Duration = Duration::from_secs(0);
 
-
 // Get a ScanFS, optionally using exe_paths if provided
 fn get_scan(
     exe_paths: Option<Vec<PathBuf>>,
@@ -363,7 +361,6 @@ fn get_scan(
     log: bool,
     cache_dur: Duration,
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
-
     if cache_dur > DURATION_0 {
         if let Some(ref ep) = exe_paths {
             if let Some(mut cache_dir) = path_cache(true) {
@@ -408,7 +405,6 @@ fn get_scan(
     }
     return sfs;
 }
-
 
 // // Get a ScanFS, optionally using exe_paths if provided
 // fn get_scan(
@@ -489,11 +485,7 @@ where
     }
     // we always do a scan; we might cache this
     let quiet = cli.quiet;
-    let sfs = get_scan(cli.exe,
-            cli.user_site,
-            !quiet,
-            Duration::from_secs(0),
-            )?;
+    let sfs = get_scan(cli.exe, cli.user_site, !quiet, Duration::from_secs(0))?;
 
     match &cli.command {
         Some(Commands::Scan { subcommands }) => match subcommands {
