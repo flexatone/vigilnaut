@@ -78,6 +78,10 @@ struct Cli {
     #[arg(short, long, value_name = "FILES", required = false)]
     exe: Option<Vec<PathBuf>>,
 
+    /// Create and / or use a cache that expires after the provided number of seconds.
+    #[arg(long, short, required = false, default_value = "0")]
+    cache_duration: u64,
+
     /// Disable logging and terminal animation.
     #[arg(long, short)]
     quiet: bool,
@@ -360,10 +364,13 @@ fn get_scan(
         true => find_exe().into_iter().collect(),
         false => exe_paths.unwrap(),
     };
+    eprintln!("cache_dur {:?}", cache_dur);
+
+    let mut sfs: Result<ScanFS, Box<dyn std::error::Error>> = Err("Not initialized yet".into());
 
     if cache_dur > DURATION_0 {
         // TODO: avoid this clone
-        let sfs = ScanFS::from_cache(exes.clone(), force_usite);
+        sfs = ScanFS::from_cache(exes.clone(), force_usite);
         if sfs.is_ok() {
             return sfs;
         }
@@ -374,7 +381,9 @@ fn get_scan(
     if log {
         spin(active.clone(), "scanning".to_string());
     }
-    let sfs = ScanFS::from_exes(exes, force_usite);
+    // eprintln!("calling from_exes");
+    sfs = ScanFS::from_exes(exes, force_usite);
+    // eprintln!("post from_exes: sfs {:?}", sfs);
     if cache_dur > DURATION_0 {
         if let Ok(ref sfsl) = sfs {
             sfsl.to_cache()?;
@@ -387,46 +396,6 @@ fn get_scan(
     sfs
 }
 
-// // Get a ScanFS, optionally using exe_paths if provided
-// fn get_scan(
-//     exe_paths: Option<Vec<PathBuf>>,
-//     force_usite: bool,
-//     log: bool,
-//     cache_dur: Duration,
-// ) -> Result<ScanFS, Box<dyn std::error::Error>> {
-
-//     if cache_dur > DURATION_0 {
-//         if let Some(ref ep) = exe_paths {
-//             if let Some(mut cache_dir) = path_cache(true) {
-//                 let key = hash_paths(ep);
-//                 cache_dir.push(key);
-//                 let cache_fp = cache_dir.with_extension("json");
-//             }
-//         }
-
-//         let sfs = match exe_paths {
-//             Some(exe_paths) => ScanFS::from_exes(exe_paths, force_usite),
-//             None => ScanFS::from_exe_scan(force_usite),
-//         };
-//         return sfs;
-//     }
-
-//     // full load
-//     let active = Arc::new(AtomicBool::new(true));
-//     if log {
-//         spin(active.clone(), "scanning".to_string());
-//     }
-//     let sfs = match exe_paths {
-//         Some(exe_paths) => ScanFS::from_exes(exe_paths, force_usite),
-//         None => ScanFS::from_exe_scan(force_usite),
-//     };
-
-//     if log {
-//         active.store(false, Ordering::Relaxed);
-//         thread::sleep(Duration::from_millis(100));
-//     }
-//     return sfs;
-// }
 
 // Given a Path, load a DepManifest. This might branch by extension to handle pyproject.toml and other formats.
 fn get_dep_manifest(
@@ -466,7 +435,10 @@ where
     }
     // we always do a scan; we might cache this
     let quiet = cli.quiet;
-    let sfs = get_scan(cli.exe, cli.user_site, !quiet, Duration::from_secs(0))?;
+    let sfs = get_scan(cli.exe,
+            cli.user_site,
+            !quiet,
+            Duration::from_secs(cli.cache_duration))?;
 
     match &cli.command {
         Some(Commands::Scan { subcommands }) => match subcommands {
