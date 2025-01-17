@@ -93,8 +93,8 @@ pub(crate) fn path_home() -> Option<PathBuf> {
 
 const IO_FETTER: &str = "io.fetter";
 
-pub(crate) fn path_cache() -> Option<PathBuf> {
-    if env::consts::OS == "windows" {
+pub(crate) fn path_cache(create: bool) -> Option<PathBuf> {
+    let cache_path = if env::consts::OS == "windows" {
         env::var_os("LOCALAPPDATA").map(|local_app_data| {
             let mut path = PathBuf::from(local_app_data);
             path.push(IO_FETTER);
@@ -114,8 +114,44 @@ pub(crate) fn path_cache() -> Option<PathBuf> {
             path.push(IO_FETTER);
             path
         })
+    };
+
+    if create {
+        if let Some(ref path) = cache_path {
+            if let Err(e) = fs::create_dir_all(path) {
+                eprintln!("Failed to create cache directory: {}", e);
+                return None;
+            }
+        return None;
+        }
     }
+    cache_path
 }
+
+
+// pub(crate) fn path_cache() -> Option<PathBuf> {
+//     if env::consts::OS == "windows" {
+//         env::var_os("LOCALAPPDATA").map(|local_app_data| {
+//             let mut path = PathBuf::from(local_app_data);
+//             path.push(IO_FETTER);
+//             path.push("Cache");
+//             path
+//         })
+//     } else if env::consts::OS == "macos" {
+//         path_home().map(|mut path| {
+//             path.push("Library");
+//             path.push("Caches");
+//             path.push(IO_FETTER);
+//             path
+//         })
+//     } else {
+//         path_home().map(|mut path| {
+//             path.push(".cache");
+//             path.push(IO_FETTER);
+//             path
+//         })
+//     }
+// }
 
 /// Given a Path, make it absolute, either expanding `~` or prepending current working directory.
 pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
@@ -167,7 +203,7 @@ pub(crate) fn path_within_duration<P: AsRef<Path>>(
     false
 }
 
-fn hash_paths(paths: Vec<PathBuf>) -> String {
+pub(crate) fn hash_paths(paths: Vec<PathBuf>) -> String {
     let mut paths = paths;
     paths.sort();
     let concatenated = paths
@@ -176,7 +212,6 @@ fn hash_paths(paths: Vec<PathBuf>) -> String {
         .collect::<Vec<_>>()
         .join("\n");
 
-    // Step 3: Compute the SHA-256 hash
     let mut hasher = Sha256::new();
     hasher.update(concatenated.as_bytes());
     let hash = hasher.finalize();
@@ -244,7 +279,7 @@ mod tests {
 
     #[test]
     fn test_path_cache_a() {
-        let p1 = path_cache().unwrap();
+        let p1 = path_cache(false).unwrap();
         let result = p1.components().any(|component| match component {
             Component::Normal(name) => name == IO_FETTER,
             _ => false,

@@ -23,6 +23,9 @@ use crate::spin::spin;
 use crate::table::Tableable;
 use crate::ureq_client::UreqClientLive;
 use crate::util::path_normalize;
+use crate::util::path_cache;
+use crate::util::hash_paths;
+
 
 //------------------------------------------------------------------------------
 // utility enums
@@ -349,12 +352,34 @@ fn scan_cache_write<P: AsRef<Path>>(
     Ok(())
 }
 
+const DURATION_0: Duration = Duration::from_secs(0);
+
 // Get a ScanFS, optionally using exe_paths if provided
 fn get_scan(
     exe_paths: Option<Vec<PathBuf>>,
     force_usite: bool,
     log: bool,
+    cache_dur: Duration,
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
+
+    if cache_dur > DURATION_0 {
+        if let Some(ep) = exe_paths {
+            if let Some(cache_dir) = path_cache(true) {
+                if let Some(key) = hash_paths(ep) {
+                    cache_dir.push(key);
+                    let cache_fp = cache_dir.with_extension("json");
+                }
+            }
+        }
+
+        let sfs = match exe_paths {
+            Some(exe_paths) => ScanFS::from_exes(exe_paths, force_usite),
+            None => ScanFS::from_exe_scan(force_usite),
+        };
+        return sfs;
+    }
+
+    // full load
     let active = Arc::new(AtomicBool::new(true));
     if log {
         spin(active.clone(), "scanning".to_string());
@@ -367,7 +392,7 @@ fn get_scan(
         active.store(false, Ordering::Relaxed);
         thread::sleep(Duration::from_millis(100));
     }
-    sfs
+    return sfs;
 }
 
 // Given a Path, load a DepManifest. This might branch by extension to handle pyproject.toml and other formats.
@@ -408,7 +433,11 @@ where
     }
     // we always do a scan; we might cache this
     let quiet = cli.quiet;
-    let sfs = get_scan(cli.exe, cli.user_site, !quiet).unwrap(); // handle error
+    let sfs = get_scan(cli.exe,
+            cli.user_site,
+            !quiet,
+            Duration::from_secs(0),
+            )?;
 
     match &cli.command {
         Some(Commands::Scan { subcommands }) => match subcommands {
