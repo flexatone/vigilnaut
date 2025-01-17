@@ -203,10 +203,10 @@ pub(crate) fn path_within_duration<P: AsRef<Path>>(
     false
 }
 
-pub(crate) fn hash_paths(paths: Vec<PathBuf>) -> String {
-    let mut paths = paths;
-    paths.sort();
-    let concatenated = paths
+pub(crate) fn hash_paths(paths: &Vec<PathBuf>) -> String {
+    let mut ps = paths.clone();
+    ps.sort();
+    let concatenated = ps
         .iter()
         .map(|path| path.to_string_lossy())
         .collect::<Vec<_>>()
@@ -323,7 +323,7 @@ mod tests {
             Path::new("/a/foo/bar").to_path_buf(),
             Path::new("/b/foo/bar").to_path_buf(),
         ];
-        let hashed = hash_paths(paths);
+        let hashed = hash_paths(&paths);
         assert_eq!(
             hashed,
             "8bfde7be15ae137ce1a5c2224bb827aa9713d93bd65cadeaede9df451b88c4ad"

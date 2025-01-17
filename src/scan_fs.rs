@@ -22,6 +22,7 @@ use crate::scan_report::ScanReport;
 use crate::unpack_report::UnpackReport;
 use crate::ureq_client::UreqClientLive;
 use crate::util::exe_path_normalize;
+use crate::util::hash_paths;
 use crate::util::ResultDynError;
 use crate::validation_report::ValidationFlags;
 use crate::validation_report::ValidationRecord;
@@ -90,6 +91,7 @@ fn get_packages(site_packages: &Path) -> Vec<Package> {
 //------------------------------------------------------------------------------
 
 // The result of a file-system scan.
+#[derive(Clone)]
 pub(crate) struct ScanFS {
     // NOTE: these attributes are used by reporters
     /// A mapping of exe path to site packages paths
@@ -259,6 +261,11 @@ impl ScanFS {
     }
 
     //--------------------------------------------------------------------------
+
+    pub(crate) fn to_hash_exes(&self) -> String {
+        let paths: Vec<PathBuf> = self.exe_to_sites.keys().cloned().collect();
+        hash_paths(&paths)
+    }
 
     /// Validate this scan against the provided DepManifest.
     pub(crate) fn to_validation_report(
@@ -796,5 +803,34 @@ mod tests {
         let sfsd: ScanFS = serde_json::from_str(&json).unwrap();
         assert_eq!(sfsd.exe_to_sites.len(), 1);
         assert_eq!(sfsd.package_to_sites.len(), 3);
+    }
+
+
+    #[test]
+    fn test_to_hash_a() {
+        let exe = PathBuf::from("/usr/bin/python3");
+        let site = PathBuf::from("/usr/lib/python3/site-packages");
+        let packages = vec![
+            Package::from_name_version_durl("numpy", "1.19.3", None).unwrap(),
+            Package::from_name_version_durl("static-frame", "2.13.0", None).unwrap(),
+            Package::from_name_version_durl("flask", "1.1.3", None).unwrap(),
+        ];
+        let sfs = ScanFS::from_exe_site_packages(exe, site, packages.clone()).unwrap();
+        let hash = sfs.to_hash_exes();
+        assert_eq!(hash, "31f2aee4e71d21fbe5cf8b01ff0e069b9275f58929596ceb00d14d90e3e16cd6");
+    }
+
+    #[test]
+    fn test_to_hash_b() {
+        let exe = PathBuf::from("/usr/local/bin/python3");
+        let site = PathBuf::from("/usr/lib/python3/site-packages");
+        let packages = vec![
+            Package::from_name_version_durl("numpy", "1.19.3", None).unwrap(),
+            Package::from_name_version_durl("static-frame", "2.13.0", None).unwrap(),
+            Package::from_name_version_durl("flask", "1.1.3", None).unwrap(),
+        ];
+        let sfs = ScanFS::from_exe_site_packages(exe, site, packages.clone()).unwrap();
+        let hash = sfs.to_hash_exes();
+        assert_eq!(hash, "aee8b7b246df8f9039afb4144a1f6fd8d2ca17a180786b69acc140d282b71a49");
     }
 }

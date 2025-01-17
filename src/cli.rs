@@ -342,10 +342,11 @@ fn scan_cache_read<P: AsRef<Path>>(
     Ok(data)
 }
 
-fn scan_cache_write<P: AsRef<Path>>(
+fn scan_cache_write<P: AsRef<Path> + std::fmt::Debug>(
     path: P,
     data: &ScanFS,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    eprintln!("writing {:?}", path);
     let json = serde_json::to_string(data)?;
     let mut file = File::create(path)?;
     file.write_all(json.as_bytes())?;
@@ -353,6 +354,7 @@ fn scan_cache_write<P: AsRef<Path>>(
 }
 
 const DURATION_0: Duration = Duration::from_secs(0);
+
 
 // Get a ScanFS, optionally using exe_paths if provided
 fn get_scan(
@@ -364,11 +366,10 @@ fn get_scan(
 
     if cache_dur > DURATION_0 {
         if let Some(ref ep) = exe_paths {
-            if let Some(cache_dir) = path_cache(true) {
-                if let Some(key) = hash_paths(ep) {
-                    cache_dir.push(key);
-                    let cache_fp = cache_dir.with_extension("json");
-                }
+            if let Some(mut cache_dir) = path_cache(true) {
+                let key = hash_paths(ep);
+                cache_dir.push(key);
+                let cache_fp = cache_dir.with_extension("json");
             }
         }
 
@@ -388,12 +389,66 @@ fn get_scan(
         Some(exe_paths) => ScanFS::from_exes(exe_paths, force_usite),
         None => ScanFS::from_exe_scan(force_usite),
     };
+    if cache_dur > DURATION_0 {
+        if let Ok(ref sfsl) = sfs {
+            let key = sfsl.to_hash_exes();
+            if let Some(mut cache_dir) = path_cache(true) {
+                cache_dir.push(key);
+                let cache_fp = cache_dir.with_extension("json");
+                if !cache_fp.exists() {
+                    let _ = scan_cache_write(cache_fp, &sfsl);
+                }
+            }
+        }
+    }
     if log {
         active.store(false, Ordering::Relaxed);
         thread::sleep(Duration::from_millis(100));
     }
     return sfs;
 }
+
+
+// // Get a ScanFS, optionally using exe_paths if provided
+// fn get_scan(
+//     exe_paths: Option<Vec<PathBuf>>,
+//     force_usite: bool,
+//     log: bool,
+//     cache_dur: Duration,
+// ) -> Result<ScanFS, Box<dyn std::error::Error>> {
+
+//     if cache_dur > DURATION_0 {
+//         if let Some(ref ep) = exe_paths {
+//             if let Some(mut cache_dir) = path_cache(true) {
+//                 let key = hash_paths(ep);
+//                 cache_dir.push(key);
+//                 let cache_fp = cache_dir.with_extension("json");
+//             }
+//         }
+
+//         let sfs = match exe_paths {
+//             Some(exe_paths) => ScanFS::from_exes(exe_paths, force_usite),
+//             None => ScanFS::from_exe_scan(force_usite),
+//         };
+//         return sfs;
+//     }
+
+//     // full load
+//     let active = Arc::new(AtomicBool::new(true));
+//     if log {
+//         spin(active.clone(), "scanning".to_string());
+//     }
+//     let sfs = match exe_paths {
+//         Some(exe_paths) => ScanFS::from_exes(exe_paths, force_usite),
+//         None => ScanFS::from_exe_scan(force_usite),
+//     };
+
+//     if log {
+//         active.store(false, Ordering::Relaxed);
+//         thread::sleep(Duration::from_millis(100));
+//     }
+//     return sfs;
+// }
 
 // Given a Path, load a DepManifest. This might branch by extension to handle pyproject.toml and other formats.
 fn get_dep_manifest(
