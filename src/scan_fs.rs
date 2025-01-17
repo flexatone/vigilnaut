@@ -5,6 +5,10 @@ use std::io;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::fs::File;
+use std::io::Read;
+use std::io::Write;
+
 
 use rayon::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -23,6 +27,7 @@ use crate::unpack_report::UnpackReport;
 use crate::ureq_client::UreqClientLive;
 use crate::util::exe_path_normalize;
 use crate::util::hash_paths;
+use crate::util::path_cache;
 use crate::util::ResultDynError;
 use crate::validation_report::ValidationFlags;
 use crate::validation_report::ValidationRecord;
@@ -173,14 +178,34 @@ impl ScanFS {
         })
     }
 
-    // Given a Vec of PathBuf to executables, use them to collect site packages.
-    pub(crate) fn from_exes(
-        exes: Vec<PathBuf>,
-        force_usite: bool,
-    ) -> ResultDynError<Self> {
+    pub(crate) fn from_cache<I>(exes: I, force_usite: bool) -> ResultDynError<Self>
+    where
+        I: IntoIterator<Item = PathBuf>,
+    {
+        if let Some(mut cache_dir) = path_cache(true) {
+            let key = hash_paths(exes);
+            cache_dir.push(key);
+            let cache_fp = cache_dir.with_extension("json");
+            eprintln!("attempting to load {:?}", cache_fp);
+            let mut file = File::open(cache_fp)?;
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)?;
+            let data: ScanFS = serde_json::from_str(&contents)?;
+            Ok(data)
+        }
+        else {
+            Err("Could not load from cache".into())
+        }
+    }
+
+    /// Given a Vec of PathBuf to executables, use them to collect site packages.
+    pub(crate) fn from_exes<I>(exes: I, force_usite: bool) -> ResultDynError<Self>
+    where
+        I: IntoIterator<Item = PathBuf>,
+    {
         let exes_norm: Vec<_> = exes
-            .iter()
-            .map(|e| exe_path_normalize(e))
+            .into_iter()
+            .map(|e| exe_path_normalize(&e))
             .collect::<Result<Vec<_>, _>>()?;
         let exe_to_sites: HashMap<PathBuf, Vec<PathShared>> = exes_norm
             .into_par_iter()
@@ -196,15 +221,7 @@ impl ScanFS {
     pub(crate) fn from_exe_scan(force_usite: bool) -> ResultDynError<Self> {
         // NOTE: strong assumption that find_exe always returns absolute paths.
         let exes = find_exe();
-        // For every unique exe, we hae a list of site packages; some site packages might be associated with more than one exe, meaning that a reverse lookup would have to be site-package to Vec of exe
-        let exe_to_sites: HashMap<PathBuf, Vec<PathShared>> = exes
-            .into_par_iter()
-            .map(|exe| {
-                let dirs = get_site_package_dirs(&exe, force_usite);
-                (exe, dirs)
-            })
-            .collect();
-        Self::from_exe_to_sites(exe_to_sites)
+        Self::from_exes(exes, force_usite)
     }
 
     /// Alternative constructor from in-memory objects, only for testing. Here we provide notional exe and site paths, and focus just on collecting Packages.
@@ -263,9 +280,28 @@ impl ScanFS {
     //--------------------------------------------------------------------------
 
     pub(crate) fn to_hash_exes(&self) -> String {
-        let paths: Vec<PathBuf> = self.exe_to_sites.keys().cloned().collect();
-        hash_paths(&paths)
+        let paths = self.exe_to_sites.keys().cloned(); // an iterator
+        hash_paths(paths)
     }
+
+    pub(crate) fn to_cache(&self) -> ResultDynError<()> {
+        let key = self.to_hash_exes();
+        if let Some(mut cache_dir) = path_cache(true) {
+            cache_dir.push(key);
+            let cache_fp = cache_dir.with_extension("json");
+            eprintln!("writing {:?}", cache_fp);
+            let json = serde_json::to_string(self)?;
+
+            // might only overrite based on duration...
+            // overwrite if file is older than duration
+            let mut file = File::create(cache_fp)?;
+            file.write_all(json.as_bytes())?;
+            return Ok(());
+        }
+        Err("could not load cache".into())
+    }
+
+    //--------------------------------------------------------------------------
 
     /// Validate this scan against the provided DepManifest.
     pub(crate) fn to_validation_report(

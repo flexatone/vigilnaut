@@ -203,9 +203,33 @@ pub(crate) fn path_within_duration<P: AsRef<Path>>(
     false
 }
 
-pub(crate) fn hash_paths(paths: &[PathBuf]) -> String {
-    let mut ps = paths.to_owned();
+// pub(crate) fn hash_paths(paths: &[PathBuf]) -> String {
+//     let mut ps = paths.to_owned();
+//     ps.sort();
+//     let concatenated = ps
+//         .iter()
+//         .map(|path| path.to_string_lossy())
+//         .collect::<Vec<_>>()
+//         .join("\n");
+
+//     let mut hasher = Sha256::new();
+//     hasher.update(concatenated.as_bytes());
+//     let hash = hasher.finalize();
+//     // efficient string appending
+//     hash.iter().fold(String::new(), |mut acc, byte| {
+//         write!(&mut acc, "{:02x}", byte).unwrap();
+//         acc
+//     })
+// }
+
+pub(crate) fn hash_paths<I>(paths: I) -> String
+where
+    I: IntoIterator<Item = PathBuf>,
+{
+    // Collect and sort the paths (clone is required to take ownership)
+    let mut ps: Vec<PathBuf> = paths.into_iter().collect();
     ps.sort();
+
     let concatenated = ps
         .iter()
         .map(|path| path.to_string_lossy())
@@ -215,7 +239,7 @@ pub(crate) fn hash_paths(paths: &[PathBuf]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(concatenated.as_bytes());
     let hash = hasher.finalize();
-    // efficient string appending
+
     hash.iter().fold(String::new(), |mut acc, byte| {
         write!(&mut acc, "{:02x}", byte).unwrap();
         acc
@@ -327,7 +351,7 @@ mod tests {
             Path::new("/a/foo/bar").to_path_buf(),
             Path::new("/b/foo/bar").to_path_buf(),
         ];
-        let hashed = hash_paths(&paths);
+        let hashed = hash_paths(paths);
         assert_eq!(
             hashed,
             "8bfde7be15ae137ce1a5c2224bb827aa9713d93bd65cadeaede9df451b88c4ad"

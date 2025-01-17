@@ -4,10 +4,6 @@ use crate::validation_report::ValidationFlags;
 use clap::{Parser, Subcommand, ValueEnum};
 use std::env;
 use std::ffi::OsString;
-use std::fs::File;
-use std::io::Read;
-use std::io::Write;
-use std::path::Path;
 use std::path::PathBuf;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -22,9 +18,8 @@ use crate::scan_fs::ScanFS;
 use crate::spin::spin;
 use crate::table::Tableable;
 use crate::ureq_client::UreqClientLive;
-use crate::util::hash_paths;
-use crate::util::path_cache;
 use crate::util::path_normalize;
+use crate::exe_search::find_exe;
 
 //------------------------------------------------------------------------------
 // utility enums
@@ -331,26 +326,26 @@ enum UnpackFilesSubcommand {
 //------------------------------------------------------------------------------
 // Utility constructors specialized fro CLI contexts
 
-fn scan_cache_read<P: AsRef<Path>>(
-    path: P,
-) -> Result<ScanFS, Box<dyn std::error::Error>> {
-    let mut file = File::open(path)?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-    let data = serde_json::from_str(&contents)?;
-    Ok(data)
-}
+// fn scan_cache_read<P: AsRef<Path>>(
+//     path: P,
+// ) -> Result<ScanFS, Box<dyn std::error::Error>> {
+//     let mut file = File::open(path)?;
+//     let mut contents = String::new();
+//     file.read_to_string(&mut contents)?;
+//     let data = serde_json::from_str(&contents)?;
+//     Ok(data)
+// }
 
-fn scan_cache_write<P: AsRef<Path> + std::fmt::Debug>(
-    path: P,
-    data: &ScanFS,
-) -> Result<(), Box<dyn std::error::Error>> {
-    eprintln!("writing {:?}", path);
-    let json = serde_json::to_string(data)?;
-    let mut file = File::create(path)?;
-    file.write_all(json.as_bytes())?;
-    Ok(())
-}
+// fn scan_cache_write<P: AsRef<Path> + std::fmt::Debug>(
+//     path: P,
+//     data: &ScanFS,
+// ) -> Result<(), Box<dyn std::error::Error>> {
+//     eprintln!("writing {:?}", path);
+//     let json = serde_json::to_string(data)?;
+//     let mut file = File::create(path)?;
+//     file.write_all(json.as_bytes())?;
+//     Ok(())
+// }
 
 const DURATION_0: Duration = Duration::from_secs(0);
 
@@ -361,20 +356,25 @@ fn get_scan(
     log: bool,
     cache_dur: Duration,
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
-    if cache_dur > DURATION_0 {
-        if let Some(ref ep) = exe_paths {
-            if let Some(mut cache_dir) = path_cache(true) {
-                let key = hash_paths(ep);
-                cache_dir.push(key);
-                let cache_fp = cache_dir.with_extension("json");
-            }
-        }
 
-        let sfs = match exe_paths {
-            Some(exe_paths) => ScanFS::from_exes(exe_paths, force_usite),
-            None => ScanFS::from_exe_scan(force_usite),
-        };
-        return sfs;
+    let exes_vec: Vec<PathBuf> = match exe_paths.is_none() {
+        true => find_exe().into_iter().collect(),
+        false => exe_paths.unwrap(),
+    };
+
+    // if exe_paths.is_none() {
+    //     let exes_vec: Vec<PathBuf> = find_exe().into_iter().collect();
+    // }
+    // else {
+    //     let exes_vec: Vec<PathBuf> = exe_paths.unwrap();
+    // }
+
+    if cache_dur > DURATION_0 {
+        // TODO: avoid this clone
+        let sfs = ScanFS::from_cache(exes_vec.clone(), force_usite);
+        if sfs.is_ok() {
+            return sfs;
+        }
     }
 
     // full load
@@ -382,21 +382,10 @@ fn get_scan(
     if log {
         spin(active.clone(), "scanning".to_string());
     }
-    let sfs = match exe_paths {
-        Some(exe_paths) => ScanFS::from_exes(exe_paths, force_usite),
-        None => ScanFS::from_exe_scan(force_usite),
-    };
+    let sfs = ScanFS::from_exes(exes_vec, force_usite);
     if cache_dur > DURATION_0 {
         if let Ok(ref sfsl) = sfs {
-            let key = sfsl.to_hash_exes();
-            if let Some(mut cache_dir) = path_cache(true) {
-                cache_dir.push(key);
-                let cache_fp = cache_dir.with_extension("json");
-                // overwrite if file is older than duration
-                if !cache_fp.exists() {
-                    let _ = scan_cache_write(cache_fp, sfsl);
-                }
-            }
+            sfsl.to_cache();
         }
     }
     if log {
