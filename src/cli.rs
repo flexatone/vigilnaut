@@ -395,6 +395,7 @@ fn get_scan(
             if let Some(mut cache_dir) = path_cache(true) {
                 cache_dir.push(key);
                 let cache_fp = cache_dir.with_extension("json");
+                // overwrite if file is older than duration
                 if !cache_fp.exists() {
                     let _ = scan_cache_write(cache_fp, &sfsl);
                 }
