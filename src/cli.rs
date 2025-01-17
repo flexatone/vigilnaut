@@ -363,7 +363,7 @@ fn get_scan(
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
 
     if cache_dur > DURATION_0 {
-        if let Some(ep) = exe_paths {
+        if let Some(ref ep) = exe_paths {
             if let Some(cache_dir) = path_cache(true) {
                 if let Some(key) = hash_paths(ep) {
                     cache_dir.push(key);
