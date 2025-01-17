@@ -394,7 +394,7 @@ fn get_scan(
                 let cache_fp = cache_dir.with_extension("json");
                 // overwrite if file is older than duration
                 if !cache_fp.exists() {
-                    let _ = scan_cache_write(cache_fp, &sfsl);
+                    let _ = scan_cache_write(cache_fp, sfsl);
                 }
             }
         }
@@ -403,7 +403,7 @@ fn get_scan(
         active.store(false, Ordering::Relaxed);
         thread::sleep(Duration::from_millis(100));
     }
-    return sfs;
+    sfs
 }
 
 // // Get a ScanFS, optionally using exe_paths if provided

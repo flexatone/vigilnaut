@@ -1,5 +1,6 @@
 use sha2::{Digest, Sha256};
 use std::env;
+use std::fmt::Write;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
@@ -202,8 +203,8 @@ pub(crate) fn path_within_duration<P: AsRef<Path>>(
     false
 }
 
-pub(crate) fn hash_paths(paths: &Vec<PathBuf>) -> String {
-    let mut ps = paths.clone();
+pub(crate) fn hash_paths(paths: &[PathBuf]) -> String {
+    let mut ps = paths.to_owned();
     ps.sort();
     let concatenated = ps
         .iter()
@@ -214,7 +215,11 @@ pub(crate) fn hash_paths(paths: &Vec<PathBuf>) -> String {
     let mut hasher = Sha256::new();
     hasher.update(concatenated.as_bytes());
     let hash = hasher.finalize();
-    hash.iter().map(|byte| format!("{:02x}", byte)).collect()
+    // efficient string appending
+    hash.iter().fold(String::new(), |mut acc, byte| {
+        write!(&mut acc, "{:02x}", byte).unwrap();
+        acc
+    })
 }
 
 //------------------------------------------------------------------------------
