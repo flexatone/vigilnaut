@@ -8,6 +8,7 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::time::Duration;
 
 use rayon::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -183,7 +184,11 @@ impl ScanFS {
         })
     }
 
-    pub(crate) fn from_cache<I>(exes: I, force_usite: bool) -> ResultDynError<Self>
+    pub(crate) fn from_cache<I>(
+        exes: I,
+        force_usite: bool,
+        cache_dur: Duration,
+    ) -> ResultDynError<Self>
     where
         I: IntoIterator<Item = PathBuf>,
     {

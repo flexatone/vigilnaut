@@ -366,34 +366,26 @@ fn get_scan(
     };
     eprintln!("cache_dur {:?}", cache_dur);
 
-    let mut sfs: Result<ScanFS, Box<dyn std::error::Error>> =
-        Err("Not initialized yet".into());
-
-    if cache_dur > DURATION_0 {
-        // TODO: avoid this clone
-        sfs = ScanFS::from_cache(exes.clone(), force_usite);
-        if sfs.is_ok() {
-            return sfs;
+    let sfs = ScanFS::from_cache(exes.clone(), force_usite, cache_dur).or_else(|err| {
+        // full load
+        let active = Arc::new(AtomicBool::new(true));
+        if log {
+            spin(active.clone(), "scanning".to_string());
         }
-    }
-
-    // full load
-    let active = Arc::new(AtomicBool::new(true));
-    if log {
-        spin(active.clone(), "scanning".to_string());
-    }
-    // eprintln!("calling from_exes");
-    sfs = ScanFS::from_exes(exes, force_usite);
-    // eprintln!("post from_exes: sfs {:?}", sfs);
-    if cache_dur > DURATION_0 {
-        if let Ok(ref sfsl) = sfs {
-            sfsl.to_cache()?;
+        // eprintln!("calling from_exes");
+        let sfsl = ScanFS::from_exes(exes, force_usite);
+        // eprintln!("post from_exes: sfs {:?}", sfs);
+        // if cache_dur > DURATION_0 {
+        //     if let Ok(ref sfsl) = sfs {
+        //         sfsl.to_cache()?;
+        //     }
+        // }
+        if log {
+            active.store(false, Ordering::Relaxed);
+            thread::sleep(Duration::from_millis(100));
         }
-    }
-    if log {
-        active.store(false, Ordering::Relaxed);
-        thread::sleep(Duration::from_millis(100));
-    }
+        sfsl
+    });
     sfs
 }
 
