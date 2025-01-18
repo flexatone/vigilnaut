@@ -14,6 +14,8 @@ use std::os::unix::fs::PermissionsExt;
 
 pub(crate) type ResultDynError<T> = Result<T, Box<dyn std::error::Error>>;
 
+pub(crate) const DURATION_0: Duration = Duration::from_secs(0);
+
 //------------------------------------------------------------------------------
 
 // Normalize all names
@@ -172,10 +174,15 @@ pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
     Ok(fp)
 }
 
+pub(crate) fn path_is_component(path: &Path) -> bool {
+    let mut components = path.components();
+    components.next().is_some() && components.next().is_none()
+}
+
 pub(crate) fn exe_path_normalize(path: &Path) -> ResultDynError<PathBuf> {
     let mut fp = path.to_path_buf();
     // if given a single-component path that is a Python name, call it to get the full path to the exe
-    if is_python_exe_file_name(path) && path.components().count() == 1 {
+    if is_python_exe_file_name(path) && path_is_component(path) {
         fp = match path.file_name().and_then(|f| f.to_str()) {
             Some(name) => get_absolute_path_from_exe(name).ok_or_else(|| {
                 format!("cannot get absolute path from exe: {:?}", path)

@@ -1,4 +1,5 @@
 use std::process;
+use std::str::FromStr;
 
 use crate::validation_report::ValidationFlags;
 use clap::{Parser, Subcommand, ValueEnum};
@@ -13,13 +14,15 @@ use std::thread;
 use std::time::Duration;
 
 use crate::dep_manifest::DepManifest;
-use crate::exe_search::find_exe;
+// use crate::exe_search::find_exe;
 use crate::scan_fs::Anchor;
 use crate::scan_fs::ScanFS;
 use crate::spin::spin;
 use crate::table::Tableable;
 use crate::ureq_client::UreqClientLive;
 use crate::util::path_normalize;
+// use crate::util::PATH_WILD;
+// use crate::util::DURATION_0;
 
 //------------------------------------------------------------------------------
 // utility enums
@@ -75,8 +78,14 @@ Examples:
 #[command(version, about, long_about = TITLE, after_help = AFTER_HELP)]
 struct Cli {
     /// Zero or more executable paths to derive site package locations. If not provided, all discoverable executables will be used.
-    #[arg(short, long, value_name = "FILES", required = false)]
-    exe: Option<Vec<PathBuf>>,
+    #[arg(
+        short,
+        long,
+        value_name = "FILES",
+        required = false,
+        default_value = "*"
+    )]
+    exe: Vec<PathBuf>,
 
     /// Create and / or use a cache that expires after the provided number of seconds.
     #[arg(long, short, required = false, default_value = "0")]
@@ -351,41 +360,41 @@ enum UnpackFilesSubcommand {
 //     Ok(())
 // }
 
-const DURATION_0: Duration = Duration::from_secs(0);
-
-// Get a ScanFS, optionally using exe_paths if provided
 fn get_scan(
-    exe_paths: Option<Vec<PathBuf>>,
+    exe_paths: Vec<PathBuf>,
     force_usite: bool,
     log: bool,
     cache_dur: Duration,
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
-    let exes: Vec<PathBuf> = match exe_paths.is_none() {
-        true => find_exe().into_iter().collect(),
-        false => exe_paths.unwrap(),
-    };
-    eprintln!("cache_dur {:?}", cache_dur);
+    // let exes: Vec<PathBuf> = match exe_paths.is_none() {
+    //     true => find_exe().into_iter().collect(),
+    //     false => exe_paths.unwrap(),
+    // };
+    eprintln!("cache_duration {:?}", cache_dur);
 
-    let sfs = ScanFS::from_cache(exes.clone(), force_usite, cache_dur).or_else(|err| {
-        // full load
-        let active = Arc::new(AtomicBool::new(true));
-        if log {
-            spin(active.clone(), "scanning".to_string());
-        }
-        // eprintln!("calling from_exes");
-        let sfsl = ScanFS::from_exes(exes, force_usite);
-        // eprintln!("post from_exes: sfs {:?}", sfs);
-        // if cache_dur > DURATION_0 {
-        //     if let Ok(ref sfsl) = sfs {
-        //         sfsl.to_cache()?;
-        //     }
-        // }
-        if log {
-            active.store(false, Ordering::Relaxed);
-            thread::sleep(Duration::from_millis(100));
-        }
-        sfsl
-    });
+    // TODO: avoid this clone
+    let sfs =
+        ScanFS::from_cache(exe_paths.clone(), force_usite, cache_dur).or_else(|err| {
+            eprintln!("no cache {:?}", err);
+            // full load
+            let active = Arc::new(AtomicBool::new(true));
+            if log {
+                spin(active.clone(), "scanning".to_string());
+            }
+            // eprintln!("calling from_exes");
+            let sfsl = ScanFS::from_exes(exe_paths, force_usite);
+            // eprintln!("post from_exes: sfs {:?}", sfs);
+            // if cache_dur > DURATION_0 {
+            //     if let Ok(ref sfsl) = sfs {
+            //         sfsl.to_cache()?;
+            //     }
+            // }
+            if log {
+                active.store(false, Ordering::Relaxed);
+                thread::sleep(Duration::from_millis(100));
+            }
+            sfsl
+        });
     sfs
 }
 

@@ -18,7 +18,7 @@ use crate::count_report::CountReport;
 use crate::dep_manifest::DepManifest;
 use crate::dep_spec::DepOperator;
 use crate::dep_spec::DepSpec;
-// use crate::exe_search::find_exe;
+use crate::exe_search::find_exe;
 use crate::package::Package;
 use crate::package_match::match_str;
 use crate::path_shared::PathShared;
@@ -28,7 +28,9 @@ use crate::ureq_client::UreqClientLive;
 use crate::util::exe_path_normalize;
 use crate::util::hash_paths;
 use crate::util::path_cache;
+use crate::util::path_is_component;
 use crate::util::ResultDynError;
+use crate::util::DURATION_0;
 use crate::validation_report::ValidationFlags;
 use crate::validation_report::ValidationRecord;
 use crate::validation_report::ValidationReport;
@@ -210,12 +212,18 @@ impl ScanFS {
     /// Given a Vec of PathBuf to executables, use them to collect site packages.
     pub(crate) fn from_exes<I>(exes: I, force_usite: bool) -> ResultDynError<Self>
     where
-        I: IntoIterator<Item = PathBuf>,
+        I: IntoIterator<Item = PathBuf>
     {
-        let exes_norm: Vec<_> = exes
-            .into_iter()
-            .map(|e| exe_path_normalize(&e))
-            .collect::<Result<Vec<_>, _>>()?;
+        let path_wild = PathBuf::from("*");
+        let mut exes_norm = Vec::new();
+        for e in exes {
+            if path_is_component(&e) && e == path_wild {
+                exes_norm.extend(find_exe());
+            } else if let Ok(normalized) = exe_path_normalize(&e) {
+                exes_norm.push(normalized);
+            }
+        }
+
         let exe_to_sites: HashMap<PathBuf, Vec<PathShared>> = exes_norm
             .into_par_iter()
             .map(|exe| {
