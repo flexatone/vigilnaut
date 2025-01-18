@@ -366,7 +366,8 @@ fn get_scan(
     };
     eprintln!("cache_dur {:?}", cache_dur);
 
-    let mut sfs: Result<ScanFS, Box<dyn std::error::Error>> = Err("Not initialized yet".into());
+    let mut sfs: Result<ScanFS, Box<dyn std::error::Error>> =
+        Err("Not initialized yet".into());
 
     if cache_dur > DURATION_0 {
         // TODO: avoid this clone
@@ -395,7 +396,6 @@ fn get_scan(
     }
     sfs
 }
-
 
 // Given a Path, load a DepManifest. This might branch by extension to handle pyproject.toml and other formats.
 fn get_dep_manifest(
@@ -435,10 +435,12 @@ where
     }
     // we always do a scan; we might cache this
     let quiet = cli.quiet;
-    let sfs = get_scan(cli.exe,
-            cli.user_site,
-            !quiet,
-            Duration::from_secs(cli.cache_duration))?;
+    let sfs = get_scan(
+        cli.exe,
+        cli.user_site,
+        !quiet,
+        Duration::from_secs(cli.cache_duration),
+    )?;
 
     match &cli.command {
         Some(Commands::Scan { subcommands }) => match subcommands {

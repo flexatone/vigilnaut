@@ -339,4 +339,14 @@ mod tests {
             "aa1e51b6cc2de01f6180c646bd9fe6e5c548bdee475a212747588edc5b0d741b"
         )
     }
+
+    #[test]
+    fn test_hash_paths_b() {
+        let paths = vec![Path::new("*").to_path_buf()];
+        let hashed = hash_paths(paths, true);
+        assert_eq!(
+            hashed,
+            "e55c287546ecb742e64cae60f41e128a082b290f663f2e03f734b1d82d2ad274"
+        )
+    }
 }

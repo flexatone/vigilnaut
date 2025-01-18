@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
+use std::fs::File;
 use std::io;
+use std::io::Read;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
-use std::fs::File;
-use std::io::Read;
-use std::io::Write;
-
 
 use rayon::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -198,8 +197,7 @@ impl ScanFS {
             file.read_to_string(&mut contents)?;
             let data: ScanFS = serde_json::from_str(&contents)?;
             Ok(data)
-        }
-        else {
+        } else {
             Err("Could not load from cache".into())
         }
     }
