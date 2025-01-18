@@ -212,7 +212,7 @@ impl ScanFS {
     /// Given a Vec of PathBuf to executables, use them to collect site packages.
     pub(crate) fn from_exes<I>(exes: I, force_usite: bool) -> ResultDynError<Self>
     where
-        I: IntoIterator<Item = PathBuf>
+        I: IntoIterator<Item = PathBuf>,
     {
         let path_wild = PathBuf::from("*");
         let mut exes_norm = Vec::new();
