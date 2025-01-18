@@ -21,8 +21,7 @@ use crate::spin::spin;
 use crate::table::Tableable;
 use crate::ureq_client::UreqClientLive;
 use crate::util::path_normalize;
-// use crate::util::PATH_WILD;
-// use crate::util::DURATION_0;
+use crate::util::DURATION_0;
 
 //------------------------------------------------------------------------------
 // utility enums
@@ -382,18 +381,15 @@ fn get_scan(
                 spin(active.clone(), "scanning".to_string());
             }
             // eprintln!("calling from_exes");
-            let sfsl = ScanFS::from_exes(exe_paths, force_usite);
-            // eprintln!("post from_exes: sfs {:?}", sfs);
-            // if cache_dur > DURATION_0 {
-            //     if let Ok(ref sfsl) = sfs {
-            //         sfsl.to_cache()?;
-            //     }
-            // }
+            let sfsl = ScanFS::from_exes(exe_paths, force_usite)?;
+            if cache_dur > DURATION_0 {
+                sfsl.to_cache()?;
+            }
             if log {
                 active.store(false, Ordering::Relaxed);
                 thread::sleep(Duration::from_millis(100));
             }
-            sfsl
+            Ok(sfsl)
         });
     sfs
 }
