@@ -96,6 +96,7 @@ pub(crate) fn path_home() -> Option<PathBuf> {
 
 const IO_FETTER: &str = "io.fetter";
 
+// TOOD: return error instead of option
 pub(crate) fn path_cache(create: bool) -> Option<PathBuf> {
     let cache_path = if env::consts::OS == "windows" {
         env::var_os("LOCALAPPDATA").map(|local_app_data| {
@@ -118,42 +119,16 @@ pub(crate) fn path_cache(create: bool) -> Option<PathBuf> {
             path
         })
     };
-
     if create {
         if let Some(ref path) = cache_path {
             if let Err(e) = fs::create_dir_all(path) {
                 eprintln!("Failed to create cache directory: {}", e);
                 return None;
             }
-            return None;
         }
     }
     cache_path
 }
-
-// pub(crate) fn path_cache() -> Option<PathBuf> {
-//     if env::consts::OS == "windows" {
-//         env::var_os("LOCALAPPDATA").map(|local_app_data| {
-//             let mut path = PathBuf::from(local_app_data);
-//             path.push(IO_FETTER);
-//             path.push("Cache");
-//             path
-//         })
-//     } else if env::consts::OS == "macos" {
-//         path_home().map(|mut path| {
-//             path.push("Library");
-//             path.push("Caches");
-//             path.push(IO_FETTER);
-//             path
-//         })
-//     } else {
-//         path_home().map(|mut path| {
-//             path.push(".cache");
-//             path.push(IO_FETTER);
-//             path
-//         })
-//     }
-// }
 
 /// Given a Path, make it absolute, either expanding `~` or prepending current working directory.
 pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {

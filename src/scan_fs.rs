@@ -305,6 +305,7 @@ impl ScanFS {
 
     pub(crate) fn to_cache(&self) -> ResultDynError<()> {
         let key = self.to_hash_exes();
+
         if let Some(mut cache_dir) = path_cache(true) {
             cache_dir.push(key);
             let cache_fp = cache_dir.with_extension("json");
@@ -317,7 +318,8 @@ impl ScanFS {
             file.write_all(json.as_bytes())?;
             return Ok(());
         }
-        Err("could not load cache".into())
+        // let msg = format!("{:?}", path_cache(true));
+        Err("could not write cache".into())
     }
 
     //--------------------------------------------------------------------------

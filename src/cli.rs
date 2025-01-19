@@ -380,7 +380,6 @@ fn get_scan(
             if log {
                 spin(active.clone(), "scanning".to_string());
             }
-            // eprintln!("calling from_exes");
             let sfsl = ScanFS::from_exes(exe_paths, force_usite)?;
             if cache_dur > DURATION_0 {
                 sfsl.to_cache()?;
