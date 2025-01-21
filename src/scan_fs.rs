@@ -29,8 +29,8 @@ use crate::util::exe_path_normalize;
 use crate::util::hash_paths;
 use crate::util::path_cache;
 use crate::util::path_is_component;
-use crate::util::ResultDynError;
 use crate::util::path_within_duration;
+use crate::util::ResultDynError;
 use crate::util::DURATION_0;
 use crate::validation_report::ValidationFlags;
 use crate::validation_report::ValidationRecord;
@@ -200,14 +200,13 @@ impl ScanFS {
 
     /// NOTE: exes provided here should be pre-normalization.
     pub(crate) fn from_cache(
-        exes: &Vec<PathBuf>,
+        exes: &[PathBuf],
         force_usite: bool,
         cache_dur: Duration,
     ) -> ResultDynError<Self> {
         if cache_dur == DURATION_0 {
             Err("Cache disabled by duration".into())
-        }
-        else if let Some(mut cache_dir) = path_cache(true) {
+        } else if let Some(mut cache_dir) = path_cache(true) {
             let exes_hash = hash_paths(exes, force_usite);
             cache_dir.push(exes_hash);
             let cache_fp = cache_dir.with_extension("json");
@@ -219,11 +218,9 @@ impl ScanFS {
                 file.read_to_string(&mut contents)?;
                 let data: ScanFS = serde_json::from_str(&contents)?;
                 Ok(data)
-            }
-            else if cache_fp.exists() {
+            } else if cache_fp.exists() {
                 Err("Cache expired".into())
-            }
-            else {
+            } else {
                 Err("Cache file does not exist".into())
             }
         } else {
@@ -238,12 +235,12 @@ impl ScanFS {
     ) -> ResultDynError<Self> {
         let path_wild = PathBuf::from("*");
         // TODO: remove this clone
-        let exes_hash = hash_paths(&exes, force_usite);
+        let exes_hash = hash_paths(exes, force_usite);
         let mut exes_norm = Vec::new();
         for e in exes {
-            if path_is_component(&e) && *e == path_wild {
+            if path_is_component(e) && *e == path_wild {
                 exes_norm.extend(find_exe());
-            } else if let Ok(normalized) = exe_path_normalize(&e) {
+            } else if let Ok(normalized) = exe_path_normalize(e) {
                 exes_norm.push(normalized);
             }
         }
@@ -325,23 +322,20 @@ impl ScanFS {
 
     //--------------------------------------------------------------------------
 
-    pub(crate) fn to_cache(&self,
-        cache_dur: Duration,
-    ) -> ResultDynError<()> {
+    pub(crate) fn to_cache(&self, cache_dur: Duration) -> ResultDynError<()> {
         if let Some(mut cache_dir) = path_cache(true) {
             // use hash of exes observed at initialization
             cache_dir.push(self.exes_hash.clone());
             let cache_fp = cache_dir.with_extension("json");
 
             // only write if cache does not exist or it is out of duration
-            if !cache_fp.exists() || !path_within_duration(&cache_fp, cache_dur)  {
+            if !cache_fp.exists() || !path_within_duration(&cache_fp, cache_dur) {
                 eprintln!("writing {:?}", cache_fp);
                 let json = serde_json::to_string(self)?;
                 let mut file = File::create(cache_fp)?;
                 file.write_all(json.as_bytes())?;
                 return Ok(());
-            }
-            else {
+            } else {
                 eprintln!("keeping existing cache {:?}", cache_fp);
                 return Ok(());
             }

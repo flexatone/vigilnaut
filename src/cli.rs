@@ -346,7 +346,7 @@ fn get_scan(
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
     eprintln!("cache_duration {:?}", cache_dur);
 
-    let sfs = ScanFS::from_cache(exe_paths, force_usite, cache_dur).or_else(|err| {
+    ScanFS::from_cache(exe_paths, force_usite, cache_dur).or_else(|err| {
         eprintln!("Could not load from cache: {:?}", err);
         // full load
         let active = Arc::new(AtomicBool::new(true));
@@ -363,8 +363,7 @@ fn get_scan(
             thread::sleep(Duration::from_millis(100));
         }
         Ok(sfsl)
-    });
-    sfs
+    })
 }
 
 // Given a Path, load a DepManifest. This might branch by extension to handle pyproject.toml and other formats.

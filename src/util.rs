@@ -187,8 +187,8 @@ pub(crate) fn path_within_duration<P: AsRef<Path>>(
 }
 
 /// Create a hash of an iterable of PathBuf plus an additional Boolean flag (used for the usite configuration option).
-pub(crate) fn hash_paths(paths: &Vec<PathBuf>, flag: bool) -> String {
-    let mut ps: Vec<PathBuf> = paths.clone();
+pub(crate) fn hash_paths(paths: &[PathBuf], flag: bool) -> String {
+    let mut ps: Vec<PathBuf> = paths.to_owned();
     ps.sort();
 
     let concatenated = ps
