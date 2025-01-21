@@ -30,7 +30,8 @@ use crate::util::hash_paths;
 use crate::util::path_cache;
 use crate::util::path_is_component;
 use crate::util::ResultDynError;
-// use crate::util::DURATION_0;
+use crate::util::path_within_duration;
+use crate::util::DURATION_0;
 use crate::validation_report::ValidationFlags;
 use crate::validation_report::ValidationRecord;
 use crate::validation_report::ValidationReport;
@@ -201,20 +202,32 @@ impl ScanFS {
     pub(crate) fn from_cache(
         exes: &Vec<PathBuf>,
         force_usite: bool,
-        _cache_dur: Duration,
+        cache_dur: Duration,
     ) -> ResultDynError<Self> {
-        if let Some(mut cache_dir) = path_cache(true) {
+        if cache_dur == DURATION_0 {
+            Err("Cache disabled by duration".into())
+        }
+        else if let Some(mut cache_dir) = path_cache(true) {
             let exes_hash = hash_paths(exes, force_usite);
             cache_dir.push(exes_hash);
             let cache_fp = cache_dir.with_extension("json");
-            eprintln!("loading {:?}", cache_fp);
-            let mut file = File::open(cache_fp)?;
-            let mut contents = String::new();
-            file.read_to_string(&mut contents)?;
-            let data: ScanFS = serde_json::from_str(&contents)?;
-            Ok(data)
+
+            if path_within_duration(&cache_fp, cache_dur) {
+                eprintln!("loading {:?}", cache_fp);
+                let mut file = File::open(cache_fp)?;
+                let mut contents = String::new();
+                file.read_to_string(&mut contents)?;
+                let data: ScanFS = serde_json::from_str(&contents)?;
+                Ok(data)
+            }
+            else if cache_fp.exists() {
+                Err("Cache expired".into())
+            }
+            else {
+                Err("Cache file does not exist".into())
+            }
         } else {
-            Err("Could not load from cache".into())
+            Err("Could not get cache directory".into())
         }
     }
 
@@ -312,22 +325,28 @@ impl ScanFS {
 
     //--------------------------------------------------------------------------
 
-    pub(crate) fn to_cache(&self) -> ResultDynError<()> {
+    pub(crate) fn to_cache(&self,
+        cache_dur: Duration,
+    ) -> ResultDynError<()> {
         if let Some(mut cache_dir) = path_cache(true) {
-            // NOTE: use hash of exes observed at initialization
+            // use hash of exes observed at initialization
             cache_dir.push(self.exes_hash.clone());
             let cache_fp = cache_dir.with_extension("json");
-            eprintln!("writing {:?}", cache_fp);
-            let json = serde_json::to_string(self)?;
 
-            // might only overwrite based on duration...
-            // overwrite if file is older than duration
-            let mut file = File::create(cache_fp)?;
-            file.write_all(json.as_bytes())?;
-            return Ok(());
+            // only write if cache does not exist or it is out of duration
+            if !cache_fp.exists() || !path_within_duration(&cache_fp, cache_dur)  {
+                eprintln!("writing {:?}", cache_fp);
+                let json = serde_json::to_string(self)?;
+                let mut file = File::create(cache_fp)?;
+                file.write_all(json.as_bytes())?;
+                return Ok(());
+            }
+            else {
+                eprintln!("keeping existing cache {:?}", cache_fp);
+                return Ok(());
+            }
         }
-        // let msg = format!("{:?}", path_cache(true));
-        Err("could not write cache".into())
+        Err("could not get cache directory".into())
     }
 
     //--------------------------------------------------------------------------

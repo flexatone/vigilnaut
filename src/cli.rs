@@ -337,27 +337,6 @@ enum UnpackFilesSubcommand {
 //------------------------------------------------------------------------------
 // Utility constructors specialized fro CLI contexts
 
-// fn scan_cache_read<P: AsRef<Path>>(
-//     path: P,
-// ) -> Result<ScanFS, Box<dyn std::error::Error>> {
-//     let mut file = File::open(path)?;
-//     let mut contents = String::new();
-//     file.read_to_string(&mut contents)?;
-//     let data = serde_json::from_str(&contents)?;
-//     Ok(data)
-// }
-
-// fn scan_cache_write<P: AsRef<Path> + std::fmt::Debug>(
-//     path: P,
-//     data: &ScanFS,
-// ) -> Result<(), Box<dyn std::error::Error>> {
-//     eprintln!("writing {:?}", path);
-//     let json = serde_json::to_string(data)?;
-//     let mut file = File::create(path)?;
-//     file.write_all(json.as_bytes())?;
-//     Ok(())
-// }
-
 // Provided `exe_paths` are not normalize.
 fn get_scan(
     exe_paths: &Vec<PathBuf>, // could be a ref
@@ -367,17 +346,17 @@ fn get_scan(
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
     eprintln!("cache_duration {:?}", cache_dur);
 
-    // TODO: avoid this clone
     let sfs = ScanFS::from_cache(exe_paths, force_usite, cache_dur).or_else(|err| {
-        eprintln!("no cache {:?}", err);
+        eprintln!("Could not load from cache: {:?}", err);
         // full load
         let active = Arc::new(AtomicBool::new(true));
         if log {
             spin(active.clone(), "scanning".to_string());
         }
-        let sfsl = ScanFS::from_exes(&exe_paths, force_usite)?;
+        let sfsl = ScanFS::from_exes(exe_paths, force_usite)?;
+
         if cache_dur > DURATION_0 {
-            sfsl.to_cache()?;
+            sfsl.to_cache(cache_dur)?;
         }
         if log {
             active.store(false, Ordering::Relaxed);
