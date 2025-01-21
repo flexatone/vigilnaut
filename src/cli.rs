@@ -360,7 +360,7 @@ enum UnpackFilesSubcommand {
 
 // Provided `exe_paths` are not normalize.
 fn get_scan(
-    exe_paths: Vec<PathBuf>,
+    exe_paths: Vec<PathBuf>, // can be a ref
     force_usite: bool,
     log: bool,
     cache_dur: Duration,
@@ -369,14 +369,14 @@ fn get_scan(
 
     // TODO: avoid this clone
     let sfs =
-        ScanFS::from_cache(exe_paths.clone(), force_usite, cache_dur).or_else(|err| {
+        ScanFS::from_cache(&exe_paths, force_usite, cache_dur).or_else(|err| {
             eprintln!("no cache {:?}", err);
             // full load
             let active = Arc::new(AtomicBool::new(true));
             if log {
                 spin(active.clone(), "scanning".to_string());
             }
-            let sfsl = ScanFS::from_exes(exe_paths, force_usite)?;
+            let sfsl = ScanFS::from_exes(&exe_paths, force_usite)?;
             if cache_dur > DURATION_0 {
                 sfsl.to_cache()?;
             }

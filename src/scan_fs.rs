@@ -198,13 +198,11 @@ impl ScanFS {
     }
 
     /// NOTE: exes provided here should be pre-normalization.
-    pub(crate) fn from_cache<I>(
-        exes: I,
+    pub(crate) fn from_cache(
+        exes: &Vec<PathBuf>,
         force_usite: bool,
         _cache_dur: Duration,
     ) -> ResultDynError<Self>
-    where
-        I: IntoIterator<Item = PathBuf>,
     {
         if let Some(mut cache_dir) = path_cache(true) {
             let exes_hash = hash_paths(exes, force_usite);
@@ -222,16 +220,14 @@ impl ScanFS {
     }
 
     /// Given a Vec of PathBuf to executables, use them to collect site packages. In this function, provided PathBuf are normalized to absolute paths, and if a PathBuf is "*", a system-wide path search will be conducted.
-    pub(crate) fn from_exes<I>(exes: I, force_usite: bool) -> ResultDynError<Self>
-    where
-        I: IntoIterator<Item = PathBuf> + Clone,
+    pub(crate) fn from_exes(exes: &Vec<PathBuf>, force_usite: bool) -> ResultDynError<Self>
     {
         let path_wild = PathBuf::from("*");
         // TODO: remove this clone
-        let exes_hash = hash_paths(exes.clone(), force_usite);
+        let exes_hash = hash_paths(&exes, force_usite);
         let mut exes_norm = Vec::new();
         for e in exes {
-            if path_is_component(&e) && e == path_wild {
+            if path_is_component(&e) && *e == path_wild {
                 exes_norm.extend(find_exe());
             } else if let Ok(normalized) = exe_path_normalize(&e) {
                 exes_norm.push(normalized);
@@ -266,6 +262,7 @@ impl ScanFS {
         let site_shared = PathShared::from_path_buf(site);
 
         exe_to_sites.insert(exe.clone(), vec![site_shared.clone()]);
+        let exes = vec![exe];
 
         let mut package_to_sites = HashMap::new();
         for package in packages {
@@ -275,7 +272,7 @@ impl ScanFS {
                 .push(site_shared.clone());
         }
         let force_usite = false;
-        let exes_hash = hash_paths(exe_to_sites.keys().cloned(), force_usite);
+        let exes_hash = hash_paths(&exes, force_usite);
         Ok(ScanFS {
             exe_to_sites,
             package_to_sites,

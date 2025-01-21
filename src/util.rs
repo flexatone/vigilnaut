@@ -187,12 +187,11 @@ pub(crate) fn path_within_duration<P: AsRef<Path>>(
 }
 
 /// Create a hash of an iterable of PathBuf plus an additional Boolean flag (used for the usite configuration option).
-pub(crate) fn hash_paths<I>(paths: I, flag: bool) -> String
-where
-    I: IntoIterator<Item = PathBuf>,
+pub(crate) fn hash_paths(paths: &Vec<PathBuf>, flag: bool) -> String
+
 {
     // Collect and sort the paths (clone is required to take ownership)
-    let mut ps: Vec<PathBuf> = paths.into_iter().collect();
+    let mut ps: Vec<PathBuf> = paths.clone();
     ps.sort();
 
     let concatenated = ps
@@ -212,6 +211,32 @@ where
         acc
     })
 }
+
+// pub(crate) fn hash_paths<I, T>(paths: I, flag: bool) -> String
+// where
+//     I: IntoIterator<Item = T>,
+//     T: AsRef<Path>,
+// {
+//     let mut ps: Vec<&Path> = paths.into_iter().map(|path| path.as_ref()).collect();
+//     ps.sort();
+
+//     let concatenated = ps
+//         .iter()
+//         .map(|path| path.to_string_lossy())
+//         .collect::<Vec<_>>()
+//         .join("\n");
+
+//     let input = format!("{concatenated}\n{}", flag);
+//     let mut hasher = Sha256::new();
+//     hasher.update(input.as_bytes());
+//     let hash = hasher.finalize();
+
+//     hash.iter().fold(String::new(), |mut acc, byte| {
+//         write!(&mut acc, "{:02x}", byte).unwrap();
+//         acc
+//     })
+// }
+
 
 //------------------------------------------------------------------------------
 #[cfg(test)]
@@ -342,7 +367,7 @@ mod tests {
             Path::new("/a/foo/bar").to_path_buf(),
             Path::new("/b/foo/bar").to_path_buf(),
         ];
-        let hashed = hash_paths(paths, true);
+        let hashed = hash_paths(&paths, true);
         assert_eq!(
             hashed,
             "aa1e51b6cc2de01f6180c646bd9fe6e5c548bdee475a212747588edc5b0d741b"
@@ -352,7 +377,7 @@ mod tests {
     #[test]
     fn test_hash_paths_b() {
         let paths = vec![Path::new("*").to_path_buf()];
-        let hashed = hash_paths(paths, true);
+        let hashed = hash_paths(&paths, true);
         assert_eq!(
             hashed,
             "e55c287546ecb742e64cae60f41e128a082b290f663f2e03f734b1d82d2ad274"
