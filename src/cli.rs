@@ -360,7 +360,7 @@ enum UnpackFilesSubcommand {
 
 // Provided `exe_paths` are not normalize.
 fn get_scan(
-    exe_paths: Vec<PathBuf>, // can be a ref
+    exe_paths: &Vec<PathBuf>, // could be a ref
     force_usite: bool,
     log: bool,
     cache_dur: Duration,
@@ -368,24 +368,23 @@ fn get_scan(
     eprintln!("cache_duration {:?}", cache_dur);
 
     // TODO: avoid this clone
-    let sfs =
-        ScanFS::from_cache(&exe_paths, force_usite, cache_dur).or_else(|err| {
-            eprintln!("no cache {:?}", err);
-            // full load
-            let active = Arc::new(AtomicBool::new(true));
-            if log {
-                spin(active.clone(), "scanning".to_string());
-            }
-            let sfsl = ScanFS::from_exes(&exe_paths, force_usite)?;
-            if cache_dur > DURATION_0 {
-                sfsl.to_cache()?;
-            }
-            if log {
-                active.store(false, Ordering::Relaxed);
-                thread::sleep(Duration::from_millis(100));
-            }
-            Ok(sfsl)
-        });
+    let sfs = ScanFS::from_cache(exe_paths, force_usite, cache_dur).or_else(|err| {
+        eprintln!("no cache {:?}", err);
+        // full load
+        let active = Arc::new(AtomicBool::new(true));
+        if log {
+            spin(active.clone(), "scanning".to_string());
+        }
+        let sfsl = ScanFS::from_exes(&exe_paths, force_usite)?;
+        if cache_dur > DURATION_0 {
+            sfsl.to_cache()?;
+        }
+        if log {
+            active.store(false, Ordering::Relaxed);
+            thread::sleep(Duration::from_millis(100));
+        }
+        Ok(sfsl)
+    });
     sfs
 }
 
@@ -428,7 +427,7 @@ where
     // we always do a scan; we might cache this
     let quiet = cli.quiet;
     let sfs = get_scan(
-        cli.exe,
+        &cli.exe,
         cli.user_site,
         !quiet,
         Duration::from_secs(cli.cache_duration),

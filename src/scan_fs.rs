@@ -202,8 +202,7 @@ impl ScanFS {
         exes: &Vec<PathBuf>,
         force_usite: bool,
         _cache_dur: Duration,
-    ) -> ResultDynError<Self>
-    {
+    ) -> ResultDynError<Self> {
         if let Some(mut cache_dir) = path_cache(true) {
             let exes_hash = hash_paths(exes, force_usite);
             cache_dir.push(exes_hash);
@@ -220,8 +219,10 @@ impl ScanFS {
     }
 
     /// Given a Vec of PathBuf to executables, use them to collect site packages. In this function, provided PathBuf are normalized to absolute paths, and if a PathBuf is "*", a system-wide path search will be conducted.
-    pub(crate) fn from_exes(exes: &Vec<PathBuf>, force_usite: bool) -> ResultDynError<Self>
-    {
+    pub(crate) fn from_exes(
+        exes: &Vec<PathBuf>,
+        force_usite: bool,
+    ) -> ResultDynError<Self> {
         let path_wild = PathBuf::from("*");
         // TODO: remove this clone
         let exes_hash = hash_paths(&exes, force_usite);
