@@ -124,7 +124,12 @@ impl Serialize for ScanFS {
         package_to_sites.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
 
         // Serialize as tuple of sorted vectors
-        let data = (&exe_to_sites, &package_to_sites, self.force_usite, &self.exes_hash);
+        let data = (
+            &exe_to_sites,
+            &package_to_sites,
+            self.force_usite,
+            &self.exes_hash,
+        );
         data.serialize(serializer)
     }
 }
@@ -133,7 +138,7 @@ impl Serialize for ScanFS {
 type ScanFSData = (
     Vec<(PathBuf, Vec<PathShared>)>,
     Vec<(Package, Vec<PathShared>)>,
-    bool, // force_usite
+    bool,   // force_usite
     String, // exes hash
 );
 
@@ -205,7 +210,7 @@ impl ScanFS {
             let exes_hash = hash_paths(exes, force_usite);
             cache_dir.push(exes_hash);
             let cache_fp = cache_dir.with_extension("json");
-            eprintln!("attempting to load {:?}", cache_fp);
+            eprintln!("loading {:?}", cache_fp);
             let mut file = File::open(cache_fp)?;
             let mut contents = String::new();
             file.read_to_string(&mut contents)?;
@@ -309,16 +314,10 @@ impl ScanFS {
 
     //--------------------------------------------------------------------------
 
-    pub(crate) fn to_hash_exes(&self) -> String {
-        let paths = self.exe_to_sites.keys().cloned(); // an iterator
-        hash_paths(paths, self.force_usite) // store usite config!
-    }
-
     pub(crate) fn to_cache(&self) -> ResultDynError<()> {
-        let key = self.to_hash_exes();
-
         if let Some(mut cache_dir) = path_cache(true) {
-            cache_dir.push(key);
+            // NOTE: use hash of exes observed at initialization
+            cache_dir.push(self.exes_hash.clone());
             let cache_fp = cache_dir.with_extension("json");
             eprintln!("writing {:?}", cache_fp);
             let json = serde_json::to_string(self)?;
@@ -883,9 +882,8 @@ mod tests {
             Package::from_name_version_durl("flask", "1.1.3", None).unwrap(),
         ];
         let sfs = ScanFS::from_exe_site_packages(exe, site, packages.clone()).unwrap();
-        let hash = sfs.to_hash_exes();
         assert_eq!(
-            hash,
+            sfs.exes_hash,
             "35cc8bbf5f965f99f2ed716a23e0cfbb70b8977ba65e837708e960fc13e51da2"
         );
     }
@@ -900,9 +898,8 @@ mod tests {
             Package::from_name_version_durl("flask", "1.1.3", None).unwrap(),
         ];
         let sfs = ScanFS::from_exe_site_packages(exe, site, packages.clone()).unwrap();
-        let hash = sfs.to_hash_exes();
         assert_eq!(
-            hash,
+            sfs.exes_hash,
             "973122597250deea4e62e359208ab4335782561c12032746ce044a387a201d09"
         );
     }

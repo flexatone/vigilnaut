@@ -358,7 +358,6 @@ enum UnpackFilesSubcommand {
 //     Ok(())
 // }
 
-
 // Provided `exe_paths` are not normalize.
 fn get_scan(
     exe_paths: Vec<PathBuf>,
@@ -366,7 +365,6 @@ fn get_scan(
     log: bool,
     cache_dur: Duration,
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
-
     eprintln!("cache_duration {:?}", cache_dur);
 
     // TODO: avoid this clone

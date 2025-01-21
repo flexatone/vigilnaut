@@ -202,7 +202,7 @@ where
         .join("\n");
 
     let input = format!("{concatenated}\n{}", flag);
-    println!("hash_paths input: {:?}", input);
+    // println!("hash_paths input: {:?}", input);
     let mut hasher = Sha256::new();
     hasher.update(input.as_bytes());
     let hash = hasher.finalize();
