@@ -149,7 +149,7 @@ pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
     Ok(fp)
 }
 
-/// Optimal routine to determine if a Path has only one component.
+/// Optimal routine to determine if a Path has only one component. A single component at the root directory ("/bin") has two components and will return false.
 pub(crate) fn path_is_component(path: &Path) -> bool {
     let mut components = path.components();
     components.next().is_some() && components.next().is_none()
@@ -186,6 +186,7 @@ pub(crate) fn path_within_duration<P: AsRef<Path>>(
     false
 }
 
+/// Create a hash of an iterable of PathBuf plus an additional Boolean flag (used for the usite configuration option).
 pub(crate) fn hash_paths<I>(paths: I, flag: bool) -> String
 where
     I: IntoIterator<Item = PathBuf>,
@@ -201,6 +202,7 @@ where
         .join("\n");
 
     let input = format!("{concatenated}\n{}", flag);
+    println!("hash_paths input: {:?}", input);
     let mut hasher = Sha256::new();
     hasher.update(input.as_bytes());
     let hash = hasher.finalize();
@@ -317,11 +319,16 @@ mod tests {
     }
 
     #[test]
-    fn test_path_is_component_b() {
+    fn test_path_is_component_b1() {
         let fp = PathBuf::from("/foo");
         assert!(!path_is_component(&fp));
     }
 
+    #[test]
+    fn test_path_is_component_b2() {
+        let fp = PathBuf::from("/bin");
+        assert!(!path_is_component(&fp));
+    }
 
     #[test]
     fn test_path_is_component_c() {
