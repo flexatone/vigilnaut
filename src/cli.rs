@@ -1,5 +1,5 @@
 use std::process;
-use std::str::FromStr;
+// use std::str::FromStr;
 
 use crate::validation_report::ValidationFlags;
 use clap::{Parser, Subcommand, ValueEnum};
@@ -14,7 +14,6 @@ use std::thread;
 use std::time::Duration;
 
 use crate::dep_manifest::DepManifest;
-// use crate::exe_search::find_exe;
 use crate::scan_fs::Anchor;
 use crate::scan_fs::ScanFS;
 use crate::spin::spin;
@@ -359,16 +358,15 @@ enum UnpackFilesSubcommand {
 //     Ok(())
 // }
 
+
+// Provided `exe_paths` are not normalize.
 fn get_scan(
     exe_paths: Vec<PathBuf>,
     force_usite: bool,
     log: bool,
     cache_dur: Duration,
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
-    // let exes: Vec<PathBuf> = match exe_paths.is_none() {
-    //     true => find_exe().into_iter().collect(),
-    //     false => exe_paths.unwrap(),
-    // };
+
     eprintln!("cache_duration {:?}", cache_dur);
 
     // TODO: avoid this clone
