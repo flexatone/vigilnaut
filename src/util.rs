@@ -149,6 +149,7 @@ pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
     Ok(fp)
 }
 
+/// Optimal routine to determine if a Path has only one component.
 pub(crate) fn path_is_component(path: &Path) -> bool {
     let mut components = path.components();
     components.next().is_some() && components.next().is_none()
@@ -307,6 +308,25 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let fp = temp_dir.path().join("python3.12.1000");
         assert!(is_python_exe_file_name(&fp));
+    }
+
+    #[test]
+    fn test_path_is_component_a() {
+        let fp = PathBuf::from("python3.12.1000");
+        assert!(path_is_component(&fp));
+    }
+
+    #[test]
+    fn test_path_is_component_b() {
+        let fp = PathBuf::from("/foo");
+        assert!(!path_is_component(&fp));
+    }
+
+
+    #[test]
+    fn test_path_is_component_c() {
+        let fp = PathBuf::from("/foo/bar");
+        assert!(!path_is_component(&fp));
     }
 
     #[test]
