@@ -344,7 +344,6 @@ fn get_scan(
     log: bool,
     cache_dur: Duration,
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
-
     ScanFS::from_cache(exe_paths, force_usite, cache_dur).or_else(|_err| {
         // eprintln!("Could not load from cache: {:?}", err);
         // full load
