@@ -181,7 +181,7 @@ To run `fetter validate` with `pre-commit`, add the following to your `.pre-comm
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v1.1.0
+  rev: v1.2.0
   hooks:
     - id: fetter-validate
       args: [--bound, {FILE}, --superset, --subset]
@@ -198,7 +198,7 @@ To run `fetter audit` with `pre-commit`, add the following to your `.pre-commit-
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v1.1.0
+  rev: v1.2.0
   hooks:
     - id: fetter-audit
 ```
@@ -327,6 +327,13 @@ repos:
 
 
 ## What is New in Fetter
+
+### 1.2.0
+
+Improvements to path expansion.
+
+Implemented `cache-duration` to permit creating and using a locally stored JSON scan cache for the provided duration.
+
 
 ### 1.1.0
 
