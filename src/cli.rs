@@ -79,14 +79,14 @@ struct Cli {
     #[arg(
         short,
         long,
-        value_name = "FILES",
+        value_name = "EXECUTABLES",
         required = false,
         default_value = "*"
     )]
     exe: Vec<PathBuf>,
 
-    /// Create and / or use a cache that expires after the provided number of seconds.
-    #[arg(long, short, required = false, default_value = "0")]
+    /// Create or use a cache that expires after the provided number of seconds. A duration of zero will disable caching.
+    #[arg(long, short, required = false, default_value = "40")]
     cache_duration: u64,
 
     /// Disable logging and terminal animation.
