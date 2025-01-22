@@ -198,7 +198,7 @@ impl ScanFS {
         })
     }
 
-    /// NOTE: exes provided here should be pre-normalization.
+    /// Create a ScanFS from a cache: exes provided here should be pre-normalization.
     pub(crate) fn from_cache(
         exes: &[PathBuf],
         force_usite: bool,
@@ -212,7 +212,7 @@ impl ScanFS {
             let cache_fp = cache_dir.with_extension("json");
 
             if path_within_duration(&cache_fp, cache_dur) {
-                eprintln!("loading {:?}", cache_fp);
+                // eprintln!("loading {:?}", cache_fp);
                 let mut file = File::open(cache_fp)?;
                 let mut contents = String::new();
                 file.read_to_string(&mut contents)?;
@@ -234,7 +234,6 @@ impl ScanFS {
         force_usite: bool,
     ) -> ResultDynError<Self> {
         let path_wild = PathBuf::from("*");
-        // TODO: remove this clone
         let exes_hash = hash_paths(exes, force_usite);
         let mut exes_norm = Vec::new();
         for e in exes {
@@ -254,13 +253,6 @@ impl ScanFS {
             .collect();
         Self::from_exe_to_sites(exe_to_sites, force_usite, exes_hash)
     }
-
-    // Create a ScanFS from discovered exe; assume that all exes found here are given with absolute paths
-    // pub(crate) fn from_exe_scan(force_usite: bool) -> ResultDynError<Self> {
-    //     // NOTE: strong assumption that find_exe always returns absolute paths.
-    //     let exes = find_exe();
-    //     Self::from_exes(exes, force_usite)
-    // }
 
     /// Alternative constructor from in-memory objects, only for testing. Here we provide notional exe and site paths, and focus just on collecting Packages.
     #[allow(dead_code)]
@@ -330,13 +322,13 @@ impl ScanFS {
 
             // only write if cache does not exist or it is out of duration
             if !cache_fp.exists() || !path_within_duration(&cache_fp, cache_dur) {
-                eprintln!("writing {:?}", cache_fp);
+                // eprintln!("writing {:?}", cache_fp);
                 let json = serde_json::to_string(self)?;
                 let mut file = File::create(cache_fp)?;
                 file.write_all(json.as_bytes())?;
                 return Ok(());
             } else {
-                eprintln!("keeping existing cache {:?}", cache_fp);
+                // eprintln!("keeping existing cache {:?}", cache_fp);
                 return Ok(());
             }
         }
