@@ -1,4 +1,5 @@
 use std::process;
+// use std::str::FromStr;
 
 use crate::validation_report::ValidationFlags;
 use clap::{Parser, Subcommand, ValueEnum};
@@ -19,6 +20,7 @@ use crate::spin::spin;
 use crate::table::Tableable;
 use crate::ureq_client::UreqClientLive;
 use crate::util::path_normalize;
+use crate::util::DURATION_0;
 
 //------------------------------------------------------------------------------
 // utility enums
@@ -74,8 +76,18 @@ Examples:
 #[command(version, about, long_about = TITLE, after_help = AFTER_HELP)]
 struct Cli {
     /// Zero or more executable paths to derive site package locations. If not provided, all discoverable executables will be used.
-    #[arg(short, long, value_name = "FILES", required = false)]
-    exe: Option<Vec<PathBuf>>,
+    #[arg(
+        short,
+        long,
+        value_name = "EXECUTABLES",
+        required = false,
+        default_value = "*"
+    )]
+    exe: Vec<PathBuf>,
+
+    /// Create or use a cache that expires after the provided number of seconds. A duration of zero will disable caching.
+    #[arg(long, short, required = false, default_value = "40")]
+    cache_duration: u64,
 
     /// Disable logging and terminal animation.
     #[arg(long, short)]
@@ -325,25 +337,31 @@ enum UnpackFilesSubcommand {
 //------------------------------------------------------------------------------
 // Utility constructors specialized fro CLI contexts
 
-// Get a ScanFS, optionally using exe_paths if provided
+// Provided `exe_paths` are not normalize.
 fn get_scan(
-    exe_paths: Option<Vec<PathBuf>>,
+    exe_paths: &Vec<PathBuf>, // could be a ref
     force_usite: bool,
     log: bool,
+    cache_dur: Duration,
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
-    let active = Arc::new(AtomicBool::new(true));
-    if log {
-        spin(active.clone(), "scanning".to_string());
-    }
-    let sfs = match exe_paths {
-        Some(exe_paths) => ScanFS::from_exes(exe_paths, force_usite),
-        None => ScanFS::from_exe_scan(force_usite),
-    };
-    if log {
-        active.store(false, Ordering::Relaxed);
-        thread::sleep(Duration::from_millis(100));
-    }
-    sfs
+    ScanFS::from_cache(exe_paths, force_usite, cache_dur).or_else(|_err| {
+        // eprintln!("Could not load from cache: {:?}", err);
+        // full load
+        let active = Arc::new(AtomicBool::new(true));
+        if log {
+            spin(active.clone(), "scanning".to_string());
+        }
+        let sfsl = ScanFS::from_exes(exe_paths, force_usite)?;
+
+        if cache_dur > DURATION_0 {
+            sfsl.to_cache(cache_dur)?;
+        }
+        if log {
+            active.store(false, Ordering::Relaxed);
+            thread::sleep(Duration::from_millis(100));
+        }
+        Ok(sfsl)
+    })
 }
 
 // Given a Path, load a DepManifest. This might branch by extension to handle pyproject.toml and other formats.
@@ -351,14 +369,15 @@ fn get_dep_manifest(
     bound: &PathBuf,
     bound_options: Option<&Vec<String>>,
 ) -> Result<DepManifest, Box<dyn std::error::Error>> {
-    if bound.to_str().map_or(false, |s| s.ends_with(".git")) {
+    if bound.to_str().is_some_and(|s| s.ends_with(".git")) {
+        // if bound.to_str().map_or(false, |s| s.ends_with(".git")) {
         DepManifest::from_git_repo(bound, bound_options)
     } else if bound
         .to_str()
-        .map_or(false, |s| s.ends_with("pyproject.toml"))
+        .is_some_and(|s| s.ends_with("pyproject.toml"))
     {
         DepManifest::from_pyproject_file(bound, bound_options)
-    } else if bound.to_str().map_or(false, |s| s.starts_with("http")) {
+    } else if bound.to_str().is_some_and(|s| s.starts_with("http")) {
         // might have URL based requirements or pyproject
         DepManifest::from_url(&UreqClientLive, bound, bound_options)
     } else {
@@ -383,7 +402,12 @@ where
     }
     // we always do a scan; we might cache this
     let quiet = cli.quiet;
-    let sfs = get_scan(cli.exe, cli.user_site, !quiet).unwrap(); // handle error
+    let sfs = get_scan(
+        &cli.exe,
+        cli.user_site,
+        !quiet,
+        Duration::from_secs(cli.cache_duration),
+    )?;
 
     match &cli.command {
         Some(Commands::Scan { subcommands }) => match subcommands {
@@ -392,8 +416,6 @@ where
                 let _ = sr.to_file(output, *delimiter);
             }
             Some(ScanSubcommand::Display) | None => {
-                // default
-                // default
                 let sr = sfs.to_scan_report();
                 let _ = sr.to_stdout();
             }

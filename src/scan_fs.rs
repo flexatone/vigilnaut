@@ -1,12 +1,17 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
+use std::fs::File;
 use std::io;
+use std::io::Read;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::time::Duration;
 
 use rayon::prelude::*;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::audit_report::AuditReport;
 use crate::count_report::CountReport;
@@ -20,8 +25,13 @@ use crate::path_shared::PathShared;
 use crate::scan_report::ScanReport;
 use crate::unpack_report::UnpackReport;
 use crate::ureq_client::UreqClientLive;
-use crate::util::path_normalize;
+use crate::util::exe_path_normalize;
+use crate::util::hash_paths;
+use crate::util::path_cache;
+use crate::util::path_is_component;
+use crate::util::path_within_duration;
 use crate::util::ResultDynError;
+use crate::util::DURATION_0;
 use crate::validation_report::ValidationFlags;
 use crate::validation_report::ValidationRecord;
 use crate::validation_report::ValidationReport;
@@ -60,6 +70,7 @@ fn get_site_package_dirs(executable: &Path, force_usite: bool) -> Vec<PathShared
                     paths.push(PathShared::from_str(line.trim()));
                 }
             }
+            // if necessary, remove the usite
             if !force_usite && !usite_enabled {
                 let _p = paths.pop();
             }
@@ -87,18 +98,77 @@ fn get_packages(site_packages: &Path) -> Vec<Package> {
 }
 
 //------------------------------------------------------------------------------
+
 // The result of a file-system scan.
+#[derive(Clone, Debug)]
 pub(crate) struct ScanFS {
-    // NOTE: these attributes used by reporters
+    // NOTE: these attributes are used by reporters
     /// A mapping of exe path to site packages paths
     pub(crate) exe_to_sites: HashMap<PathBuf, Vec<PathShared>>,
     /// A mapping of Package tp a site package paths
     pub(crate) package_to_sites: HashMap<Package, Vec<PathShared>>,
+    force_usite: bool,
+    /// Store the hash of the un-normalized exe inputs for cache lookup.
+    exes_hash: String,
+}
+
+impl Serialize for ScanFS {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // Collect and sort by keys for stable ordering
+        let mut exe_to_sites: Vec<_> = self.exe_to_sites.iter().collect();
+        exe_to_sites.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
+
+        let mut package_to_sites: Vec<_> = self.package_to_sites.iter().collect();
+        package_to_sites.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
+
+        // Serialize as tuple of sorted vectors
+        let data = (
+            &exe_to_sites,
+            &package_to_sites,
+            self.force_usite,
+            &self.exes_hash,
+        );
+        data.serialize(serializer)
+    }
+}
+
+/// Flattened data representation used for serialization.
+type ScanFSData = (
+    Vec<(PathBuf, Vec<PathShared>)>,
+    Vec<(Package, Vec<PathShared>)>,
+    bool,   // force_usite
+    String, // exes hash
+);
+
+impl<'de> Deserialize<'de> for ScanFS {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let (exe_to_sites, package_to_sites, force_usite, exes_hash): ScanFSData =
+            Deserialize::deserialize(deserializer)?;
+
+        let exe_to_sites = exe_to_sites.into_iter().collect();
+        let package_to_sites = package_to_sites.into_iter().collect();
+
+        Ok(ScanFS {
+            exe_to_sites,
+            package_to_sites,
+            force_usite,
+            exes_hash,
+        })
+    }
 }
 
 impl ScanFS {
+    /// Main entry point for creating a ScanFS. All public creation should go through this interface.
     fn from_exe_to_sites(
         exe_to_sites: HashMap<PathBuf, Vec<PathShared>>,
+        force_usite: bool,
+        exes_hash: String,
     ) -> ResultDynError<Self> {
         // Some site packages will be repeated; let them be processed more than once here, as it seems easier than filtering them out
         let site_to_packages = exe_to_sites
@@ -123,36 +193,68 @@ impl ScanFS {
         Ok(ScanFS {
             exe_to_sites,
             package_to_sites,
+            force_usite,
+            exes_hash,
         })
     }
-    // Given a Vec of PathBuf to executables, use them to collect site packages.
+
+    /// Create a ScanFS from a cache: exes provided here should be pre-normalization.
+    pub(crate) fn from_cache(
+        exes: &[PathBuf],
+        force_usite: bool,
+        cache_dur: Duration,
+    ) -> ResultDynError<Self> {
+        if cache_dur == DURATION_0 {
+            Err("Cache disabled by duration".into())
+        } else if let Some(mut cache_dir) = path_cache(true) {
+            let exes_hash = hash_paths(exes, force_usite);
+            cache_dir.push(exes_hash);
+            let cache_fp = cache_dir.with_extension("json");
+
+            if path_within_duration(&cache_fp, cache_dur) {
+                // eprintln!("loading {:?}", cache_fp);
+                let mut file = File::open(cache_fp)?;
+                let mut contents = String::new();
+                file.read_to_string(&mut contents)?;
+                let data: ScanFS = serde_json::from_str(&contents)?;
+                Ok(data)
+            } else if cache_fp.exists() {
+                Err("Cache expired".into())
+            } else {
+                Err("Cache file does not exist".into())
+            }
+        } else {
+            Err("Could not get cache directory".into())
+        }
+    }
+
+    /// Given a Vec of PathBuf to executables, use them to collect site packages. In this function, provided PathBuf are normalized to absolute paths, and if a PathBuf is "*", a system-wide path search will be conducted.
     pub(crate) fn from_exes(
-        exes: Vec<PathBuf>,
+        exes: &Vec<PathBuf>,
         force_usite: bool,
     ) -> ResultDynError<Self> {
-        let exe_to_sites: HashMap<PathBuf, Vec<PathShared>> = exes
-            .into_par_iter()
-            .map(|exe| {
-                // if normalization fails, just copy the pre-norm
-                let exe_norm = path_normalize(&exe).unwrap_or_else(|_| exe.clone());
-                let dirs = get_site_package_dirs(&exe_norm, force_usite);
-                (exe_norm, dirs)
-            })
-            .collect();
-        Self::from_exe_to_sites(exe_to_sites)
-    }
-    pub(crate) fn from_exe_scan(force_usite: bool) -> ResultDynError<Self> {
-        // For every unique exe, we hae a list of site packages; some site packages might be associated with more than one exe, meaning that a reverse lookup would have to be site-package to Vec of exe
-        let exe_to_sites: HashMap<PathBuf, Vec<PathShared>> = find_exe()
+        let path_wild = PathBuf::from("*");
+        let exes_hash = hash_paths(exes, force_usite);
+        let mut exes_norm = Vec::new();
+        for e in exes {
+            if path_is_component(e) && *e == path_wild {
+                exes_norm.extend(find_exe());
+            } else if let Ok(normalized) = exe_path_normalize(e) {
+                exes_norm.push(normalized);
+            }
+        }
+
+        let exe_to_sites: HashMap<PathBuf, Vec<PathShared>> = exes_norm
             .into_par_iter()
             .map(|exe| {
                 let dirs = get_site_package_dirs(&exe, force_usite);
                 (exe, dirs)
             })
             .collect();
-        Self::from_exe_to_sites(exe_to_sites)
+        Self::from_exe_to_sites(exe_to_sites, force_usite, exes_hash)
     }
-    // Alternative constructor from in-memory objects, mostly for testing. Here we provide notional exe and site paths, and focus just on collecting Packages.
+
+    /// Alternative constructor from in-memory objects, only for testing. Here we provide notional exe and site paths, and focus just on collecting Packages.
     #[allow(dead_code)]
     pub(crate) fn from_exe_site_packages(
         exe: PathBuf,
@@ -163,6 +265,7 @@ impl ScanFS {
         let site_shared = PathShared::from_path_buf(site);
 
         exe_to_sites.insert(exe.clone(), vec![site_shared.clone()]);
+        let exes = vec![exe];
 
         let mut package_to_sites = HashMap::new();
         for package in packages {
@@ -171,10 +274,13 @@ impl ScanFS {
                 .or_insert_with(Vec::new)
                 .push(site_shared.clone());
         }
-
+        let force_usite = false;
+        let exes_hash = hash_paths(&exes, force_usite);
         Ok(ScanFS {
             exe_to_sites,
             package_to_sites,
+            force_usite,
+            exes_hash,
         })
     }
 
@@ -206,10 +312,27 @@ impl ScanFS {
         packages
     }
 
-    /// The length of the scan is the number of unique packages.
-    #[allow(dead_code)]
-    pub(crate) fn len(&self) -> usize {
-        self.package_to_sites.len()
+    //--------------------------------------------------------------------------
+
+    pub(crate) fn to_cache(&self, cache_dur: Duration) -> ResultDynError<()> {
+        if let Some(mut cache_dir) = path_cache(true) {
+            // use hash of exes observed at initialization
+            cache_dir.push(self.exes_hash.clone());
+            let cache_fp = cache_dir.with_extension("json");
+
+            // only write if cache does not exist or it is out of duration
+            if !cache_fp.exists() || !path_within_duration(&cache_fp, cache_dur) {
+                // eprintln!("writing {:?}", cache_fp);
+                let json = serde_json::to_string(self)?;
+                let mut file = File::create(cache_fp)?;
+                file.write_all(json.as_bytes())?;
+                return Ok(());
+            } else {
+                // eprintln!("keeping existing cache {:?}", cache_fp);
+                return Ok(());
+            }
+        }
+        Err("could not get cache directory".into())
     }
 
     //--------------------------------------------------------------------------
@@ -423,8 +546,8 @@ mod tests {
             fp_exe.clone(),
             vec![PathShared::from_path_buf(fp_sp.to_path_buf())],
         );
-        let sfs = ScanFS::from_exe_to_sites(exe_to_sites).unwrap();
-        assert_eq!(sfs.len(), 2);
+        let sfs = ScanFS::from_exe_to_sites(exe_to_sites, false, "".to_string()).unwrap();
+        assert_eq!(sfs.package_to_sites.len(), 2);
 
         let dm1 = DepManifest::from_iter(vec!["numpy >= 1.19", "foo==3"]).unwrap();
         assert_eq!(dm1.len(), 2);
@@ -462,7 +585,7 @@ mod tests {
             Package::from_name_version_durl("flask", "1.1.3", None).unwrap(),
         ];
         let sfs = ScanFS::from_exe_site_packages(exe, site, packages).unwrap();
-        assert_eq!(sfs.len(), 7);
+        assert_eq!(sfs.package_to_sites.len(), 7);
         // sfs.report();
         let dm = sfs.to_dep_manifest(Anchor::Lower).unwrap();
         assert_eq!(dm.len(), 3);
@@ -730,5 +853,57 @@ mod tests {
         let sfs = ScanFS::from_exe_site_packages(exe, site, packages.clone()).unwrap();
         let matched = sfs.search_by_match("*frame*", true);
         assert_eq!(matched, vec![packages[1].clone()]);
+    }
+
+    //--------------------------------------------------------------------------
+
+    #[test]
+    fn test_serialize_a() {
+        let exe = PathBuf::from("/usr/bin/python3");
+        let site = PathBuf::from("/usr/lib/python3/site-packages");
+        let packages = vec![
+            Package::from_name_version_durl("numpy", "1.19.3", None).unwrap(),
+            Package::from_name_version_durl("static-frame", "2.13.0", None).unwrap(),
+            Package::from_name_version_durl("flask", "1.1.3", None).unwrap(),
+        ];
+        let sfs = ScanFS::from_exe_site_packages(exe, site, packages.clone()).unwrap();
+        let json = serde_json::to_string(&sfs).unwrap();
+        assert_eq!(json, "[[[\"/usr/bin/python3\",[\"/usr/lib/python3/site-packages\"]]],[[{\"name\":\"flask\",\"key\":\"flask\",\"version\":\"1.1.3\",\"direct_url\":null},[\"/usr/lib/python3/site-packages\"]],[{\"name\":\"numpy\",\"key\":\"numpy\",\"version\":\"1.19.3\",\"direct_url\":null},[\"/usr/lib/python3/site-packages\"]],[{\"name\":\"static-frame\",\"key\":\"static_frame\",\"version\":\"2.13.0\",\"direct_url\":null},[\"/usr/lib/python3/site-packages\"]]],false,\"35cc8bbf5f965f99f2ed716a23e0cfbb70b8977ba65e837708e960fc13e51da2\"]");
+
+        let sfsd: ScanFS = serde_json::from_str(&json).unwrap();
+        assert_eq!(sfsd.exe_to_sites.len(), 1);
+        assert_eq!(sfsd.package_to_sites.len(), 3);
+    }
+
+    #[test]
+    fn test_to_hash_a() {
+        let exe = PathBuf::from("/usr/bin/python3");
+        let site = PathBuf::from("/usr/lib/python3/site-packages");
+        let packages = vec![
+            Package::from_name_version_durl("numpy", "1.19.3", None).unwrap(),
+            Package::from_name_version_durl("static-frame", "2.13.0", None).unwrap(),
+            Package::from_name_version_durl("flask", "1.1.3", None).unwrap(),
+        ];
+        let sfs = ScanFS::from_exe_site_packages(exe, site, packages.clone()).unwrap();
+        assert_eq!(
+            sfs.exes_hash,
+            "35cc8bbf5f965f99f2ed716a23e0cfbb70b8977ba65e837708e960fc13e51da2"
+        );
+    }
+
+    #[test]
+    fn test_to_hash_b() {
+        let exe = PathBuf::from("/usr/local/bin/python3");
+        let site = PathBuf::from("/usr/lib/python3/site-packages");
+        let packages = vec![
+            Package::from_name_version_durl("numpy", "1.19.3", None).unwrap(),
+            Package::from_name_version_durl("static-frame", "2.13.0", None).unwrap(),
+            Package::from_name_version_durl("flask", "1.1.3", None).unwrap(),
+        ];
+        let sfs = ScanFS::from_exe_site_packages(exe, site, packages.clone()).unwrap();
+        assert_eq!(
+            sfs.exes_hash,
+            "973122597250deea4e62e359208ab4335782561c12032746ce044a387a201d09"
+        );
     }
 }

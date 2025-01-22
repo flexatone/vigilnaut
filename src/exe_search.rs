@@ -1,13 +1,13 @@
 use std::collections::HashSet;
 use std::env;
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::path::PathBuf;
-use std::process::Command;
 
 use rayon::prelude::*;
 
+use crate::util::get_absolute_path_from_exe;
+use crate::util::is_python_exe;
 use crate::util::path_home;
 
 //------------------------------------------------------------------------------
@@ -79,25 +79,6 @@ fn get_search_origins() -> HashSet<(PathBuf, bool)> {
     paths
 }
 
-// Return True if the path points to a python executable. We assume this has already been proven to exist.
-fn is_exe(path: &Path) -> bool {
-    match path.file_name().and_then(|f| f.to_str()) {
-        Some(file_name) if file_name.starts_with("python") => {
-            let suffix = &file_name[6..];
-            if suffix.is_empty() || suffix.chars().all(|c| c.is_ascii_digit() || c == '.')
-            {
-                match fs::metadata(path) {
-                    Ok(md) => md.permissions().mode() & 0o111 != 0,
-                    Err(_) => false,
-                }
-            } else {
-                false
-            }
-        }
-        _ => false,
-    }
-}
-
 fn is_symlink(path: &Path) -> bool {
     match fs::symlink_metadata(path) {
         Ok(metadata) => metadata.file_type().is_symlink(),
@@ -105,19 +86,7 @@ fn is_symlink(path: &Path) -> bool {
     }
 }
 
-const PY_SYS_EXE: &str = "import sys;print(sys.executable)";
-
-// Use the default Python to get its executable path.
-fn get_exe_default() -> Option<PathBuf> {
-    match Command::new("python3").arg("-c").arg(PY_SYS_EXE).output() {
-        Ok(output) => match std::str::from_utf8(&output.stdout) {
-            Ok(s) => Some(PathBuf::from(s.trim())),
-            Err(_) => None,
-        },
-        Err(_) => None,
-    }
-}
-/// Try to find all Python executables given a starting directory. This will recursively search all directories that are not symlinks.
+/// Try to find all Python executables given a starting directory. This will recursively search all directories that are not symlinks. All exe should be returned as absolute paths.
 fn find_exe_inner(
     path: &Path,
     exclude_paths: &HashSet<PathBuf>,
@@ -134,7 +103,7 @@ fn find_exe_inner(
         let path_cfg = path.to_path_buf().join("pyvenv.cfg");
         if path_cfg.exists() {
             let path_exe = path.to_path_buf().join("bin/python3");
-            if path_exe.exists() && is_exe(&path_exe) {
+            if path_exe.exists() && is_python_exe(&path_exe) {
                 paths.push(path_exe)
             }
         } else {
@@ -146,7 +115,7 @@ fn find_exe_inner(
                             // recurse
                             // println!("recursing: {:?}", path);
                             paths.extend(find_exe_inner(&path, exclude_paths, recurse));
-                        } else if is_exe(&path) {
+                        } else if is_python_exe(&path) {
                             paths.push(path);
                         }
                     }
@@ -170,7 +139,7 @@ pub(crate) fn find_exe() -> HashSet<PathBuf> {
         .par_iter()
         .flat_map(|(path, recurse)| find_exe_inner(path, &exclude, *recurse))
         .collect();
-    if let Some(exe_def) = get_exe_default() {
+    if let Some(exe_def) = get_absolute_path_from_exe("python3") {
         paths.insert(exe_def);
     }
     paths
@@ -183,6 +152,7 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::os::unix::fs::symlink;
+    use std::os::unix::fs::PermissionsExt;
     use tempfile::tempdir;
 
     #[test]
@@ -205,7 +175,7 @@ mod tests {
         let mut perms = fs::metadata(fp.clone()).unwrap().permissions();
         perms.set_mode(0o755); // rwxr-xr-x (755) for an executable script
         fs::set_permissions(fp.clone(), perms).unwrap();
-        assert_eq!(is_exe(&fp), false);
+        assert_eq!(is_python_exe(&fp), false);
     }
 
     #[test]
@@ -216,7 +186,7 @@ mod tests {
         let mut perms = fs::metadata(fp.clone()).unwrap().permissions();
         perms.set_mode(0o755); // rwxr-xr-x (755) for an executable script
         fs::set_permissions(fp.clone(), perms).unwrap();
-        assert_eq!(is_exe(&fp), true);
+        assert_eq!(is_python_exe(&fp), true);
     }
 
     #[test]
@@ -227,7 +197,7 @@ mod tests {
         let mut perms = fs::metadata(fp.clone()).unwrap().permissions();
         perms.set_mode(0o755); // rwxr-xr-x (755) for an executable script
         fs::set_permissions(fp.clone(), perms).unwrap();
-        assert_eq!(is_exe(&fp), true);
+        assert_eq!(is_python_exe(&fp), true);
     }
 
     #[test]

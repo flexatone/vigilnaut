@@ -3,7 +3,7 @@ use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 //------------------------------------------------------------------------------
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd, Clone, Hash, Serialize, Deserialize)]
@@ -13,8 +13,27 @@ enum VersionPart {
 }
 
 //------------------------------------------------------------------------------
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub(crate) struct VersionSpec(Vec<VersionPart>);
+
+impl Serialize for VersionSpec {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for VersionSpec {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let version_str = String::deserialize(deserializer)?;
+        Ok(VersionSpec::new(&version_str))
+    }
+}
 
 impl VersionSpec {
     pub(crate) fn new(version_str: &str) -> Self {
@@ -234,7 +253,7 @@ mod tests {
     fn test_version_spec_json_a() {
         let vs1 = VersionSpec::new("2.2.3rc2");
         let json = serde_json::to_string(&vs1).unwrap();
-        assert_eq!(json, "[{\"Number\":2},{\"Number\":2},{\"Text\":\"3rc2\"}]");
+        assert_eq!(json, "\"2.2.3rc2\"");
         let vs2: VersionSpec = serde_json::from_str(&json).unwrap();
         assert_eq!(vs2, VersionSpec::new("2.2.3rc2"));
     }
