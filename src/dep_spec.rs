@@ -30,6 +30,8 @@ pub(crate) enum DepOperator {
     GreaterThanOrEq,
     Compatible,
     ArbitraryEq,
+    Caret,
+    Tilde,
 }
 
 impl FromStr for DepOperator {
@@ -44,6 +46,8 @@ impl FromStr for DepOperator {
             ">=" => Ok(DepOperator::GreaterThanOrEq),
             "~=" => Ok(DepOperator::Compatible),
             "===" => Ok(DepOperator::ArbitraryEq),
+            "^" => Ok(DepOperator::Caret),
+            "~" => Ok(DepOperator::Tilde),
             _ => Err(format!("Unknown operator: {}", s).into()),
         }
     }
@@ -60,12 +64,14 @@ impl fmt::Display for DepOperator {
             DepOperator::GreaterThanOrEq => ">=",
             DepOperator::Compatible => "~=",
             DepOperator::ArbitraryEq => "===",
+            DepOperator::Caret => "^",
+            DepOperator::Tilde => "~",
         };
         write!(f, "{}", op_str)
     }
 }
 
-// Dependency Specfication: A model of a specification of one or more versions, such as "numpy>1.18,<2.0".
+// Dependency Specification: A model of a specification for one package with pairs of versions and operators, such as "numpy>1.18,<2.0".
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct DepSpec {
     pub(crate) name: String,
@@ -250,6 +256,8 @@ impl DepSpec {
                 DepOperator::GreaterThanOrEq => version >= spec_version,
                 DepOperator::Compatible => version.is_compatible(spec_version),
                 DepOperator::ArbitraryEq => version.is_arbitrary_equal(spec_version),
+                DepOperator::Caret => version.is_caret(spec_version),
+                DepOperator::Tilde => version.is_tilde(spec_version),
             };
             if !valid {
                 return false;

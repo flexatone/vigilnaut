@@ -36,6 +36,8 @@ impl<'de> Deserialize<'de> for VersionSpec {
 }
 
 impl VersionSpec {
+
+    /// Main constructor.
     pub(crate) fn new(version_str: &str) -> Self {
         let parts = version_str
             .split('.')
@@ -49,8 +51,8 @@ impl VersionSpec {
             .collect();
         VersionSpec(parts)
     }
+    // https://packaging.python.org/en/latest/specifications/version-specifiers/#compatible-release
     pub(crate) fn is_compatible(&self, other: &Self) -> bool {
-        // https://packaging.python.org/en/latest/specifications/version-specifiers/#compatible-release
         if let (
             Some(VersionPart::Number(self_major)),
             Some(VersionPart::Number(other_major)),
@@ -60,10 +62,35 @@ impl VersionSpec {
         }
         false
     }
+    // https://packaging.python.org/en/latest/specifications/version-specifiers/#arbitrary-equality
     pub(crate) fn is_arbitrary_equal(&self, other: &Self) -> bool {
-        // https://packaging.python.org/en/latest/specifications/version-specifiers/#arbitrary-equality
         self.to_string() == other.to_string()
     }
+
+
+    // ^1.2.3 	>=1.2.3 <2.0.0
+    // ^1.2 	>=1.2.0 <2.0.0
+    // ^1 	>=1.0.0 <2.0.0
+    // ^0.2.3 	>=0.2.3 <0.3.0
+    // ^0.0.3 	>=0.0.3 <0.0.4
+    // ^0.0 	>=0.0.0 <0.1.0
+    // ^0 	>=0.0.0 <1.0.0
+
+    // https://python-poetry.org/docs/dependency-specification/#tilde-requirements
+    pub(crate) fn is_caret(&self, other: &Self) -> bool {
+        // need to derive the upper boundary
+        // let self_major = self.0.get(0).unwrap();
+        true
+    }
+
+    // ~1.2.3 	>=1.2.3 <1.3.0
+    // ~1.2 	>=1.2.0 <1.3.0
+    // ~1 	>=1.0.0 <2.0.0
+    // https://python-poetry.org/docs/dependency-specification/#tilde-requirements
+    pub(crate) fn is_tilde(&self, other: &Self) -> bool {
+        true
+    }
+
 }
 impl fmt::Display for VersionSpec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
