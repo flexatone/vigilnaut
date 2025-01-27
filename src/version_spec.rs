@@ -53,6 +53,8 @@ impl VersionSpec {
     }
     // https://packaging.python.org/en/latest/specifications/version-specifiers/#compatible-release
     pub(crate) fn is_compatible(&self, other: &Self) -> bool {
+        // NOTE: this needs to check beyond the major, and it is implied that minor/micro is greater or equal
+        // ~= 2.2 can be recast as >= 2.2, == 2.*; need a way to transfrom a dep spec to include a star
         if let (
             Some(VersionPart::Number(self_major)),
             Some(VersionPart::Number(other_major)),
