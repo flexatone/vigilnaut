@@ -106,7 +106,8 @@ impl VersionSpec {
                 }
             }
         }
-        self < &VersionSpec(ub)
+        println!("{:?}", VersionSpec(ub.clone()));
+        other < &VersionSpec(ub)
     }
 }
 impl fmt::Display for VersionSpec {
@@ -301,4 +302,16 @@ mod tests {
         let vs2: VersionSpec = serde_json::from_str(&json).unwrap();
         assert_eq!(vs2, VersionSpec::new("2.2.3rc2"));
     }
+
+    //--------------------------------------------------------------------------
+    #[test]
+    fn test_version_spec_tilde_a() {
+        assert_eq!(VersionSpec::new("1.7.1").is_tilde(&VersionSpec::new("1.7.2")), true);
+        assert_eq!(VersionSpec::new("1.7.1").is_tilde(&VersionSpec::new("1.7")), false);
+        assert_eq!(VersionSpec::new("1.7.1").is_tilde(&VersionSpec::new("1.8")), false);
+        assert_eq!(VersionSpec::new("1.7.1").is_tilde(&VersionSpec::new("2")), false);
+        assert_eq!(VersionSpec::new("1.7.1").is_tilde(&VersionSpec::new("0.8")), false);
+    }
+
+
 }
