@@ -51,7 +51,12 @@ const PY_SYS_EXE: &str = "import sys;print(sys.executable)";
 
 // Use the default Python to get absolute path to the exe. Use "-S" to skip site configuration.
 pub(crate) fn get_absolute_path_from_exe(name: &str) -> Option<PathBuf> {
-    match Command::new(name).arg("-S").arg("-c").arg(PY_SYS_EXE).output() {
+    match Command::new(name)
+        .arg("-S")
+        .arg("-c")
+        .arg(PY_SYS_EXE)
+        .output()
+    {
         Ok(output) => match std::str::from_utf8(&output.stdout) {
             Ok(s) => Some(PathBuf::from(s.trim())),
             Err(_) => None,
