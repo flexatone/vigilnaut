@@ -1,7 +1,7 @@
 WHITESPACE = _{ " " | "\t" }
 wsp = _{ WHITESPACE* }
 
-version_cmp = { ("===" | "<=" | "!=" | "==" | ">=" | "~=" | ">" | "<") }
+version_cmp = { ("===" | "<=" | "!=" | "==" | ">=" | "~=" | ">" | "<" | "~" | "^") }
 version = { (ASCII_ALPHANUMERIC | "-" | "_" | "." | "*" | "+" | "!")+ }
 
 version_one = { wsp? ~ version_cmp ~ wsp? ~ version ~ wsp? }
