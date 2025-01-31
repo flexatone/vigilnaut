@@ -52,17 +52,35 @@ impl VersionSpec {
     }
     // https://packaging.python.org/en/latest/specifications/version-specifiers/#compatible-release
     pub(crate) fn is_compatible(&self, other: &Self) -> bool {
-        // NOTE: this needs to check beyond the major, and it is implied that minor/micro is greater or equal
-        // ~= 2.2 can be recast as >= 2.2, == 2.*; need a way to transfrom a dep spec to include a star
-        if let (
-            Some(VersionPart::Number(self_major)),
-            Some(VersionPart::Number(other_major)),
-        ) = (self.0.first(), other.0.first())
-        {
-            return self_major == other_major;
+        if other < self {
+            return false;
         }
-        false
+        let mut ub = self.0.clone(); // upper bound
+        let ub_len = ub.len();
+        let mut numeric_count = 0;
+        let numeric_total = self
+            .0
+            .iter()
+            .filter(|part| matches!(part, VersionPart::Number(_)))
+            .count();
+        if numeric_total == 1 {
+            // spec says this MUST NOT be used with a single segment version number such as ~=1; we permit, however, direct equivalent versions
+            return self == other;
+        }
+        // try to find the second to last numeric component and increment it
+        for i in 0..ub_len {
+            if let VersionPart::Number(n) = ub[i] {
+                numeric_count += 1;
+                if numeric_count == numeric_total - 1 {
+                    ub[i] = VersionPart::Number(n + 1);
+                    ub.truncate(i + 1); // remove everything after
+                    break;
+                }
+            }
+        }
+        other < &VersionSpec(ub)
     }
+
     // https://packaging.python.org/en/latest/specifications/version-specifiers/#arbitrary-equality
     pub(crate) fn is_arbitrary_equal(&self, other: &Self) -> bool {
         self.to_string() == other.to_string()
@@ -263,8 +281,9 @@ mod tests {
         // this is supposed to be true: >1.7.post2 will allow 1.7.1 and 1.7.0.post3 but not 1.7.0.
         // assert_eq!(VersionSpec::new("1.7.0") > VersionSpec::new("1.7.post1"), false);
     }
+    //--------------------------------------------------------------------------
     #[test]
-    fn test_version_is_major_compatible_a() {
+    fn test_version_is_compatible_a() {
         assert_eq!(
             VersionSpec::new("2.2").is_compatible(&VersionSpec::new("2.2")),
             true
@@ -279,7 +298,7 @@ mod tests {
         );
     }
     #[test]
-    fn test_version_is_major_compatible_b() {
+    fn test_version_is_compatible_b() {
         assert_eq!(
             VersionSpec::new("2.2-2").is_arbitrary_equal(&VersionSpec::new("2.2-2")),
             true
@@ -295,6 +314,51 @@ mod tests {
         assert_eq!(
             VersionSpec::new("1.0")
                 .is_arbitrary_equal(&VersionSpec::new("1.0+downstream1")),
+            false
+        );
+    }
+    #[test]
+    fn test_version_is_compatible_c() {
+        assert_eq!(
+            VersionSpec::new("2.2.1").is_compatible(&VersionSpec::new("2.2.0")),
+            false
+        );
+        assert_eq!(
+            VersionSpec::new("2.2.1").is_compatible(&VersionSpec::new("2.2.9")),
+            true
+        );
+        assert_eq!(
+            VersionSpec::new("2.2.1").is_compatible(&VersionSpec::new("2.3")),
+            false
+        );
+    }
+    #[test]
+    fn test_version_is_compatible_d() {
+        assert_eq!(
+            VersionSpec::new("1.4.5.0").is_compatible(&VersionSpec::new("2.2.0")),
+            false
+        );
+        assert_eq!(
+            VersionSpec::new("1.4.5.0").is_compatible(&VersionSpec::new("1.4.5.9")),
+            true
+        );
+        assert_eq!(
+            VersionSpec::new("1.4.5.0").is_compatible(&VersionSpec::new("1.4.6.0")),
+            false
+        );
+    }
+    #[test]
+    fn test_version_is_compatible_e() {
+        assert_eq!(
+            VersionSpec::new("2").is_compatible(&VersionSpec::new("2.0.0.0")),
+            true
+        );
+        assert_eq!(
+            VersionSpec::new("2").is_compatible(&VersionSpec::new("2.1")),
+            false
+        );
+        assert_eq!(
+            VersionSpec::new("2").is_compatible(&VersionSpec::new("3")),
             false
         );
     }
