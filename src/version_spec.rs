@@ -36,7 +36,6 @@ impl<'de> Deserialize<'de> for VersionSpec {
 }
 
 impl VersionSpec {
-
     /// Main constructor.
     pub(crate) fn new(version_str: &str) -> Self {
         let parts = version_str
@@ -69,7 +68,6 @@ impl VersionSpec {
         self.to_string() == other.to_string()
     }
 
-
     // ^1.2.3 	>=1.2.3 <2.0.0
     // ^1.2 	>=1.2.0 <2.0.0
     // ^1 	>=1.0.0 <2.0.0
@@ -90,9 +88,26 @@ impl VersionSpec {
     // ~1 	>=1.0.0 <2.0.0
     // https://python-poetry.org/docs/dependency-specification/#tilde-requirements
     pub(crate) fn is_tilde(&self, other: &Self) -> bool {
-        true
-    }
+        if other < self {
+            return false;
+        }
+        let mut ub = self.0.clone(); // upper bound
+        let ub_len = ub.len();
+        let mut numeric_count = 0;
 
+        // try to find the second numeric component and increment it
+        for i in 0..ub_len {
+            if let VersionPart::Number(n) = ub[i] {
+                numeric_count += 1;
+                if numeric_count == 2 || (numeric_count == 1 && ub_len == 1) {
+                    ub[i] = VersionPart::Number(n + 1);
+                    ub.truncate(i + 1); // remove everything after
+                    break;
+                }
+            }
+        }
+        self < &VersionSpec(ub)
+    }
 }
 impl fmt::Display for VersionSpec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
