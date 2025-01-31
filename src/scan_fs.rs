@@ -49,7 +49,6 @@ const PY_SITE_PACKAGES: &str = "import site;print(site.ENABLE_USER_SITE);print(\
 
 /// Given a path to a Python binary, call out to Python to get all known site packages; some site packages may not exist; we do not filter them here. This will include "dist-packages" on Linux. If `force_usite` is false, we use ENABLE_USER_SITE to determine if we should include the user site packages; if `force_usite` is true, we always include usite.
 fn get_site_package_dirs(executable: &Path, force_usite: bool) -> Vec<PathShared> {
-    // let py = "import site;print(site.ENABLE_USER_SITE);print(\"\\n\".join(site.getsitepackages()));print(site.getusersitepackages())";
     match Command::new(executable)
         .arg("-c")
         .arg(PY_SITE_PACKAGES)
