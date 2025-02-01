@@ -95,11 +95,10 @@ impl VersionSpec {
         let ub_len = ub.len();
         let mut numeric_count = 0;
 
-        // try to find the second numeric component and increment it
+        // increment the first non-zero, or the last
         for i in 0..ub_len {
             if let VersionPart::Number(n) = ub[i] {
                 numeric_count += 1;
-                // first non-zero, or the last
                 if n != 0 || (numeric_count == ub_len) {
                     ub[i] = VersionPart::Number(n + 1);
                     ub.truncate(i + 1); // remove everything after
@@ -119,7 +118,7 @@ impl VersionSpec {
         let ub_len = ub.len();
         let mut numeric_count = 0;
 
-        // try to find the second numeric component and increment it
+        // find the second numeric component and increment it, or if length 1 increment it
         for i in 0..ub_len {
             if let VersionPart::Number(n) = ub[i] {
                 numeric_count += 1;
@@ -148,7 +147,7 @@ impl fmt::Display for VersionSpec {
     }
 }
 
-// This hash implementation does not treate wildcards "*" special, which may be an issue as PartialEq does
+// This hash implementation does not treat wildcards "*" special, which may be an issue as PartialEq does
 impl Hash for VersionSpec {
     fn hash<H: Hasher>(&self, state: &mut H) {
         for part in &self.0 {
