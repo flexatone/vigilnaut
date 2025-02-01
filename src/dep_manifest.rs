@@ -756,8 +756,6 @@ cli = [
 [tool.poetry]
 name = "poetry"
 readme = "README.md"
-include = [{ path = "tests", format = "sdist" }]
-homepage = "https://python-poetry.org/"
 
 [tool.poetry.urls]
 Changelog = "https://python-poetry.org/history/"
