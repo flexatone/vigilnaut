@@ -391,6 +391,4 @@ mod tests {
         assert!(p.clone().unwrap().is_absolute());
         assert!(p.unwrap().ends_with("python3"));
     }
-
-
 }
