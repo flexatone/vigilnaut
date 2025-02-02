@@ -384,4 +384,13 @@ mod tests {
             "e55c287546ecb742e64cae60f41e128a082b290f663f2e03f734b1d82d2ad274"
         )
     }
+    //--------------------------------------------------------------------------
+    #[test]
+    fn test_get_absolute_path_from_exe_a() {
+        let p = get_absolute_path_from_exe("python3");
+        assert!(p.clone().unwrap().is_absolute());
+        assert!(p.unwrap().ends_with("python3"));
+    }
+
+
 }

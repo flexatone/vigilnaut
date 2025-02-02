@@ -19,7 +19,7 @@ jobs:
         rust: ["1.74.0", stable]
         python: ["3.9", "3.13"]
 
-    name: Build & Test / ${{ matrix.os }} / Rust ${{ matrix.rust }}
+    name: Build & Test / ${{ matrix.os }} / Rust ${{ matrix.rust }} / Python ${{ matrix.python }}
     runs-on: ${{ matrix.os }}
 
     steps:
