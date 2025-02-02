@@ -45,6 +45,7 @@ pub(crate) enum Anchor {
 }
 
 //------------------------------------------------------------------------------
+// PYTHONNOUSERSITE: If this is set, Python won’t add the user site-packages directory to sys.path.
 const PY_SITE_PACKAGES: &str = "import site;import sys;import os;print(sys.prefix == sys.base_prefix and site.check_enableusersite() and not os.getenv('PYTHONNOUSERSITE'));print(\"\\n\".join(site.getsitepackages()));print(site.getusersitepackages())";
 
 /// Given a path to a Python binary, call out to Python to get all known site packages; some site packages may not exist; we do not filter them here. This will include "dist-packages" on Linux. If `force_usite` is false, we use ENABLE_USER_SITE to determine if we should include the user site packages; if `force_usite` is true, we always include usite. Using `-S` avoids loading site and calling sitecustomize.py, but obligates us to derive `ENABLE_USER_SITE` manually.
