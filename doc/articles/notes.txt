@@ -174,8 +174,7 @@ Antother application of traits: testing APIs
 # new articles
 
 
-Stop Running Blind: Ensure Package Alignment with Every Python Execution
-    using sitecustomize
+Stop Running Python Blind: Ensure Package Alignment with Every Python Execution
 
 Find Python Package Vulnerabilties in OSV Faster than pip-audit
 
