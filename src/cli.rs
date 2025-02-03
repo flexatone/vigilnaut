@@ -140,7 +140,7 @@ enum Commands {
         #[arg(short, long, value_name = "FILE")]
         bound: PathBuf,
 
-        /// Names of additional optional dependency groups.
+        /// Names of additional optional (extra) dependency groups.
         #[arg(long, value_name = "OPTIONS")]
         bound_options: Option<Vec<String>>,
 
@@ -154,6 +154,27 @@ enum Commands {
 
         #[command(subcommand)]
         subcommands: Option<ValidateSubcommand>,
+    },
+    /// Customize (with sitecustomize.py) the Python environment to check conformity to a validation target.
+    CustomizeInstall {
+        /// File path or URL from which to read bound requirements.
+        #[arg(short, long, value_name = "FILE")]
+        bound: PathBuf,
+
+        /// Names of additional optional (extra) dependency groups.
+        #[arg(long, value_name = "OPTIONS")]
+        bound_options: Option<Vec<String>>,
+
+        /// If the subset flag is set, the observed packages can be a subset of the bound requirements.
+        #[arg(long)]
+        subset: bool,
+
+        /// If the superset flag is set, the observed packages can be a superset of the bound requirements.
+        #[arg(long)]
+        superset: bool,
+
+        #[command(subcommand)]
+        subcommands: Option<CustomizeInstallSubcommand>,
     },
     /// Search for package security vulnerabilities via the OSV DB.
     Audit {
@@ -288,6 +309,17 @@ enum ValidateSubcommand {
         #[arg(short, long, default_value = ",")]
         delimiter: char,
     },
+    /// Return an exit code, 0 on success, 3 (by default) on error.
+    Exit {
+        #[arg(short, long, default_value = "3")]
+        code: i32,
+    },
+}
+
+#[derive(Subcommand)]
+enum CustomizeInstallSubcommand {
+    /// Print a Json representation of validation results.
+    Warn,
     /// Return an exit code, 0 on success, 3 (by default) on error.
     Exit {
         #[arg(short, long, default_value = "3")]
@@ -493,6 +525,35 @@ where
                     // default
                     let _ = vr.to_stdout();
                     process::exit(if vr.len() > 0 { ERROR_EXIT_CODE } else { 0 });
+                }
+            }
+        }
+        Some(Commands::CustomizeInstall {
+            bound,
+            bound_options,
+            subset,
+            superset,
+            subcommands,
+        }) => {
+            let dm = get_dep_manifest(bound, bound_options.as_ref())?;
+            let permit_superset = *superset;
+            let permit_subset = *subset;
+            // let vr = sfs.to_validation_report(
+            //     dm,
+            //     ValidationFlags {
+            //         permit_superset,
+            //         permit_subset,
+            //     },
+            // );
+            match subcommands {
+                Some(CustomizeInstallSubcommand::Warn) | None => {
+                    // default
+                    // let _ = vr.to_stdout();
+                    println!("warn");
+                }
+                Some(CustomizeInstallSubcommand::Exit { code }) => {
+                    // process::exit(if vr.len() > 0 { *code } else { 0 });
+                    println!("exit");
                 }
             }
         }

@@ -1,6 +1,7 @@
 mod audit_report;
 mod cli;
 mod count_report;
+mod customize;
 mod dep_manifest;
 mod dep_spec;
 mod exe_search;
