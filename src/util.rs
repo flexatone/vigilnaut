@@ -50,8 +50,8 @@ pub(crate) fn url_strip_user(url: &String) -> String {
 const PY_SYS_EXE: &str = "import sys;print(sys.executable)";
 
 // Use the default Python to get absolute path to the exe. Use "-S" to skip site configuration.
-pub(crate) fn get_absolute_path_from_exe(name: &str) -> Option<PathBuf> {
-    match Command::new(name)
+pub(crate) fn get_absolute_path_from_exe(executable: &str) -> Option<PathBuf> {
+    match Command::new(executable)
         .arg("-S")
         .arg("-c")
         .arg(PY_SYS_EXE)
@@ -383,5 +383,12 @@ mod tests {
             hashed,
             "e55c287546ecb742e64cae60f41e128a082b290f663f2e03f734b1d82d2ad274"
         )
+    }
+    //--------------------------------------------------------------------------
+    #[test]
+    fn test_get_absolute_path_from_exe_a() {
+        let p = get_absolute_path_from_exe("python3");
+        assert!(p.clone().unwrap().is_absolute());
+        assert!(p.unwrap().ends_with("python3"));
     }
 }
