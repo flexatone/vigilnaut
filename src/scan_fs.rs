@@ -51,6 +51,7 @@ pub(crate) enum Anchor {
 const PY_SITE_PACKAGES: &str = "import sys;import site;import types;sys.modules['sitecustomize'] = types.ModuleType('sitecustomize');site.main();print(site.ENABLE_USER_SITE);print(\"\\n\".join(site.getsitepackages()));print(site.getusersitepackages())";
 fn get_site_package_dirs(executable: &Path, force_usite: bool) -> Vec<PathShared> {
     match Command::new(executable)
+        .arg("-S") // disable site on startup
         .arg("-c")
         .arg(PY_SITE_PACKAGES)
         .output()

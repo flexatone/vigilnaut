@@ -1,25 +1,27 @@
 use crate::path_shared::PathShared;
 use crate::validation_report::ValidationFlags;
 use std::fs::File;
+use std::io;
 use std::io::Write;
-use std::path::PathBuf;
 use std::path::Path;
+use std::path::PathBuf;
+
+// const FETTER_BIN: &str = "target/release/fetter"; // for testing
+const FETTER_BIN: &str = "fetter";
 
 /// Produce the command line argument to reproduce a validation command.
-fn to_validation_command(
+fn get_validation_command(
     executable: &PathBuf, // only accept one
     bound: &Path,
     bound_options: Option<Vec<String>>,
     vf: &ValidationFlags,
-    exit_else_warn: Option<i32>,
 ) -> String {
     let bo = bound_options.as_ref().map_or(String::new(), |vec| {
         format!(" --bound_options {}", vec.join(" "))
     });
-    let ec =
-        exit_else_warn.map_or(String::new(), |code| format!(" exit --code {}", code));
     format!(
-        "fetter -e {} validate --bound {}{}{}{}{}",
+        "{} -e {} validate --bound {}{}{}{}",
+        FETTER_BIN,
         executable.display(),
         bound.display(),
         bo,
@@ -29,21 +31,26 @@ fn to_validation_command(
         } else {
             ""
         },
-        ec,
     )
 }
 
-fn to_validation_subprocess(
+fn get_validation_subprocess(
     executable: &PathBuf,
     bound: &PathBuf,
     bound_options: Option<Vec<String>>,
     vf: &ValidationFlags,
     exit_else_warn: Option<i32>,
 ) -> String {
-    let cmd = to_validation_command(executable, bound, bound_options, vf, exit_else_warn);
-    let eew = exit_else_warn.map_or(String::new(), |_| ", check=True".to_string());
+    let cmd = get_validation_command(executable, bound, bound_options, vf);
+    // NOTE: exit_else_warn is only handled here to achieve a true exit; raising an exception will not abort the process
+    let eew = exit_else_warn.map_or(String::new(), |i| {
+        format!(
+            "import sys;sys.stdout.flush();sys.exit({}) if r.returncode != 0 else None",
+            i
+        )
+    });
     format!(
-        "print('here');from subprocess import run;run('{}'.split(' '){}, capture_output=True)",
+        "from subprocess import run;r = run('{}'.split(' '));{}",
         cmd, eew
     )
 }
@@ -55,13 +62,14 @@ pub(crate) fn to_sitecustomize(
     vf: &ValidationFlags,
     exit_else_warn: Option<i32>,
     site: &PathShared,
-) {
+) -> io::Result<()> {
     let code =
-        to_validation_subprocess(executable, bound, bound_options, vf, exit_else_warn);
+        get_validation_subprocess(executable, bound, bound_options, vf, exit_else_warn);
     let fp = site.join("sitecustomize.py");
     eprintln!("writing: {}", fp.display());
-    let mut file = File::create(&fp).unwrap();
-    writeln!(file, "{}", code).unwrap();
+    let mut file = File::create(&fp)?;
+    writeln!(file, "{}", code)?;
+    Ok(())
 }
 
 //------------------------------------------------------------------------------
@@ -70,7 +78,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_to_validation_command_a() {
+    fn test_get_validation_command_a() {
         let exe = PathBuf::from("python3");
         let bound = PathBuf::from("requirements.txt");
         let bound_options = None;
@@ -78,14 +86,14 @@ mod tests {
             permit_superset: false,
             permit_subset: true,
         };
-        let post = to_validation_command(&exe, &bound, bound_options, &vf, None);
+        let post = get_validation_command(&exe, &bound, bound_options, &vf);
         assert_eq!(
             post,
             "fetter -e python3 validate --bound requirements.txt --subset"
         )
     }
     #[test]
-    fn test_to_validation_command_b() {
+    fn test_get_validation_command_b() {
         let exe = PathBuf::from("python3");
         let bound = PathBuf::from("requirements.txt");
         let bound_options = Some(vec!["foo".to_string(), "bar".to_string()]);
@@ -93,11 +101,11 @@ mod tests {
             permit_superset: true,
             permit_subset: true,
         };
-        let post = to_validation_command(&exe, &bound, bound_options, &vf, None);
+        let post = get_validation_command(&exe, &bound, bound_options, &vf);
         assert_eq!(post, "fetter -e python3 validate --bound requirements.txt --bound_options foo bar --subset --superset")
     }
     #[test]
-    fn test_to_validation_command_c() {
+    fn test_get_validation_command_c() {
         let exe = PathBuf::from("python3");
         let bound = PathBuf::from("requirements.txt");
         let bound_options = Some(vec!["foo".to_string(), "bar".to_string()]);
@@ -105,14 +113,13 @@ mod tests {
             permit_superset: true,
             permit_subset: true,
         };
-        let ec: Option<i32> = Some(4);
-        let post = to_validation_command(&exe, &bound, bound_options, &vf, ec);
-        assert_eq!(post, "fetter -e python3 validate --bound requirements.txt --bound_options foo bar --subset --superset exit --code 4")
+        let post = get_validation_command(&exe, &bound, bound_options, &vf);
+        assert_eq!(post, "fetter -e python3 validate --bound requirements.txt --bound_options foo bar --subset --superset")
     }
     //--------------------------------------------------------------------------
 
     #[test]
-    fn test_to_validation_subprocess_a() {
+    fn test_get_validation_subprocess_a() {
         let exe = PathBuf::from("python3");
         let bound = PathBuf::from("requirements.txt");
         let bound_options = None;
@@ -121,12 +128,12 @@ mod tests {
             permit_subset: true,
         };
         let ec: Option<i32> = Some(4);
-        let post = to_validation_subprocess(&exe, &bound, bound_options, &vf, ec);
-        assert_eq!(post, "from subprocess import run;run('fetter -e python3 validate --bound requirements.txt --subset exit --code 4'.split(' '), check=True)")
+        let post = get_validation_subprocess(&exe, &bound, bound_options, &vf, ec);
+        assert_eq!(post, "from subprocess import run;r = run('fetter -e python3 validate --bound requirements.txt --subset'.split(' '));import sys;sys.stdout.flush();sys.exit(4) if r.returncode != 0 else None")
     }
 
     #[test]
-    fn test_to_validation_subprocess_b() {
+    fn test_get_validation_subprocess_b() {
         let exe = PathBuf::from("python3");
         let bound = PathBuf::from("requirements.txt");
         let bound_options = None;
@@ -135,7 +142,7 @@ mod tests {
             permit_subset: true,
         };
         let ec: Option<i32> = None;
-        let post = to_validation_subprocess(&exe, &bound, bound_options, &vf, ec);
-        assert_eq!(post, "from subprocess import run;run('fetter -e python3 validate --bound requirements.txt --subset'.split(' '))")
+        let post = get_validation_subprocess(&exe, &bound, bound_options, &vf, ec);
+        assert_eq!(post, "from subprocess import run;r = run('fetter -e python3 validate --bound requirements.txt --subset'.split(' '));")
     }
 }
