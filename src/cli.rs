@@ -13,6 +13,7 @@ use std::sync::{
 use std::thread;
 use std::time::Duration;
 
+use crate::customize::to_sitecustomize;
 use crate::dep_manifest::DepManifest;
 use crate::scan_fs::Anchor;
 use crate::scan_fs::ScanFS;
@@ -535,27 +536,43 @@ where
             superset,
             subcommands,
         }) => {
-            let dm = get_dep_manifest(bound, bound_options.as_ref())?;
-            let permit_superset = *superset;
-            let permit_subset = *subset;
-            // let vr = sfs.to_validation_report(
-            //     dm,
-            //     ValidationFlags {
-            //         permit_superset,
-            //         permit_subset,
-            //     },
-            // );
-            match subcommands {
-                Some(CustomizeInstallSubcommand::Warn) | None => {
-                    // default
-                    // let _ = vr.to_stdout();
-                    println!("warn");
-                }
-                Some(CustomizeInstallSubcommand::Exit { code }) => {
-                    // process::exit(if vr.len() > 0 { *code } else { 0 });
-                    println!("exit");
+            // let dm = get_dep_manifest(bound, bound_options.as_ref())?;
+            // let permit_superset = *superset;
+            // let permit_subset = *subset;
+            let vf = ValidationFlags {
+                permit_superset: *superset,
+                permit_subset: *subset,
+            };
+            let exit_else_warn: Option<i32> = match subcommands {
+                Some(CustomizeInstallSubcommand::Warn) | None => None,
+                Some(CustomizeInstallSubcommand::Exit { code }) => Some(*code),
+            };
+            for (exe, sites) in sfs.exe_to_sites {
+                // NOTE: should probably only write to first
+                for site in sites {
+                    let _ = to_sitecustomize(
+                        &exe,
+                        &bound,
+                        bound_options.clone(),
+                        &vf,
+                        exit_else_warn.clone(),
+                        &site,
+                    );
                 }
             }
+            // TODO: can be parallel
+            // sfs.exe_to_sites.iter().flat_map(|(exe, sites)| {
+            //     for site in sites {
+            //         let _ = to_sitecustomize(
+            //             &exe,
+            //             &bound,
+            //             bound_options.clone(),
+            //             vf,
+            //             exit_else_warn.clone(),
+            //             site,
+            //         );
+            //     }
+            // });
         }
         Some(Commands::Audit {
             subcommands,
