@@ -27,6 +27,7 @@ use crate::unpack_report::UnpackReport;
 use crate::ureq_client::UreqClientLive;
 use crate::util::exe_path_normalize;
 use crate::util::hash_paths;
+use crate::util::logger;
 use crate::util::path_cache;
 use crate::util::path_is_component;
 use crate::util::path_within_duration;
@@ -35,7 +36,6 @@ use crate::util::DURATION_0;
 use crate::validation_report::ValidationFlags;
 use crate::validation_report::ValidationRecord;
 use crate::validation_report::ValidationReport;
-use crate::util::logger;
 
 //------------------------------------------------------------------------------
 #[derive(Debug, Copy, Clone)]
@@ -51,10 +51,10 @@ pub(crate) enum Anchor {
 /// Calling Python using `-S` disables loading site so that we can mock sitecustomize.py (which fetter might customize). We then call `site.main()` to force proper initialization.
 const PY_SITE_PACKAGES: &str = "import sys;import site;import types;sys.modules['sitecustomize'] = types.ModuleType('sitecustomize');site.main();print(site.ENABLE_USER_SITE);print(\"\\n\".join(site.getsitepackages()));print(site.getusersitepackages())";
 fn get_site_package_dirs(
-        executable: &Path,
-        force_usite: bool,
-        log: bool,
-    ) -> Vec<PathShared> {
+    executable: &Path,
+    force_usite: bool,
+    log: bool,
+) -> Vec<PathShared> {
     match Command::new(executable)
         .arg("-S") // disable site on startup
         .arg("-c")
@@ -84,7 +84,12 @@ fn get_site_package_dirs(
         }
         Err(e) => {
             if log {
-                logger!(module_path!(), "Failed to execute command with {:?}: {}", executable, e);
+                logger!(
+                    module_path!(),
+                    "Failed to execute command with {:?}: {}",
+                    executable,
+                    e
+                );
             }
             Vec::with_capacity(0)
         }

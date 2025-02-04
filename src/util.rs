@@ -1,7 +1,9 @@
+use crate::write_color::write_color;
 use sha2::{Digest, Sha256};
 use std::env;
 use std::fmt::Write;
 use std::fs;
+use std::io::stderr;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::path::PathBuf;
@@ -9,8 +11,6 @@ use std::process::Command;
 use std::thread;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
-use crate::write_color::write_color;
-use std::io::stderr;
 
 //------------------------------------------------------------------------------
 
@@ -24,15 +24,22 @@ pub(crate) fn logger_core(module: &str, msg: &str) {
     let thread_id = thread::current().id();
     let now = SystemTime::now();
     let duration_since_epoch =
-    now.duration_since(UNIX_EPOCH).expect("Time went backwards");
+        now.duration_since(UNIX_EPOCH).expect("Time went backwards");
 
-    let formatted_msg = format!(
-        "fetter: [{:?}] [{}] [{:?}]: {}\n",
-        duration_since_epoch, module, thread_id, msg
-    );
-    // eprintln!("{}", formatted_msg);
     let mut writer = stderr();
-    write_color(&mut writer, "#333333", &formatted_msg);
+    write_color(&mut writer, "#333333", "fetter: ");
+    write_color(
+        &mut writer,
+        "#333333",
+        format!("[{:?}] ", duration_since_epoch).as_str(),
+    );
+    write_color(&mut writer, "#0033ff", format!("[{}] ", module).as_str());
+    write_color(
+        &mut writer,
+        "#333333",
+        format!("[{:?}] ", thread_id).as_str(),
+    );
+    write_color(&mut writer, "#333333", format!("{}\n", msg).as_str());
 }
 
 #[macro_export]

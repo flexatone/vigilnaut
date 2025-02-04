@@ -5,7 +5,6 @@ use crossterm::{
 };
 use std::io::Write;
 
-
 fn to_rgb(hex_color: &str) -> (u8, u8, u8) {
     if hex_color.len() == 7 && hex_color.starts_with('#') {
         if let Ok(rgb) = u32::from_str_radix(&hex_color[1..], 16) {
@@ -33,4 +32,3 @@ pub fn write_color<W: Write + IsTty>(writer: &mut W, hex_color: &str, message: &
         write!(writer, "{}", message).unwrap();
     }
 }
-
