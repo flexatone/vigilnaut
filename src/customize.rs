@@ -62,11 +62,14 @@ pub(crate) fn to_sitecustomize(
     vf: &ValidationFlags,
     exit_else_warn: Option<i32>,
     site: &PathShared,
+    log: bool,
 ) -> io::Result<()> {
     let code =
         get_validation_subprocess(executable, bound, bound_options, vf, exit_else_warn);
     let fp = site.join("sitecustomize.py");
-    eprintln!("writing: {}", fp.display());
+    if log {
+        eprintln!("Writing: {}", fp.display());
+    }
     let mut file = File::create(&fp)?;
     writeln!(file, "{}", code)?;
     Ok(())

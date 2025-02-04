@@ -2,19 +2,38 @@ use sha2::{Digest, Sha256};
 use std::env;
 use std::fmt::Write;
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
 use std::time::SystemTime;
 
-use std::os::unix::fs::PermissionsExt;
-
 //------------------------------------------------------------------------------
 
 pub(crate) type ResultDynError<T> = Result<T, Box<dyn std::error::Error>>;
 
 pub(crate) const DURATION_0: Duration = Duration::from_secs(0);
+
+//------------------------------------------------------------------------------
+
+#[macro_export]
+macro_rules! logger {
+    ($module:expr, $($arg:tt)*) => {{
+        use std::thread;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let thread_id = thread::current().id();
+        let now = SystemTime::now();
+        let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
+
+        let msg = format!($($arg)*);
+
+        eprintln!("fetter: [{:?}] [{}] [{:?}]: {}", duration_since_epoch, $module, thread_id, msg);
+    }};
+}
+
+pub use crate::logger;
 
 //------------------------------------------------------------------------------
 

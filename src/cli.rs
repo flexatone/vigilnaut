@@ -20,6 +20,7 @@ use crate::scan_fs::ScanFS;
 use crate::spin::spin;
 use crate::table::Tableable;
 use crate::ureq_client::UreqClientLive;
+use crate::util::logger;
 use crate::util::path_normalize;
 use crate::util::DURATION_0;
 
@@ -92,7 +93,11 @@ struct Cli {
 
     /// Disable logging and terminal animation.
     #[arg(long, short)]
-    quiet: bool,
+    quiet: bool, // TODO: recast to reference spinners / animation
+
+    /// Disable logging and terminal animation.
+    #[arg(long)]
+    log: bool,
 
     /// Force inclusion of the user site-packages, even if it is not activated. If not set, user site packages will only be included if the interpreter has been configured to use it.
     #[arg(long, required = false)]
@@ -374,14 +379,17 @@ enum UnpackFilesSubcommand {
 fn get_scan(
     exe_paths: &Vec<PathBuf>, // could be a ref
     force_usite: bool,
-    log: bool,
+    animate: bool,
     cache_dur: Duration,
+    log: bool,
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
-    ScanFS::from_cache(exe_paths, force_usite, cache_dur).or_else(|_err| {
-        // eprintln!("Could not load from cache: {:?}", err);
+    ScanFS::from_cache(exe_paths, force_usite, cache_dur).or_else(|err| {
+        if log {
+            logger!(module_path!(), "Could not load from cache: {:?}", err);
+        }
         // full load
         let active = Arc::new(AtomicBool::new(true));
-        if log {
+        if animate {
             spin(active.clone(), "scanning".to_string());
         }
         let sfsl = ScanFS::from_exes(exe_paths, force_usite)?;
@@ -389,7 +397,7 @@ fn get_scan(
         if cache_dur > DURATION_0 {
             sfsl.to_cache(cache_dur)?;
         }
-        if log {
+        if animate {
             active.store(false, Ordering::Relaxed);
             thread::sleep(Duration::from_millis(100));
         }
@@ -433,6 +441,7 @@ where
     if cli.command.is_none() {
         return Err("No command provided. For more information, try '--help'.".into());
     }
+    let log = cli.log;
     // we always do a scan; we might cache this
     let quiet = cli.quiet;
     let sfs = get_scan(
@@ -440,6 +449,7 @@ where
         cli.user_site,
         !quiet,
         Duration::from_secs(cli.cache_duration),
+        log,
     )?;
 
     match &cli.command {
@@ -555,6 +565,7 @@ where
                         &vf,
                         exit_else_warn.clone(),
                         &site,
+                        log,
                     )?;
                 }
             }
@@ -620,7 +631,7 @@ where
             }
         }
         Some(Commands::PurgePattern { pattern, case }) => {
-            let _ = sfs.to_purge_pattern(pattern, !case, !quiet);
+            let _ = sfs.to_purge_pattern(pattern, !case, log);
         }
         Some(Commands::PurgeInvalid {
             bound,
@@ -637,7 +648,7 @@ where
                     permit_superset,
                     permit_subset,
                 },
-                !quiet,
+                log,
             );
         }
         None => {}
