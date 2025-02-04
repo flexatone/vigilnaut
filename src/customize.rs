@@ -59,7 +59,10 @@ mod tests {
             permit_subset: true,
         };
         let post = to_validation_command(exe, bound, bound_options, vf, None);
-        assert_eq!(post, "fetter -e python3 validate --bound requirements.txt --subset")
+        assert_eq!(
+            post,
+            "fetter -e python3 validate --bound requirements.txt --subset"
+        )
     }
     #[test]
     fn test_to_validation_command_b() {
