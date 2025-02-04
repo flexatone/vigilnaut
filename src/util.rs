@@ -6,8 +6,9 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::thread;
 use std::time::Duration;
-use std::time::SystemTime;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 //------------------------------------------------------------------------------
 
@@ -17,34 +18,26 @@ pub(crate) const DURATION_0: Duration = Duration::from_secs(0);
 
 //------------------------------------------------------------------------------
 
-pub fn logger_core(module: &str, msg: &str) {
-    let mut writer = stderr();
+pub(crate) fn logger_core(module: &str, msg: &str) {
     let thread_id = thread::current().id();
     let now = SystemTime::now();
-    let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
+    let duration_since_epoch =
+    now.duration_since(UNIX_EPOCH).expect("Time went backwards");
 
-    let formatted_msg = format!("fetter: [{:?}] [{}] [{:?}]: {}", duration_since_epoch, module, thread_id, msg);
-    eprintln!(formatted_msg);
+    let formatted_msg = format!(
+        "fetter: [{:?}] [{}] [{:?}]: {}",
+        duration_since_epoch, module, thread_id, msg
+    );
+    eprintln!("{}", formatted_msg);
+    // let mut writer = stderr();
     // $crate::write_color(&mut writer, color, &formatted_msg);
 }
-
-
 
 #[macro_export]
 macro_rules! logger {
     ($module:expr, $($arg:tt)*) => {{
-        $crate::logger_core($module, $color, &format!($($arg)*));
-
-        // use std::thread;
-        // use std::time::{SystemTime, UNIX_EPOCH};
-
-        // let thread_id = thread::current().id();
-        // let now = SystemTime::now();
-        // let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
-
-        // let msg = format!($($arg)*);
-
-        // eprintln!("fetter: [{:?}] [{}] [{:?}]: {}", duration_since_epoch, $module, thread_id, msg);
+        use $crate::util::logger_core;
+        logger_core($module, &format!($($arg)*));
     }};
 }
 

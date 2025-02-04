@@ -560,11 +560,11 @@ where
                 if let Some(site) = sites.first() {
                     to_sitecustomize(
                         &exe,
-                        &bound,
+                        bound,
                         bound_options.clone(),
                         &vf,
-                        exit_else_warn.clone(),
-                        &site,
+                        exit_else_warn,
+                        site,
                         log,
                     )?;
                 }

@@ -1,17 +1,18 @@
 use crate::path_shared::PathShared;
+use crate::util::logger;
 use crate::validation_report::ValidationFlags;
 use std::fs::File;
 use std::io;
 use std::io::Write;
 use std::path::Path;
-use std::path::PathBuf;
+// use std::path::PathBuf;
 
 // const FETTER_BIN: &str = "target/release/fetter"; // for testing
 const FETTER_BIN: &str = "fetter";
 
 /// Produce the command line argument to reproduce a validation command.
 fn get_validation_command(
-    executable: &PathBuf, // only accept one
+    executable: &Path, // only accept one
     bound: &Path,
     bound_options: Option<Vec<String>>,
     vf: &ValidationFlags,
@@ -35,8 +36,8 @@ fn get_validation_command(
 }
 
 fn get_validation_subprocess(
-    executable: &PathBuf,
-    bound: &PathBuf,
+    executable: &Path,
+    bound: &Path,
     bound_options: Option<Vec<String>>,
     vf: &ValidationFlags,
     exit_else_warn: Option<i32>,
@@ -56,8 +57,8 @@ fn get_validation_subprocess(
 }
 
 pub(crate) fn to_sitecustomize(
-    executable: &PathBuf,
-    bound: &PathBuf,
+    executable: &Path,
+    bound: &Path,
     bound_options: Option<Vec<String>>,
     vf: &ValidationFlags,
     exit_else_warn: Option<i32>,
@@ -68,7 +69,7 @@ pub(crate) fn to_sitecustomize(
         get_validation_subprocess(executable, bound, bound_options, vf, exit_else_warn);
     let fp = site.join("sitecustomize.py");
     if log {
-        eprintln!("Writing: {}", fp.display());
+        logger!(module_path!(), "Writing: {}", fp.display());
     }
     let mut file = File::create(&fp)?;
     writeln!(file, "{}", code)?;
@@ -79,6 +80,7 @@ pub(crate) fn to_sitecustomize(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn test_get_validation_command_a() {
