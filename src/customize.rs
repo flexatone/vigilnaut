@@ -1,6 +1,8 @@
 use crate::path_shared::PathShared;
 use crate::validation_report::ValidationFlags;
 use std::path::PathBuf;
+use std::fs::File;
+use std::io::Write;
 
 /// Produce the command line argument to reproduce a validation command.
 fn to_validation_command(
@@ -53,6 +55,10 @@ pub(crate) fn to_sitecustomize(
     exit_else_warn: Option<i32>,
     site: &PathShared,
 ) {
+    let code = to_validation_subprocess(executable, bound, bound_options, vf, exit_else_warn);
+    let fp = site.join("sitecustomize.py");
+    let mut file = File::create(&fp).unwrap();
+    writeln!(file, "{}", code).unwrap();
 }
 
 //------------------------------------------------------------------------------
