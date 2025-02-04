@@ -43,7 +43,7 @@ fn to_validation_subprocess(
     let cmd = to_validation_command(executable, bound, bound_options, vf, exit_else_warn);
     let eew = exit_else_warn.map_or(String::new(), |_| ", check=True".to_string());
     format!(
-        "from subprocess import run;run('{}'.split(' '){})",
+        "print('here');from subprocess import run;run('{}'.split(' '){}, capture_output=True)",
         cmd, eew
     )
 }
@@ -59,6 +59,7 @@ pub(crate) fn to_sitecustomize(
     let code =
         to_validation_subprocess(executable, bound, bound_options, vf, exit_else_warn);
     let fp = site.join("sitecustomize.py");
+    eprintln!("writing: {}", fp.display());
     let mut file = File::create(&fp).unwrap();
     writeln!(file, "{}", code).unwrap();
 }
