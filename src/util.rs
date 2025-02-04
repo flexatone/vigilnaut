@@ -17,19 +17,34 @@ pub(crate) const DURATION_0: Duration = Duration::from_secs(0);
 
 //------------------------------------------------------------------------------
 
+pub fn logger_core(module: &str, msg: &str) {
+    let mut writer = stderr();
+    let thread_id = thread::current().id();
+    let now = SystemTime::now();
+    let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
+
+    let formatted_msg = format!("fetter: [{:?}] [{}] [{:?}]: {}", duration_since_epoch, module, thread_id, msg);
+    eprintln!(formatted_msg);
+    // $crate::write_color(&mut writer, color, &formatted_msg);
+}
+
+
+
 #[macro_export]
 macro_rules! logger {
     ($module:expr, $($arg:tt)*) => {{
-        use std::thread;
-        use std::time::{SystemTime, UNIX_EPOCH};
+        $crate::logger_core($module, $color, &format!($($arg)*));
 
-        let thread_id = thread::current().id();
-        let now = SystemTime::now();
-        let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
+        // use std::thread;
+        // use std::time::{SystemTime, UNIX_EPOCH};
 
-        let msg = format!($($arg)*);
+        // let thread_id = thread::current().id();
+        // let now = SystemTime::now();
+        // let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
 
-        eprintln!("fetter: [{:?}] [{}] [{:?}]: {}", duration_since_epoch, $module, thread_id, msg);
+        // let msg = format!($($arg)*);
+
+        // eprintln!("fetter: [{:?}] [{}] [{:?}]: {}", duration_since_epoch, $module, thread_id, msg);
     }};
 }
 
