@@ -392,7 +392,7 @@ fn get_scan(
         if animate {
             spin(active.clone(), "scanning".to_string());
         }
-        let sfsl = ScanFS::from_exes(exe_paths, force_usite)?;
+        let sfsl = ScanFS::from_exes(exe_paths, force_usite, log)?;
 
         if cache_dur > DURATION_0 {
             sfsl.to_cache(cache_dur)?;

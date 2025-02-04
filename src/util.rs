@@ -9,6 +9,8 @@ use std::process::Command;
 use std::thread;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
+use crate::write_color::write_color;
+use std::io::stderr;
 
 //------------------------------------------------------------------------------
 
@@ -25,12 +27,12 @@ pub(crate) fn logger_core(module: &str, msg: &str) {
     now.duration_since(UNIX_EPOCH).expect("Time went backwards");
 
     let formatted_msg = format!(
-        "fetter: [{:?}] [{}] [{:?}]: {}",
+        "fetter: [{:?}] [{}] [{:?}]: {}\n",
         duration_since_epoch, module, thread_id, msg
     );
-    eprintln!("{}", formatted_msg);
-    // let mut writer = stderr();
-    // $crate::write_color(&mut writer, color, &formatted_msg);
+    // eprintln!("{}", formatted_msg);
+    let mut writer = stderr();
+    write_color(&mut writer, "#333333", &formatted_msg);
 }
 
 #[macro_export]

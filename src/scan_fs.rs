@@ -35,6 +35,7 @@ use crate::util::DURATION_0;
 use crate::validation_report::ValidationFlags;
 use crate::validation_report::ValidationRecord;
 use crate::validation_report::ValidationReport;
+use crate::util::logger;
 
 //------------------------------------------------------------------------------
 #[derive(Debug, Copy, Clone)]
@@ -49,7 +50,11 @@ pub(crate) enum Anchor {
 /// Given a path to a Python binary, call out to Python to get all known site packages; some site packages may not exist; we do not filter them here. This will include "dist-packages" on Linux. If `force_usite` is false, we use site.ENABLE_USER_SITE to determine if we should include the user site packages; if `force_usite` is true, we always include usite.
 /// Calling Python using `-S` disables loading site so that we can mock sitecustomize.py (which fetter might customize). We then call `site.main()` to force proper initialization.
 const PY_SITE_PACKAGES: &str = "import sys;import site;import types;sys.modules['sitecustomize'] = types.ModuleType('sitecustomize');site.main();print(site.ENABLE_USER_SITE);print(\"\\n\".join(site.getsitepackages()));print(site.getusersitepackages())";
-fn get_site_package_dirs(executable: &Path, force_usite: bool) -> Vec<PathShared> {
+fn get_site_package_dirs(
+        executable: &Path,
+        force_usite: bool,
+        log: bool,
+    ) -> Vec<PathShared> {
     match Command::new(executable)
         .arg("-S") // disable site on startup
         .arg("-c")
@@ -78,7 +83,9 @@ fn get_site_package_dirs(executable: &Path, force_usite: bool) -> Vec<PathShared
             paths
         }
         Err(e) => {
-            eprintln!("Failed to execute command with {:?}: {}", executable, e); // log this
+            if log {
+                logger!(module_path!(), "Failed to execute command with {:?}: {}", executable, e);
+            }
             Vec::with_capacity(0)
         }
     }
@@ -233,6 +240,7 @@ impl ScanFS {
     pub(crate) fn from_exes(
         exes: &Vec<PathBuf>,
         force_usite: bool,
+        log: bool,
     ) -> ResultDynError<Self> {
         let path_wild = PathBuf::from("*");
         let exes_hash = hash_paths(exes, force_usite);
@@ -248,7 +256,7 @@ impl ScanFS {
         let exe_to_sites: HashMap<PathBuf, Vec<PathShared>> = exes_norm
             .into_par_iter()
             .map(|exe| {
-                let dirs = get_site_package_dirs(&exe, force_usite);
+                let dirs = get_site_package_dirs(&exe, force_usite, log);
                 (exe, dirs)
             })
             .collect();
@@ -522,9 +530,9 @@ mod tests {
     #[test]
     fn test_get_site_package_dirs_a() {
         let p1 = Path::new("python3");
-        let paths1 = get_site_package_dirs(p1, true);
+        let paths1 = get_site_package_dirs(p1, true, false);
         assert_eq!(paths1.len() > 0, true);
-        let paths2 = get_site_package_dirs(p1, false);
+        let paths2 = get_site_package_dirs(p1, false, false);
         assert!(paths1.len() >= paths2.len());
     }
     #[test]
