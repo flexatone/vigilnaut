@@ -216,6 +216,7 @@ impl ScanFS {
         exes: &[PathBuf],
         force_usite: bool,
         cache_dur: Duration,
+        log: bool,
     ) -> ResultDynError<Self> {
         if cache_dur == DURATION_0 {
             Err("Cache disabled by duration".into())
@@ -225,7 +226,9 @@ impl ScanFS {
             let cache_fp = cache_dir.with_extension("json");
 
             if path_within_duration(&cache_fp, cache_dur) {
-                // eprintln!("loading {:?}", cache_fp);
+                if log {
+                    logger!(module_path!(), "Loading cache: {:?}", cache_fp);
+                }
                 let mut file = File::open(cache_fp)?;
                 let mut contents = String::new();
                 file.read_to_string(&mut contents)?;
@@ -328,7 +331,10 @@ impl ScanFS {
 
     //--------------------------------------------------------------------------
 
-    pub(crate) fn to_cache(&self, cache_dur: Duration) -> ResultDynError<()> {
+    pub(crate) fn to_cache(&self,
+            cache_dur: Duration,
+            log: bool,
+        ) -> ResultDynError<()> {
         if let Some(mut cache_dir) = path_cache(true) {
             // use hash of exes observed at initialization
             cache_dir.push(self.exes_hash.clone());
@@ -336,13 +342,17 @@ impl ScanFS {
 
             // only write if cache does not exist or it is out of duration
             if !cache_fp.exists() || !path_within_duration(&cache_fp, cache_dur) {
-                // eprintln!("writing {:?}", cache_fp);
+                if log {
+                    logger!(module_path!(), "Writing cache: {:?}", cache_fp);
+                }
                 let json = serde_json::to_string(self)?;
                 let mut file = File::create(cache_fp)?;
                 file.write_all(json.as_bytes())?;
                 return Ok(());
             } else {
-                // eprintln!("keeping existing cache {:?}", cache_fp);
+                if log {
+                    logger!(module_path!(), "Keeping existing cache {:?}", cache_fp);
+                }
                 return Ok(());
             }
         }

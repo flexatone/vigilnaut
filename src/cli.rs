@@ -383,7 +383,7 @@ fn get_scan(
     cache_dur: Duration,
     log: bool,
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
-    ScanFS::from_cache(exe_paths, force_usite, cache_dur).or_else(|err| {
+    ScanFS::from_cache(exe_paths, force_usite, cache_dur, log).or_else(|err| {
         if log {
             logger!(module_path!(), "Could not load from cache: {:?}", err);
         }
@@ -395,7 +395,7 @@ fn get_scan(
         let sfsl = ScanFS::from_exes(exe_paths, force_usite, log)?;
 
         if cache_dur > DURATION_0 {
-            sfsl.to_cache(cache_dur)?;
+            sfsl.to_cache(cache_dur, log)?;
         }
         if animate {
             active.store(false, Ordering::Relaxed);
