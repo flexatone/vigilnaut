@@ -13,10 +13,10 @@ use std::sync::{
 use std::thread;
 use std::time::Duration;
 
-use crate::customize::to_sitecustomize;
 use crate::dep_manifest::DepManifest;
 use crate::scan_fs::Anchor;
 use crate::scan_fs::ScanFS;
+use crate::site_customize::to_sitecustomize;
 use crate::spin::spin;
 use crate::table::Tableable;
 use crate::ureq_client::UreqClientLive;

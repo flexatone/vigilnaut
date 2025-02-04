@@ -331,10 +331,7 @@ impl ScanFS {
 
     //--------------------------------------------------------------------------
 
-    pub(crate) fn to_cache(&self,
-            cache_dur: Duration,
-            log: bool,
-        ) -> ResultDynError<()> {
+    pub(crate) fn to_cache(&self, cache_dur: Duration, log: bool) -> ResultDynError<()> {
         if let Some(mut cache_dir) = path_cache(true) {
             // use hash of exes observed at initialization
             cache_dir.push(self.exes_hash.clone());

@@ -1,7 +1,6 @@
 mod audit_report;
 mod cli;
 mod count_report;
-mod customize;
 mod dep_manifest;
 mod dep_spec;
 mod exe_search;
@@ -13,6 +12,7 @@ mod package_match;
 mod path_shared;
 mod scan_fs;
 mod scan_report;
+mod site_customize;
 mod spin;
 mod table;
 mod unpack_report;
