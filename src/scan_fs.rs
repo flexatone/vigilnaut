@@ -23,6 +23,8 @@ use crate::package::Package;
 use crate::package_match::match_str;
 use crate::path_shared::PathShared;
 use crate::scan_report::ScanReport;
+use crate::site_customize::install_validation;
+use crate::site_customize::uninstall_validation;
 use crate::unpack_report::UnpackReport;
 use crate::ureq_client::UreqClientLive;
 use crate::util::exe_path_normalize;
@@ -529,6 +531,41 @@ impl ScanFS {
 
         let sr = UnpackReport::from_package_to_sites(false, &package_to_sites);
         sr.remove(log)
+    }
+
+    pub(crate) fn site_validate_install(
+        &self,
+        bound: &Path,
+        bound_options: &Option<Vec<String>>,
+        vf: &ValidationFlags,
+        exit_else_warn: Option<i32>,
+        log: bool,
+    ) -> io::Result<()> {
+        // generally expect this to run with a single exe, so no need to parallelize
+        for (exe, sites) in &self.exe_to_sites {
+            // NOTE: taking first, but might prioritize one in the user directory
+            if let Some(site) = sites.first() {
+                install_validation(
+                    exe,
+                    bound,
+                    bound_options.clone(),
+                    vf,
+                    exit_else_warn,
+                    site,
+                    log,
+                )?;
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn site_validate_uninstall(&self, log: bool) -> io::Result<()> {
+        for sites in self.exe_to_sites.values() {
+            if let Some(site) = sites.first() {
+                uninstall_validation(site, log)?;
+            }
+        }
+        Ok(())
     }
 }
 

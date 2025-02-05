@@ -13,6 +13,7 @@ use crate::table::ColumnFormat;
 use crate::table::Rowable;
 use crate::table::RowableContext;
 use crate::table::Tableable;
+use crate::util::logger;
 use crate::util::ResultDynError;
 
 //------------------------------------------------------------------------------
@@ -67,17 +68,22 @@ impl Artifacts {
         for (fp, exists) in &self.files {
             if *exists {
                 if let Err(e) = fs::remove_file(fp) {
-                    eprintln!("Failed to remove file {:?}: {}", fp, e);
+                    logger!(module_path!(), "Failed to remove file {:?}: {}", fp, e);
                 } else if log {
-                    eprintln!("Removing file: {:?}", fp);
+                    logger!(module_path!(), "Removing file: {:?}", fp);
                 }
             }
         }
         for dir in &self.dirs {
             if let Err(e) = fs::remove_dir_all(dir) {
-                eprintln!("Failed to remove directory {:?}: {}", dir, e);
+                logger!(
+                    module_path!(),
+                    "Failed to remove directory {:?}: {}",
+                    dir,
+                    e
+                );
             } else if log {
-                eprintln!("Removing directory: {:?}", dir);
+                logger!(module_path!(), "Removing directory: {:?}", dir);
             }
         }
         Ok(())
@@ -198,7 +204,7 @@ where
                 if let Ok(artifacts) = Artifacts::from_package(package, site) {
                     Some(R::new(package.clone(), site.clone(), artifacts))
                 } else {
-                    eprintln!("Failed to read artifacts: {:?}", package);
+                    logger!(module_path!(), "Failed to read artifacts: {:?}", package);
                     None
                 }
             })

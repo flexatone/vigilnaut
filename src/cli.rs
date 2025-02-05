@@ -16,7 +16,6 @@ use std::time::Duration;
 use crate::dep_manifest::DepManifest;
 use crate::scan_fs::Anchor;
 use crate::scan_fs::ScanFS;
-use crate::site_customize::to_sitecustomize;
 use crate::spin::spin;
 use crate::table::Tableable;
 use crate::ureq_client::UreqClientLive;
@@ -161,7 +160,7 @@ enum Commands {
         #[command(subcommand)]
         subcommands: Option<ValidateSubcommand>,
     },
-    /// Customize (with sitecustomize.py) the Python environment to check conformity to a validation target.
+    /// Install in site-packages automatic validation checks on every Python run.
     SiteInstall {
         /// File path or URL from which to read bound requirements.
         #[arg(short, long, value_name = "FILE")]
@@ -182,6 +181,8 @@ enum Commands {
         #[command(subcommand)]
         subcommands: Option<SiteInstallSubcommand>,
     },
+    /// Uninstall from site-packages automatic validation checks on every Python run.
+    SiteUninstall,
     /// Search for package security vulnerabilities via the OSV DB.
     Audit {
         /// Provide a glob-like pattern to select packages.
@@ -554,21 +555,16 @@ where
                 Some(SiteInstallSubcommand::Warn) | None => None,
                 Some(SiteInstallSubcommand::Exit { code }) => Some(*code),
             };
-            // generally expect this to run with a single exe, so no need to parallelize
-            for (exe, sites) in sfs.exe_to_sites {
-                // NOTE: should probably only write to first, but might prioritize user directory
-                if let Some(site) = sites.first() {
-                    to_sitecustomize(
-                        &exe,
-                        bound,
-                        bound_options.clone(),
-                        &vf,
-                        exit_else_warn,
-                        site,
-                        log,
-                    )?;
-                }
-            }
+            sfs.site_validate_install(
+                bound,
+                bound_options,
+                &vf,
+                exit_else_warn,
+                log,
+            )?;
+        }
+        Some(Commands::SiteUninstall {}) => {
+            sfs.site_validate_uninstall(log)?;
         }
         Some(Commands::Audit {
             subcommands,
