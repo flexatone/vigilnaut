@@ -9,6 +9,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
+use std::env;
 
 use rayon::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -552,6 +553,7 @@ impl ScanFS {
                     vf,
                     exit_else_warn,
                     site,
+                    env::current_dir().ok(), // as option type
                     log,
                 )?;
             }

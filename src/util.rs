@@ -36,7 +36,7 @@ pub(crate) fn logger_core(module: &str, msg: &str) {
     write_color(&mut writer, "#0033ff", format!("[{}] ", module).as_str());
     write_color(
         &mut writer,
-        "#333333",
+        "#336666",
         format!("[{:?}] ", thread_id).as_str(),
     );
     write_color(&mut writer, "#333333", format!("{}\n", msg).as_str());

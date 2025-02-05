@@ -6,6 +6,7 @@ use std::fs::File;
 use std::io;
 use std::io::Write;
 use std::path::Path;
+use std::path::PathBuf;
 
 // const FETTER_BIN: &str = "target/release/fetter"; // for testing
 const FETTER_BIN: &str = "fetter";
@@ -41,18 +42,22 @@ fn get_validation_subprocess(
     bound_options: Option<Vec<String>>,
     vf: &ValidationFlags,
     exit_else_warn: Option<i32>,
+    cwd_option: Option<PathBuf>,
 ) -> String {
     let cmd = get_validation_command(executable, bound, bound_options, vf);
-    // NOTE: exit_else_warn is only handled here to achieve a true exit; raising an exception will not abort the process
+    // NOTE: exit_else_warn is only handled here to achieve a true exit; raising an exception with `check=True` will not abort the process
     let eew = exit_else_warn.map_or(String::new(), |i| {
         format!(
             "import sys\nif r.returncode != 0: sys.exit({}) # fetter validation failed",
             i
         )
     });
+    let cwd = cwd_option.map_or(String::new(), |p| {
+        format!(", cwd='{}'", p.display())
+    });
     format!(
-        "from subprocess import run\nr = run('{}'.split(' '))\n{}",
-        cmd, eew
+        "from subprocess import run\nr = run('{}'.split(' '){})\n{}",
+        cmd, cwd, eew
     )
 }
 
@@ -66,10 +71,11 @@ pub(crate) fn install_validation(
     vf: &ValidationFlags,
     exit_else_warn: Option<i32>,
     site: &PathShared,
+    cwd_option: Option<PathBuf>,
     log: bool,
 ) -> io::Result<()> {
     let code =
-        get_validation_subprocess(executable, bound, bound_options, vf, exit_else_warn);
+        get_validation_subprocess(executable, bound, bound_options, vf, exit_else_warn, cwd_option);
     let fp_validate = site.join(FN_VALIDATE_PY);
     if log {
         logger!(module_path!(), "Writing: {}", fp_validate.display());
@@ -158,7 +164,7 @@ mod tests {
             permit_subset: true,
         };
         let ec: Option<i32> = Some(4);
-        let post = get_validation_subprocess(&exe, &bound, bound_options, &vf, ec);
+        let post = get_validation_subprocess(&exe, &bound, bound_options, &vf, ec, None);
         assert_eq!(post, "from subprocess import run\nr = run('fetter -e python3 validate --bound requirements.txt --subset'.split(' '))\nimport sys\nif r.returncode != 0: sys.exit(4) # fetter validation failed")
     }
 
@@ -172,7 +178,23 @@ mod tests {
             permit_subset: true,
         };
         let ec: Option<i32> = None;
-        let post = get_validation_subprocess(&exe, &bound, bound_options, &vf, ec);
+        let post = get_validation_subprocess(&exe, &bound, bound_options, &vf, ec, None);
         assert_eq!(post, "from subprocess import run\nr = run('fetter -e python3 validate --bound requirements.txt --subset'.split(' '))\n")
     }
+
+    #[test]
+    fn test_get_validation_subprocess_c() {
+        let exe = PathBuf::from("python3");
+        let bound = PathBuf::from("requirements.txt");
+        let bound_options = None;
+        let vf = ValidationFlags {
+            permit_superset: false,
+            permit_subset: true,
+        };
+        let ec: Option<i32> = None;
+        let cwd = Some(PathBuf::from("/home/foo"));
+        let post = get_validation_subprocess(&exe, &bound, bound_options, &vf, ec, cwd);
+        assert_eq!(post, "from subprocess import run\nr = run('fetter -e python3 validate --bound requirements.txt --subset'.split(' '), cwd='/home/foo')\n")
+    }
 }
+
