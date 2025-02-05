@@ -52,9 +52,7 @@ fn get_validation_subprocess(
             i
         )
     });
-    let cwd = cwd_option.map_or(String::new(), |p| {
-        format!(", cwd='{}'", p.display())
-    });
+    let cwd = cwd_option.map_or(String::new(), |p| format!(", cwd='{}'", p.display()));
     format!(
         "from subprocess import run\nr = run('{}'.split(' '){})\n{}",
         cmd, cwd, eew
@@ -64,6 +62,7 @@ fn get_validation_subprocess(
 const FN_LAUNCHER_PTH: &str = "fetter_launcher.pth";
 const FN_VALIDATE_PY: &str = "fetter_validate.py";
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn install_validation(
     executable: &Path,
     bound: &Path,
@@ -74,8 +73,14 @@ pub(crate) fn install_validation(
     cwd_option: Option<PathBuf>,
     log: bool,
 ) -> io::Result<()> {
-    let code =
-        get_validation_subprocess(executable, bound, bound_options, vf, exit_else_warn, cwd_option);
+    let code = get_validation_subprocess(
+        executable,
+        bound,
+        bound_options,
+        vf,
+        exit_else_warn,
+        cwd_option,
+    );
     let fp_validate = site.join(FN_VALIDATE_PY);
     if log {
         logger!(module_path!(), "Writing: {}", fp_validate.display());
@@ -197,4 +202,3 @@ mod tests {
         assert_eq!(post, "from subprocess import run\nr = run('fetter -e python3 validate --bound requirements.txt --subset'.split(' '), cwd='/home/foo')\n")
     }
 }
-

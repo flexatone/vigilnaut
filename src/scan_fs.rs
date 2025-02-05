@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::env;
 use std::fs;
 use std::fs::File;
 use std::io;
@@ -9,7 +10,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
-use std::env;
 
 use rayon::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
