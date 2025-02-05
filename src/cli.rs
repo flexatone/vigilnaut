@@ -96,7 +96,7 @@ struct Cli {
     quiet: bool, // TODO: recast to reference spinners / animation
 
     /// Disable logging and terminal animation.
-    #[arg(long)]
+    #[arg(long, short)]
     log: bool,
 
     /// Force inclusion of the user site-packages, even if it is not activated. If not set, user site packages will only be included if the interpreter has been configured to use it.
