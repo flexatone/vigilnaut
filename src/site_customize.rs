@@ -5,7 +5,6 @@ use std::fs::File;
 use std::io;
 use std::io::Write;
 use std::path::Path;
-// use std::path::PathBuf;
 
 // const FETTER_BIN: &str = "target/release/fetter"; // for testing
 const FETTER_BIN: &str = "fetter";

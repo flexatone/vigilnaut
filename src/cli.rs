@@ -162,7 +162,7 @@ enum Commands {
         subcommands: Option<ValidateSubcommand>,
     },
     /// Customize (with sitecustomize.py) the Python environment to check conformity to a validation target.
-    CustomizeInstall {
+    SiteInstall {
         /// File path or URL from which to read bound requirements.
         #[arg(short, long, value_name = "FILE")]
         bound: PathBuf,
@@ -180,7 +180,7 @@ enum Commands {
         superset: bool,
 
         #[command(subcommand)]
-        subcommands: Option<CustomizeInstallSubcommand>,
+        subcommands: Option<SiteInstallSubcommand>,
     },
     /// Search for package security vulnerabilities via the OSV DB.
     Audit {
@@ -323,7 +323,7 @@ enum ValidateSubcommand {
 }
 
 #[derive(Subcommand)]
-enum CustomizeInstallSubcommand {
+enum SiteInstallSubcommand {
     /// Print a Json representation of validation results.
     Warn,
     /// Return an exit code, 0 on success, 3 (by default) on error.
@@ -539,7 +539,7 @@ where
                 }
             }
         }
-        Some(Commands::CustomizeInstall {
+        Some(Commands::SiteInstall {
             bound,
             bound_options,
             subset,
@@ -551,8 +551,8 @@ where
                 permit_subset: *subset,
             };
             let exit_else_warn: Option<i32> = match subcommands {
-                Some(CustomizeInstallSubcommand::Warn) | None => None,
-                Some(CustomizeInstallSubcommand::Exit { code }) => Some(*code),
+                Some(SiteInstallSubcommand::Warn) | None => None,
+                Some(SiteInstallSubcommand::Exit { code }) => Some(*code),
             };
             // generally expect this to run with a single exe, so no need to parallelize
             for (exe, sites) in sfs.exe_to_sites {
