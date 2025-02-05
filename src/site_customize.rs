@@ -6,8 +6,8 @@ use std::io;
 use std::io::Write;
 use std::path::Path;
 
-// const FETTER_BIN: &str = "target/release/fetter"; // for testing
-const FETTER_BIN: &str = "fetter";
+const FETTER_BIN: &str = "target/release/fetter"; // for testing
+// const FETTER_BIN: &str = "fetter";
 
 /// Produce the command line argument to reproduce a validation command.
 fn get_validation_command(
@@ -45,12 +45,12 @@ fn get_validation_subprocess(
     // NOTE: exit_else_warn is only handled here to achieve a true exit; raising an exception will not abort the process
     let eew = exit_else_warn.map_or(String::new(), |i| {
         format!(
-            "import sys;sys.stdout.flush();sys.exit({}) if r.returncode != 0 else None",
+            "import sys\nif r.returncode != 0: sys.exit({}) # fetter validation failed",
             i
         )
     });
     format!(
-        "from subprocess import run;r = run('{}'.split(' '));{}",
+        "from subprocess import run\nr = run('{}'.split(' '))\n{}",
         cmd, eew
     )
 }
@@ -66,12 +66,20 @@ pub(crate) fn to_sitecustomize(
 ) -> io::Result<()> {
     let code =
         get_validation_subprocess(executable, bound, bound_options, vf, exit_else_warn);
-    let fp = site.join("sitecustomize.py");
+    let fp_validate = site.join("fetter_validate.py");
     if log {
-        logger!(module_path!(), "Writing: {}", fp.display());
+        logger!(module_path!(), "Writing: {}", fp_validate.display());
     }
-    let mut file = File::create(&fp)?;
+    let mut file = File::create(&fp_validate)?;
     writeln!(file, "{}", code)?;
+
+    let fp_launcher = site.join("fetter_launcher.pth");
+    if log {
+        logger!(module_path!(), "Writing: {}", fp_launcher.display());
+    }
+    let mut file = File::create(&fp_launcher)?;
+    writeln!(file, "import fetter_validate\n")?;
+
     Ok(())
 }
 

@@ -49,7 +49,7 @@ pub(crate) enum Anchor {
 
 /// Given a path to a Python binary, call out to Python to get all known site packages; some site packages may not exist; we do not filter them here. This will include "dist-packages" on Linux. If `force_usite` is false, we use site.ENABLE_USER_SITE to determine if we should include the user site packages; if `force_usite` is true, we always include usite.
 /// Calling Python using `-S` disables loading site so that we can mock sitecustomize.py (which fetter might customize). We then call `site.main()` to force proper initialization.
-const PY_SITE_PACKAGES: &str = "import sys;import site;import types;sys.modules['sitecustomize'] = types.ModuleType('sitecustomize');site.main();print(site.ENABLE_USER_SITE);print(\"\\n\".join(site.getsitepackages()));print(site.getusersitepackages())";
+const PY_SITE_PACKAGES: &str = "import sys;import site;import types;sys.modules['fetter_validate'] = types.ModuleType('fetter_validate');site.main();print(site.ENABLE_USER_SITE);print(\"\\n\".join(site.getsitepackages()));print(site.getusersitepackages())";
 fn get_site_package_dirs(
     executable: &Path,
     force_usite: bool,
