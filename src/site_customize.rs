@@ -40,17 +40,18 @@ fn get_validate_command(
     vf: &ValidationFlags,
 ) -> Vec<String> {
     let validate_args = get_validate_args(bound, bound_options, vf);
-
-    // NOTE: leading backslash necessary to avoid parsing as flags
     let banner = format!("validate {}", validate_args.join(" "));
 
-    let mut args = Vec::new();
-    args.push(FETTER_BIN.to_string());
-    args.push("-b".to_string());
-    args.push(banner);
-    args.push("-e".to_string());
-    args.push(executable.display().to_string());
-    args.push("validate".to_string());
+    let mut args = vec![
+        FETTER_BIN.to_string(),
+        "-b".to_string(),
+        banner,
+        "--cache-duration".to_string(),
+        "0".to_string(),
+        "-e".to_string(),
+        executable.display().to_string(),
+        "validate".to_string(),
+    ];
     args.extend(validate_args);
     args
 }
@@ -76,7 +77,7 @@ fn get_validation_subprocess(
     // NOTE: exit_else_warn is only handled here to achieve a true exit; raising an exception with `check=True` will not abort the process
     let eew = exit_else_warn.map_or(String::new(), |i| {
         format!(
-            "import sys\nif r.returncode != 0: sys.exit({}) # fetter validation failed",
+            "import sys\nif r.returncode != 0: sys.exit({}) # fetter validate failed",
             i
         )
     });
@@ -162,6 +163,8 @@ mod tests {
                 "fetter",
                 "-b",
                 "validate --bound requirements.txt --subset",
+                "--cache-duration",
+                "0",
                 "-e",
                 "python3",
                 "validate",
@@ -208,7 +211,7 @@ mod tests {
         };
         let ec: Option<i32> = Some(4);
         let post = get_validation_subprocess(&exe, &bound, bound_options, &vf, ec, None);
-        assert_eq!(post, "from subprocess import run\nr = run(['fetter', '-b', 'validate --bound requirements.txt --subset', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset'])\nimport sys\nif r.returncode != 0: sys.exit(4) # fetter validation failed")
+        assert_eq!(post, "from subprocess import run\nr = run(['fetter', '-b', 'validate --bound requirements.txt --subset', '--cache-duration', '0', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset'])\nimport sys\nif r.returncode != 0: sys.exit(4) # fetter validate failed")
     }
 
     #[test]
@@ -222,7 +225,7 @@ mod tests {
         };
         let ec: Option<i32> = None;
         let post = get_validation_subprocess(&exe, &bound, bound_options, &vf, ec, None);
-        assert_eq!(post, "from subprocess import run\nr = run(['fetter', '-b', 'validate --bound requirements.txt --subset', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset'])\n")
+        assert_eq!(post, "from subprocess import run\nr = run(['fetter', '-b', 'validate --bound requirements.txt --subset', '--cache-duration', '0', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset'])\n")
     }
 
     #[test]
@@ -237,6 +240,6 @@ mod tests {
         let ec: Option<i32> = None;
         let cwd = Some(PathBuf::from("/home/foo"));
         let post = get_validation_subprocess(&exe, &bound, bound_options, &vf, ec, cwd);
-        assert_eq!(post, "from subprocess import run\nr = run(['fetter', '-b', 'validate --bound requirements.txt --subset', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset'], cwd='/home/foo')\n")
+        assert_eq!(post, "from subprocess import run\nr = run(['fetter', '-b', 'validate --bound requirements.txt --subset', '--cache-duration', '0', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset'], cwd='/home/foo')\n")
     }
 }
