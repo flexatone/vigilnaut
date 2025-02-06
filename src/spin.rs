@@ -30,11 +30,14 @@ const FRAME_SPIN: [&str; 20] = [
 
 fn get_banner(message: Option<String>) -> String {
     let msg = message.map_or(String::new(), |m| format!(": {}", m));
-    format!("fetter v{}{}\n", FETTER_VERSION, msg)
+    format!("fetter {}{}\n", FETTER_VERSION, msg)
 }
 
-pub(crate) fn print_banner(message: Option<String>) {
+pub(crate) fn print_banner(is_failure: bool, message: Option<String>) {
     let mut stdout = stdout();
+    if is_failure {
+        write_color(&mut stdout, "#cc0000", "Failed: ");
+    }
     write_color(&mut stdout, "#999999", &get_banner(message))
 }
 

@@ -9,7 +9,6 @@ use std::path::Path;
 use std::path::PathBuf;
 
 // const FETTER_BIN: &str = "target/release/fetter"; // for testing
-
 const FETTER_BIN: &str = "fetter";
 
 fn get_validate_args(
@@ -174,30 +173,30 @@ mod tests {
             ]
         )
     }
-    // #[test]
-    // fn test_get_validation_command_b() {
-    //     let exe = PathBuf::from("python3");
-    //     let bound = PathBuf::from("requirements.txt");
-    //     let bound_options = Some(vec!["foo".to_string(), "bar".to_string()]);
-    //     let vf = ValidationFlags {
-    //         permit_superset: true,
-    //         permit_subset: true,
-    //     };
-    //     let post = get_validate_command(&exe, &bound, bound_options, &vf);
-    //     assert_eq!(post, "fetter -e python3 validate --bound requirements.txt --bound_options foo bar --subset --superset")
-    // }
-    // #[test]
-    // fn test_get_validation_command_c() {
-    //     let exe = PathBuf::from("python3");
-    //     let bound = PathBuf::from("requirements.txt");
-    //     let bound_options = Some(vec!["foo".to_string(), "bar".to_string()]);
-    //     let vf = ValidationFlags {
-    //         permit_superset: true,
-    //         permit_subset: true,
-    //     };
-    //     let post = get_validate_command(&exe, &bound, bound_options, &vf);
-    //     assert_eq!(post, "fetter -e python3 validate --bound requirements.txt --bound_options foo bar --subset --superset")
-    // }
+    #[test]
+    fn test_get_validation_command_b() {
+        let exe = PathBuf::from("python3");
+        let bound = PathBuf::from("requirements.txt");
+        let bound_options = Some(vec!["foo".to_string(), "bar".to_string()]);
+        let vf = ValidationFlags {
+            permit_superset: true,
+            permit_subset: true,
+        };
+        let post = get_validate_command(&exe, &bound, bound_options, &vf);
+        assert_eq!(post, vec!["fetter", "-b", "validate --bound requirements.txt --bound_options foo bar --subset --superset", "--cache-duration", "0", "-e", "python3", "validate", "--bound", "requirements.txt", "--bound_options", "foo", "bar", "--subset", "--superset"])
+    }
+    #[test]
+    fn test_get_validation_command_c() {
+        let exe = PathBuf::from("python3");
+        let bound = PathBuf::from("requirements.txt");
+        let bound_options = Some(vec!["foo".to_string(), "bar".to_string()]);
+        let vf = ValidationFlags {
+            permit_superset: true,
+            permit_subset: true,
+        };
+        let post = get_validate_command(&exe, &bound, bound_options, &vf);
+        assert_eq!(post, vec!["fetter", "-b", "validate --bound requirements.txt --bound_options foo bar --subset --superset", "--cache-duration", "0", "-e", "python3", "validate", "--bound", "requirements.txt", "--bound_options", "foo", "bar", "--subset", "--superset"])
+    }
     //--------------------------------------------------------------------------
 
     #[test]

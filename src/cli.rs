@@ -100,7 +100,7 @@ struct Cli {
     #[arg(long, short)]
     log: bool,
 
-    /// Print header and version information.
+    /// On validation failures, print version information and provided string.
     #[arg(long, short, required = false)]
     banner: Option<String>,
 
@@ -470,10 +470,7 @@ where
     }
     let log = cli.log;
     let quiet = cli.quiet;
-
-    if cli.banner.is_some() {
-        print_banner(cli.banner);
-    }
+    let banner = cli.banner;
 
     // doa fresh scan or load a cached scan
     let sfs = get_scan(
@@ -554,6 +551,10 @@ where
                     permit_subset,
                 },
             );
+            // we only print the banner on failure for now
+            if vr.len() > 0 && banner.is_some() {
+                print_banner(true, banner);
+            }
             match subcommands {
                 Some(ValidateSubcommand::Json) => {
                     println!("{}", serde_json::to_string(&vr.to_validation_digest())?);
@@ -565,7 +566,6 @@ where
                     process::exit(if vr.len() > 0 { *code } else { 0 });
                 }
                 Some(ValidateSubcommand::Display) | None => {
-                    // default
                     vr.to_stdout()?;
                     process::exit(if vr.len() > 0 { ERROR_EXIT_CODE } else { 0 });
                 }
