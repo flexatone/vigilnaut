@@ -290,7 +290,7 @@ repos:
 
 ### Command: `fetter site-uninstall`
 
-- Description: Uninstall from site-packages automatic validation checks on every Python run.
+- Description: Uninstall from site-packages automatic validation checks.
 
 ### Command: `fetter audit`
 
