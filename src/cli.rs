@@ -5,6 +5,7 @@ use crate::validation_report::ValidationFlags;
 use clap::{Parser, Subcommand, ValueEnum};
 use std::env;
 use std::ffi::OsString;
+use std::fmt;
 use std::path::PathBuf;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -16,6 +17,7 @@ use std::time::Duration;
 use crate::dep_manifest::DepManifest;
 use crate::scan_fs::Anchor;
 use crate::scan_fs::ScanFS;
+use crate::spin::print_banner;
 use crate::spin::spin;
 use crate::table::Tableable;
 use crate::ureq_client::UreqClientLive;
@@ -94,9 +96,13 @@ struct Cli {
     #[arg(long, short)]
     quiet: bool, // TODO: recast to reference spinners / animation
 
-    /// Disable logging and terminal animation.
+    /// Enable logging.
     #[arg(long, short)]
     log: bool,
+
+    /// Print header and version information.
+    #[arg(long, short, required = false)]
+    banner: Option<String>,
 
     /// Force inclusion of the user site-packages, even if it is not activated. If not set, user site packages will only be included if the interpreter has been configured to use it.
     #[arg(long, required = false)]
@@ -250,6 +256,26 @@ enum Commands {
         #[arg(long)]
         superset: bool,
     },
+}
+
+impl fmt::Display for Commands {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let op_str = match self {
+            Commands::Scan { .. } => "scan",
+            Commands::Search { .. } => "search",
+            Commands::Count { .. } => "count",
+            Commands::Derive { .. } => "derive",
+            Commands::Validate { .. } => "validate",
+            Commands::SiteInstall { .. } => "site-install",
+            Commands::SiteUninstall { .. } => "site-uninstall",
+            Commands::Audit { .. } => "audit",
+            Commands::UnpackCount { .. } => "unpack-count",
+            Commands::UnpackFiles { .. } => "unpack-files",
+            Commands::PurgePattern { .. } => "purge-pattern",
+            Commands::PurgeInvalid { .. } => "purge-invalid",
+        };
+        write!(f, "{}", op_str)
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -443,8 +469,13 @@ where
         return Err("No command provided. For more information, try '--help'.".into());
     }
     let log = cli.log;
-    // we always do a scan; we might cache this
     let quiet = cli.quiet;
+
+    if cli.banner.is_some() {
+        print_banner(cli.banner);
+    }
+
+    // doa fresh scan or load a cached scan
     let sfs = get_scan(
         &cli.exe,
         cli.user_site,
