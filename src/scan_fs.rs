@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::env;
 use std::fs;
 use std::fs::File;
 use std::io;
@@ -23,10 +24,13 @@ use crate::package::Package;
 use crate::package_match::match_str;
 use crate::path_shared::PathShared;
 use crate::scan_report::ScanReport;
+use crate::site_customize::install_validation;
+use crate::site_customize::uninstall_validation;
 use crate::unpack_report::UnpackReport;
 use crate::ureq_client::UreqClientLive;
 use crate::util::exe_path_normalize;
 use crate::util::hash_paths;
+use crate::util::logger;
 use crate::util::path_cache;
 use crate::util::path_is_component;
 use crate::util::path_within_duration;
@@ -47,13 +51,15 @@ pub(crate) enum Anchor {
 //------------------------------------------------------------------------------
 
 /// Given a path to a Python binary, call out to Python to get all known site packages; some site packages may not exist; we do not filter them here. This will include "dist-packages" on Linux. If `force_usite` is false, we use site.ENABLE_USER_SITE to determine if we should include the user site packages; if `force_usite` is true, we always include usite.
-/// Calling Python using `-S` avoids loading site (for better performance) and avoids calling sitecustomize.py (which fetter might customize). With -S, site.ENABLE_USER_SITE is left as None. We derive an equivalent `ENABLE_USER_SITE` as True with the logical and of:
-/// 1. sys.prefix == sys.base_prefix: only true if not a virtual environment
-/// 2. site.check_enableusersite(): includes evaluation of `PYTHONNOUSERSITE` (if set, do not add user site-packages to sys.path); tests for the command line flag (including environment var), process uid/gid equal to effective uid/gid.
-const PY_SITE_PACKAGES: &str = "import sys;import site;print(sys.prefix == sys.base_prefix and site.check_enableusersite());print(\"\\n\".join(site.getsitepackages()));print(site.getusersitepackages())";
-fn get_site_package_dirs(executable: &Path, force_usite: bool) -> Vec<PathShared> {
+/// Calling Python using `-S` disables loading site so that we can mock sitecustomize.py (which fetter might customize). We then call `site.main()` to force proper initialization.
+const PY_SITE_PACKAGES: &str = "import sys;import site;import types;sys.modules['fetter_validate'] = types.ModuleType('fetter_validate');site.main();print(site.ENABLE_USER_SITE);print(\"\\n\".join(site.getsitepackages()));print(site.getusersitepackages())";
+fn get_site_package_dirs(
+    executable: &Path,
+    force_usite: bool,
+    log: bool,
+) -> Vec<PathShared> {
     match Command::new(executable)
-        .arg("-S")
+        .arg("-S") // disable site on startup
         .arg("-c")
         .arg(PY_SITE_PACKAGES)
         .output()
@@ -80,7 +86,14 @@ fn get_site_package_dirs(executable: &Path, force_usite: bool) -> Vec<PathShared
             paths
         }
         Err(e) => {
-            eprintln!("Failed to execute command with {:?}: {}", executable, e); // log this
+            if log {
+                logger!(
+                    module_path!(),
+                    "Failed to execute command with {:?}: {}",
+                    executable,
+                    e
+                );
+            }
             Vec::with_capacity(0)
         }
     }
@@ -206,6 +219,7 @@ impl ScanFS {
         exes: &[PathBuf],
         force_usite: bool,
         cache_dur: Duration,
+        log: bool,
     ) -> ResultDynError<Self> {
         if cache_dur == DURATION_0 {
             Err("Cache disabled by duration".into())
@@ -215,7 +229,9 @@ impl ScanFS {
             let cache_fp = cache_dir.with_extension("json");
 
             if path_within_duration(&cache_fp, cache_dur) {
-                // eprintln!("loading {:?}", cache_fp);
+                if log {
+                    logger!(module_path!(), "Loading cache: {:?}", cache_fp);
+                }
                 let mut file = File::open(cache_fp)?;
                 let mut contents = String::new();
                 file.read_to_string(&mut contents)?;
@@ -235,6 +251,7 @@ impl ScanFS {
     pub(crate) fn from_exes(
         exes: &Vec<PathBuf>,
         force_usite: bool,
+        log: bool,
     ) -> ResultDynError<Self> {
         let path_wild = PathBuf::from("*");
         let exes_hash = hash_paths(exes, force_usite);
@@ -250,7 +267,7 @@ impl ScanFS {
         let exe_to_sites: HashMap<PathBuf, Vec<PathShared>> = exes_norm
             .into_par_iter()
             .map(|exe| {
-                let dirs = get_site_package_dirs(&exe, force_usite);
+                let dirs = get_site_package_dirs(&exe, force_usite, log);
                 (exe, dirs)
             })
             .collect();
@@ -317,7 +334,7 @@ impl ScanFS {
 
     //--------------------------------------------------------------------------
 
-    pub(crate) fn to_cache(&self, cache_dur: Duration) -> ResultDynError<()> {
+    pub(crate) fn to_cache(&self, cache_dur: Duration, log: bool) -> ResultDynError<()> {
         if let Some(mut cache_dir) = path_cache(true) {
             // use hash of exes observed at initialization
             cache_dir.push(self.exes_hash.clone());
@@ -325,13 +342,17 @@ impl ScanFS {
 
             // only write if cache does not exist or it is out of duration
             if !cache_fp.exists() || !path_within_duration(&cache_fp, cache_dur) {
-                // eprintln!("writing {:?}", cache_fp);
+                if log {
+                    logger!(module_path!(), "Writing cache: {:?}", cache_fp);
+                }
                 let json = serde_json::to_string(self)?;
                 let mut file = File::create(cache_fp)?;
                 file.write_all(json.as_bytes())?;
                 return Ok(());
             } else {
-                // eprintln!("keeping existing cache {:?}", cache_fp);
+                if log {
+                    logger!(module_path!(), "Keeping existing cache {:?}", cache_fp);
+                }
                 return Ok(());
             }
         }
@@ -512,6 +533,42 @@ impl ScanFS {
         let sr = UnpackReport::from_package_to_sites(false, &package_to_sites);
         sr.remove(log)
     }
+
+    pub(crate) fn site_validate_install(
+        &self,
+        bound: &Path,
+        bound_options: &Option<Vec<String>>,
+        vf: &ValidationFlags,
+        exit_else_warn: Option<i32>,
+        log: bool,
+    ) -> io::Result<()> {
+        // generally expect this to run with a single exe, so no need to parallelize
+        for (exe, sites) in &self.exe_to_sites {
+            // NOTE: taking first, but might prioritize one in the user directory
+            if let Some(site) = sites.first() {
+                install_validation(
+                    exe,
+                    bound,
+                    bound_options.clone(),
+                    vf,
+                    exit_else_warn,
+                    site,
+                    env::current_dir().ok(), // as option type
+                    log,
+                )?;
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn site_validate_uninstall(&self, log: bool) -> io::Result<()> {
+        for sites in self.exe_to_sites.values() {
+            if let Some(site) = sites.first() {
+                uninstall_validation(site, log)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -524,9 +581,9 @@ mod tests {
     #[test]
     fn test_get_site_package_dirs_a() {
         let p1 = Path::new("python3");
-        let paths1 = get_site_package_dirs(p1, true);
+        let paths1 = get_site_package_dirs(p1, true, false);
         assert_eq!(paths1.len() > 0, true);
-        let paths2 = get_site_package_dirs(p1, false);
+        let paths2 = get_site_package_dirs(p1, false, false);
         assert!(paths1.len() >= paths2.len());
     }
     #[test]

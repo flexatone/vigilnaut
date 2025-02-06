@@ -12,7 +12,9 @@ use std::sync::{
 use std::thread;
 use std::time::Duration;
 
-use crate::table::write_color;
+use crate::write_color::write_color;
+
+const FETTER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // we duplicate each component so we can update frames faster while keeping the visual changes slow
 const FRAME_SPIN: [&str; 20] = [
@@ -25,6 +27,19 @@ const FRAME_SPIN: [&str; 20] = [
 // vec!["▏", "▎", "▍", "▌", "▋", "▊", "▉", "▊", "▋", "▌", "▍", "▎", "▏", " "];
 // vec!["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█", "▇", "▆", "▅", "▄", "▃", "▂", "▁", " "];
 // vec!["○─•  ", "◉──• ", "◎───•", "◉──• ", "○─•  "];
+
+fn get_banner(message: Option<String>) -> String {
+    let msg = message.map_or(String::new(), |m| format!(": {}", m));
+    format!("fetter {}{}\n", FETTER_VERSION, msg)
+}
+
+pub(crate) fn print_banner(is_failure: bool, message: Option<String>) {
+    let mut stdout = stdout();
+    if is_failure {
+        write_color(&mut stdout, "#cc0000", "Failed: ");
+    }
+    write_color(&mut stdout, "#999999", &get_banner(message))
+}
 
 pub(crate) fn spin(active: Arc<AtomicBool>, message: String) {
     let mut stdout = stdout();

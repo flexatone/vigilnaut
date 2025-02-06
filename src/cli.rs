@@ -5,6 +5,7 @@ use crate::validation_report::ValidationFlags;
 use clap::{Parser, Subcommand, ValueEnum};
 use std::env;
 use std::ffi::OsString;
+use std::fmt;
 use std::path::PathBuf;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -16,9 +17,11 @@ use std::time::Duration;
 use crate::dep_manifest::DepManifest;
 use crate::scan_fs::Anchor;
 use crate::scan_fs::ScanFS;
+use crate::spin::print_banner;
 use crate::spin::spin;
 use crate::table::Tableable;
 use crate::ureq_client::UreqClientLive;
+use crate::util::logger;
 use crate::util::path_normalize;
 use crate::util::DURATION_0;
 
@@ -89,9 +92,17 @@ struct Cli {
     #[arg(long, short, required = false, default_value = "40")]
     cache_duration: u64,
 
-    /// Disable logging and terminal animation.
+    /// Disable terminal animations.
     #[arg(long, short)]
     quiet: bool,
+
+    /// Enable logging.
+    #[arg(long, short)]
+    log: bool,
+
+    /// On validation failures, print version information and provided string.
+    #[arg(long, short, required = false)]
+    banner: Option<String>,
 
     /// Force inclusion of the user site-packages, even if it is not activated. If not set, user site packages will only be included if the interpreter has been configured to use it.
     #[arg(long, required = false)]
@@ -140,7 +151,7 @@ enum Commands {
         #[arg(short, long, value_name = "FILE")]
         bound: PathBuf,
 
-        /// Names of additional optional dependency groups.
+        /// Names of additional optional (extra) dependency groups.
         #[arg(long, value_name = "OPTIONS")]
         bound_options: Option<Vec<String>>,
 
@@ -155,6 +166,29 @@ enum Commands {
         #[command(subcommand)]
         subcommands: Option<ValidateSubcommand>,
     },
+    /// Install in site-packages automatic validation checks on every Python run.
+    SiteInstall {
+        /// File path or URL from which to read bound requirements.
+        #[arg(short, long, value_name = "FILE")]
+        bound: PathBuf,
+
+        /// Names of additional optional (extra) dependency groups.
+        #[arg(long, value_name = "OPTIONS")]
+        bound_options: Option<Vec<String>>,
+
+        /// If the subset flag is set, the observed packages can be a subset of the bound requirements.
+        #[arg(long)]
+        subset: bool,
+
+        /// If the superset flag is set, the observed packages can be a superset of the bound requirements.
+        #[arg(long)]
+        superset: bool,
+
+        #[command(subcommand)]
+        subcommands: Option<SiteInstallSubcommand>,
+    },
+    /// Uninstall from site-packages automatic validation checks on every Python run.
+    SiteUninstall,
     /// Search for package security vulnerabilities via the OSV DB.
     Audit {
         /// Provide a glob-like pattern to select packages.
@@ -222,6 +256,26 @@ enum Commands {
         #[arg(long)]
         superset: bool,
     },
+}
+
+impl fmt::Display for Commands {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let op_str = match self {
+            Commands::Scan { .. } => "scan",
+            Commands::Search { .. } => "search",
+            Commands::Count { .. } => "count",
+            Commands::Derive { .. } => "derive",
+            Commands::Validate { .. } => "validate",
+            Commands::SiteInstall { .. } => "site-install",
+            Commands::SiteUninstall { .. } => "site-uninstall",
+            Commands::Audit { .. } => "audit",
+            Commands::UnpackCount { .. } => "unpack-count",
+            Commands::UnpackFiles { .. } => "unpack-files",
+            Commands::PurgePattern { .. } => "purge-pattern",
+            Commands::PurgeInvalid { .. } => "purge-invalid",
+        };
+        write!(f, "{}", op_str)
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -296,6 +350,17 @@ enum ValidateSubcommand {
 }
 
 #[derive(Subcommand)]
+enum SiteInstallSubcommand {
+    /// Print a Json representation of validation results.
+    Warn,
+    /// Return an exit code, 0 on success, 3 (by default) on error.
+    Exit {
+        #[arg(short, long, default_value = "3")]
+        code: i32,
+    },
+}
+
+#[derive(Subcommand)]
 enum AuditSubcommand {
     /// Display audit results in the terminal.
     Display,
@@ -341,22 +406,25 @@ enum UnpackFilesSubcommand {
 fn get_scan(
     exe_paths: &Vec<PathBuf>, // could be a ref
     force_usite: bool,
-    log: bool,
+    animate: bool,
     cache_dur: Duration,
+    log: bool,
 ) -> Result<ScanFS, Box<dyn std::error::Error>> {
-    ScanFS::from_cache(exe_paths, force_usite, cache_dur).or_else(|_err| {
-        // eprintln!("Could not load from cache: {:?}", err);
+    ScanFS::from_cache(exe_paths, force_usite, cache_dur, log).or_else(|err| {
+        if log {
+            logger!(module_path!(), "Could not load from cache: {:?}", err);
+        }
         // full load
         let active = Arc::new(AtomicBool::new(true));
-        if log {
+        if animate {
             spin(active.clone(), "scanning".to_string());
         }
-        let sfsl = ScanFS::from_exes(exe_paths, force_usite)?;
+        let sfsl = ScanFS::from_exes(exe_paths, force_usite, log)?;
 
         if cache_dur > DURATION_0 {
-            sfsl.to_cache(cache_dur)?;
+            sfsl.to_cache(cache_dur, log)?;
         }
-        if log {
+        if animate {
             active.store(false, Ordering::Relaxed);
             thread::sleep(Duration::from_millis(100));
         }
@@ -400,13 +468,17 @@ where
     if cli.command.is_none() {
         return Err("No command provided. For more information, try '--help'.".into());
     }
-    // we always do a scan; we might cache this
+    let log = cli.log;
     let quiet = cli.quiet;
+    let banner = cli.banner;
+
+    // doa fresh scan or load a cached scan
     let sfs = get_scan(
         &cli.exe,
         cli.user_site,
         !quiet,
         Duration::from_secs(cli.cache_duration),
+        log,
     )?;
 
     match &cli.command {
@@ -479,6 +551,10 @@ where
                     permit_subset,
                 },
             );
+            // we only print the banner on failure for now
+            if vr.len() > 0 && banner.is_some() {
+                print_banner(true, banner);
+            }
             match subcommands {
                 Some(ValidateSubcommand::Json) => {
                     println!("{}", serde_json::to_string(&vr.to_validation_digest())?);
@@ -490,11 +566,30 @@ where
                     process::exit(if vr.len() > 0 { *code } else { 0 });
                 }
                 Some(ValidateSubcommand::Display) | None => {
-                    // default
-                    let _ = vr.to_stdout();
+                    vr.to_stdout()?;
                     process::exit(if vr.len() > 0 { ERROR_EXIT_CODE } else { 0 });
                 }
             }
+        }
+        Some(Commands::SiteInstall {
+            bound,
+            bound_options,
+            subset,
+            superset,
+            subcommands,
+        }) => {
+            let vf = ValidationFlags {
+                permit_superset: *superset,
+                permit_subset: *subset,
+            };
+            let exit_else_warn: Option<i32> = match subcommands {
+                Some(SiteInstallSubcommand::Warn) | None => None,
+                Some(SiteInstallSubcommand::Exit { code }) => Some(*code),
+            };
+            sfs.site_validate_install(bound, bound_options, &vf, exit_else_warn, log)?;
+        }
+        Some(Commands::SiteUninstall {}) => {
+            sfs.site_validate_uninstall(log)?;
         }
         Some(Commands::Audit {
             subcommands,
@@ -557,7 +652,7 @@ where
             }
         }
         Some(Commands::PurgePattern { pattern, case }) => {
-            let _ = sfs.to_purge_pattern(pattern, !case, !quiet);
+            let _ = sfs.to_purge_pattern(pattern, !case, log);
         }
         Some(Commands::PurgeInvalid {
             bound,
@@ -574,7 +669,7 @@ where
                     permit_superset,
                     permit_subset,
                 },
-                !quiet,
+                log,
             );
         }
         None => {}

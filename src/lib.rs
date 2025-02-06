@@ -12,6 +12,7 @@ mod package_match;
 mod path_shared;
 mod scan_fs;
 mod scan_report;
+mod site_customize;
 mod spin;
 mod table;
 mod unpack_report;
@@ -19,6 +20,7 @@ mod ureq_client;
 mod util;
 mod validation_report;
 mod version_spec;
+mod write_color;
 
 pub use cli::run_cli;
-pub use table::write_color;
+pub use write_color::write_color;
