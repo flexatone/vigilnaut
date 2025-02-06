@@ -92,9 +92,9 @@ struct Cli {
     #[arg(long, short, required = false, default_value = "40")]
     cache_duration: u64,
 
-    /// Disable logging and terminal animation.
+    /// Disable terminal animations.
     #[arg(long, short)]
-    quiet: bool, // TODO: recast to reference spinners / animation
+    quiet: bool,
 
     /// Enable logging.
     #[arg(long, short)]
