@@ -566,7 +566,7 @@ where
                 }
                 Some(ValidateSubcommand::Display) | None => {
                     // default
-                    let _ = vr.to_stdout()?;
+                    vr.to_stdout()?;
                     process::exit(if vr.len() > 0 { ERROR_EXIT_CODE } else { 0 });
                 }
             }
