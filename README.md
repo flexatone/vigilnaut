@@ -350,6 +350,19 @@ repos:
 
 ## What is New in Fetter
 
+### 1.3.0
+
+Implementened `site-install` to permit installation of package validation on every Python run.
+
+Implementened `site-uninstall` to remove installation of package validation.
+
+Added `log` option to display logging information.
+
+Added support for `poetry`-style dependency specifications with `^` and `~`.
+
+Usage of `-S` in sub-processed Python calls for better isolation and performance.
+
+
 ### 1.2.0
 
 Improvements to path expansion.
