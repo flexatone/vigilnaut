@@ -96,7 +96,7 @@ struct Cli {
     #[arg(long, short)]
     quiet: bool,
 
-    /// Enable logging.
+    /// Enable logging output.
     #[arg(long, short)]
     log: bool,
 
