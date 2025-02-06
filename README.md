@@ -183,7 +183,7 @@ To run `fetter validate` with `pre-commit`, add the following to your `.pre-comm
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v1.2.0
+  rev: v1.3.0
   hooks:
     - id: fetter-validate
       args: [--bound, {FILE}, --superset, --subset]
@@ -200,7 +200,7 @@ To run `fetter audit` with `pre-commit`, add the following to your `.pre-commit-
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v1.2.0
+  rev: v1.3.0
   hooks:
     - id: fetter-audit
 ```
@@ -352,9 +352,9 @@ repos:
 
 ### 1.3.0
 
-Implementened `site-install` to permit installation of package validation on every Python run.
+Implemented `site-install` to permit installation of package validation on every Python run.
 
-Implementened `site-uninstall` to remove installation of package validation.
+Implemented `site-uninstall` to remove installation of package validation.
 
 Added `log` option to display logging information.
 
