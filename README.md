@@ -212,7 +212,7 @@ repos:
 ### Global Options
 
 - `--exe, -e <FILES>`: Provide zero or more executable paths to derive site package locations. If omitted, all discoverable executables will be used.
-- `--quiet, -q`: Disable logging and terminal animation.
+- `--quiet, -q`: Disable terminal animations.
 - `--user_site`: Force inclusion of the user site-packages, even if it is not activated. Defaults to only including if the interpreter is configured to use it.
 - `--cache-duration, -c`: Create or use a cache that expires after the provided number of seconds. A duration of zero will disable caching.
 - `--log, -l`: Enable logging output.
