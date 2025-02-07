@@ -350,6 +350,13 @@ repos:
 
 ## What is New in Fetter
 
+### 1.4.0
+
+Improved `site-install` to run in the same parent Python process.
+
+Added `code` option to `display` to only optionally return an error code.
+
+
 ### 1.3.0
 
 Implemented `site-install` to permit installation of package validation on every Python run.
