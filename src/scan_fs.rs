@@ -33,6 +33,7 @@ use crate::util::hash_paths;
 use crate::util::logger;
 use crate::util::path_cache;
 use crate::util::path_is_component;
+use crate::util::path_normalize;
 use crate::util::path_within_duration;
 use crate::util::ResultDynError;
 use crate::util::DURATION_0;
@@ -541,14 +542,15 @@ impl ScanFS {
         vf: &ValidationFlags,
         exit_else_warn: Option<i32>,
         log: bool,
-    ) -> io::Result<()> {
+    ) -> ResultDynError<()> {
+        let bound_abs = path_normalize(bound)?;
         // generally expect this to run with a single exe, so no need to parallelize
         for (exe, sites) in &self.exe_to_sites {
             // NOTE: taking first, but might prioritize one in the user directory
             if let Some(site) = sites.first() {
                 install_validation(
                     exe,
-                    bound,
+                    &bound_abs,
                     bound_options.clone(),
                     vf,
                     exit_else_warn,
