@@ -98,6 +98,7 @@ fn get_validation_module(
         "    name = Path(sys.argv[0]).name",
         "    run = not any(name.startswith(n) for n in ('fetter', 'pip', 'poetry', 'uv'))",
         &format!("if run: fetter.run({})", cmd),
+        "", // force a new line at end
     ].join("\n")
 }
 
@@ -225,7 +226,7 @@ mod tests {
         };
         let ec: Option<i32> = Some(4);
         let post = get_validation_module(&exe, &bound, bound_options, &vf, ec, None);
-        assert_eq!(post, "import sys\nimport fetter\nfrom pathlib import Path\nrun = True\nif sys.argv:\n    name = Path(sys.argv[0]).name\n    run = not any(name.startswith(n) for n in ('fetter', 'pip', 'poetry', 'uv'))\nif run: fetter.run(['fetter', '-b', 'validate --bound requirements.txt --subset', '--cache-duration', '0', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset', 'display', '--code', '4'])")
+        assert_eq!(post, "import sys\nimport fetter\nfrom pathlib import Path\nrun = True\nif sys.argv:\n    name = Path(sys.argv[0]).name\n    run = not any(name.startswith(n) for n in ('fetter', 'pip', 'poetry', 'uv'))\nif run: fetter.run(['fetter', '-b', 'validate --bound requirements.txt --subset', '--cache-duration', '0', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset', 'display', '--code', '4'])\n")
     }
 
     #[test]
@@ -239,7 +240,7 @@ mod tests {
         };
         let ec: Option<i32> = None;
         let post = get_validation_module(&exe, &bound, bound_options, &vf, ec, None);
-        assert_eq!(post, "import sys\nimport fetter\nfrom pathlib import Path\nrun = True\nif sys.argv:\n    name = Path(sys.argv[0]).name\n    run = not any(name.startswith(n) for n in ('fetter', 'pip', 'poetry', 'uv'))\nif run: fetter.run(['fetter', '-b', 'validate --bound requirements.txt --subset', '--cache-duration', '0', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset', 'display'])")
+        assert_eq!(post, "import sys\nimport fetter\nfrom pathlib import Path\nrun = True\nif sys.argv:\n    name = Path(sys.argv[0]).name\n    run = not any(name.startswith(n) for n in ('fetter', 'pip', 'poetry', 'uv'))\nif run: fetter.run(['fetter', '-b', 'validate --bound requirements.txt --subset', '--cache-duration', '0', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset', 'display'])\n")
     }
 
     #[test]
@@ -254,6 +255,6 @@ mod tests {
         let ec: Option<i32> = None;
         let cwd = Some(PathBuf::from("/home/foo"));
         let post = get_validation_module(&exe, &bound, bound_options, &vf, ec, cwd);
-        assert_eq!(post, "import sys\nimport fetter\nfrom pathlib import Path\nrun = True\nif sys.argv:\n    name = Path(sys.argv[0]).name\n    run = not any(name.startswith(n) for n in ('fetter', 'pip', 'poetry', 'uv'))\nif run: fetter.run(['fetter', '-b', 'validate --bound requirements.txt --subset', '--cache-duration', '0', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset', 'display'])")
+        assert_eq!(post, "import sys\nimport fetter\nfrom pathlib import Path\nrun = True\nif sys.argv:\n    name = Path(sys.argv[0]).name\n    run = not any(name.startswith(n) for n in ('fetter', 'pip', 'poetry', 'uv'))\nif run: fetter.run(['fetter', '-b', 'validate --bound requirements.txt --subset', '--cache-duration', '0', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset', 'display'])\n")
     }
 }
