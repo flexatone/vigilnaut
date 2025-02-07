@@ -17,8 +17,7 @@ use std::path::PathBuf;
 
 // last resort: remove and replace pth file
 
-// const FETTER_BIN: &str = "target/release/fetter"; // for testing
-const FETTER_BIN: &str = "fetter";
+// const FETTER_BIN: &str = "fetter";
 
 fn get_validate_args(
     bound: &Path,
@@ -51,7 +50,7 @@ fn get_validate_command(
     let banner = format!("validate {}", validate_args.join(" "));
 
     let mut args = vec![
-        FETTER_BIN.to_string(),
+        "fetter".to_string(),
         "-b".to_string(),
         banner,
         "--cache-duration".to_string(),
@@ -106,7 +105,7 @@ pub(crate) fn install_validation(
     cwd_option: Option<PathBuf>,
     log: bool,
 ) -> io::Result<()> {
-    let code = get_validation_module(
+    let module_code = get_validation_module(
         executable,
         bound,
         bound_options,
@@ -119,7 +118,7 @@ pub(crate) fn install_validation(
         logger!(module_path!(), "Writing: {}", fp_validate.display());
     }
     let mut file = File::create(&fp_validate)?;
-    writeln!(file, "{}", code)?;
+    writeln!(file, "{}", module_code)?;
 
     let fp_launcher = site.join(FN_LAUNCHER_PTH);
     if log {
