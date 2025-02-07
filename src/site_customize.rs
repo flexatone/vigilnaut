@@ -89,7 +89,7 @@ fn get_validation_module(
             .join(", ")
     );
     // we exclude fetter and package managers from ever running
-    vec![
+    [
         "import sys",
         "import fetter",
         "from pathlib import Path",
@@ -99,8 +99,6 @@ fn get_validation_module(
         "    run = not any(name.startswith(n) for n in ('fetter', 'pip', 'poetry', 'uv'))",
         &format!("if run: fetter.run({})", cmd),
     ].join("\n")
-
-
 }
 
 const FN_LAUNCHER_PTH: &str = "fetter_launcher.pth";
