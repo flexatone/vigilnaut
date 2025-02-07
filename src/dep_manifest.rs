@@ -159,11 +159,13 @@ impl DepManifest {
             .and_then(|project| project.get("dependencies"))
             .and_then(|deps| deps.as_array())
         {
-            deps_list.extend(dependencies
-                .iter()
-                .filter_map(|dep| dep.as_str().map(String::from))
-                .collect::<Vec<_>>());
-            }
+            deps_list.extend(
+                dependencies
+                    .iter()
+                    .filter_map(|dep| dep.as_str().map(String::from))
+                    .collect::<Vec<_>>(),
+            );
+        }
         // [project.optional-dependencies]
         // NOTE: only look here if not poetry
         if !is_poetry {
@@ -201,12 +203,14 @@ impl DepManifest {
                 .and_then(|poetry| poetry.get("dependencies"))
                 .and_then(|deps| deps.as_table())
             {
-                deps_list.extend(dependencies
-                    .iter()
-                    .map(poetry_toml_value_to_string)
-                    .collect::<Vec<_>>());
-                }
+                deps_list.extend(
+                    dependencies
+                        .iter()
+                        .map(poetry_toml_value_to_string)
+                        .collect::<Vec<_>>(),
+                );
             }
+        }
         // [tool.poetry.group.*.dependencies]
         // poetry might use project.dependencies and still store options in tool.poetry
         if is_poetry {
@@ -232,7 +236,7 @@ impl DepManifest {
                 }
             }
         }
-        return Self::from_iter(deps_list.iter());
+        Self::from_iter(deps_list.iter())
     }
 
     pub(crate) fn from_pyproject_file(
