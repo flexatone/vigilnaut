@@ -320,6 +320,7 @@ enum DeriveSubcommand {
 enum ValidateSubcommand {
     /// Display validation in the terminal.
     Display {
+        /// If set, the process will exit the provided code.
         #[arg(short, long)]
         code: Option<i32>,
     },
