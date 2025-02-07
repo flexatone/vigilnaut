@@ -53,26 +53,13 @@ const AFTER_HELP: &str = "\
 Examples:
   fetter scan
   fetter scan write -o /tmp/pkgscan.txt --delimiter '|'
-
   fetter search --pattern pip*
-
-  fetter count
-
   fetter --exe python3 derive -a lower write -o /tmp/bound_requirements.txt
-
-  fetter validate --bound /tmp/bound_requirements.txt
   fetter -e python3 validate --bound /tmp/bound_requirements.txt
-  fetter -e python3 validate --superset --bound git@github.com:fetter-io/bound-test.git
-
   fetter audit
   fetter -e python3 -e /usr/bin/python audit write -o /tmp/audit.txt  -d '|'
-
   fetter -e python3 unpack-count
   fetter unpack-count -p pip*
-
-  fetter -e /usr/bin/python purge-pattern -p numpy*
-
-  fetter purge-invalid --bound /tmp/bound_requirements.txt
 ";
 
 #[derive(clap::Parser)]
@@ -332,7 +319,10 @@ enum DeriveSubcommand {
 #[derive(Subcommand)]
 enum ValidateSubcommand {
     /// Display validation in the terminal.
-    Display,
+    Display {
+        #[arg(short, long)]
+        code: Option<i32>,
+    },
     /// Print a Json representation of validation results.
     Json,
     /// Write a validation report to a file.
@@ -565,9 +555,16 @@ where
                 Some(ValidateSubcommand::Exit { code }) => {
                     process::exit(if vr.len() > 0 { *code } else { 0 });
                 }
-                Some(ValidateSubcommand::Display) | None => {
+                Some(ValidateSubcommand::Display { code }) => {
                     vr.to_stdout()?;
-                    process::exit(if vr.len() > 0 { ERROR_EXIT_CODE } else { 0 });
+                    if vr.len() > 0 {
+                        if let Some(e) = code {
+                            process::exit(*e);
+                        }
+                    }
+                }
+                None => {
+                    vr.to_stdout()?;
                 }
             }
         }
