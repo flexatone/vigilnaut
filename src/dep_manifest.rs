@@ -145,10 +145,13 @@ impl DepManifest {
     pub(crate) fn from_pyproject(
         content: &str,
         options: Option<&Vec<String>>,
+        is_poetry: bool,
     ) -> ResultDynError<Self> {
         let value: toml::Value = content
             .parse::<toml::Value>()
             .map_err(|e| format!("Failed to parse TOML: {}", e))?;
+
+        let mut deps_list: Vec<String> = Vec::new();
 
         // [project.dependencies]
         if let Some(dependencies) = value
@@ -156,12 +159,14 @@ impl DepManifest {
             .and_then(|project| project.get("dependencies"))
             .and_then(|deps| deps.as_array())
         {
-            let mut deps_list: Vec<_> = dependencies
+            deps_list.extend(dependencies
                 .iter()
                 .filter_map(|dep| dep.as_str().map(String::from))
-                .collect();
-
-            // [project.optional-dependencies]
+                .collect::<Vec<_>>());
+            }
+        // [project.optional-dependencies]
+        // NOTE: only look here if not poetry
+        if !is_poetry {
             if let Some(opt) = options {
                 let mut opt_set: HashSet<&String> = opt.iter().collect();
                 if let Some(dependencies_optional) = value
@@ -187,21 +192,24 @@ impl DepManifest {
                     return Err(msg.into());
                 }
             }
-            return Self::from_iter(deps_list.iter());
         }
         // [tool.poetry.dependencies]
-        if let Some(dependencies) = value
-            .get("tool")
-            .and_then(|tool| tool.get("poetry"))
-            .and_then(|poetry| poetry.get("dependencies"))
-            .and_then(|deps| deps.as_table())
-        {
-            let mut deps_list: Vec<_> = dependencies
-                .iter()
-                .map(poetry_toml_value_to_string)
-                .collect();
-
-            // [tool.poetry.group.*.dependencies]
+        if is_poetry {
+            if let Some(dependencies) = value
+                .get("tool")
+                .and_then(|tool| tool.get("poetry"))
+                .and_then(|poetry| poetry.get("dependencies"))
+                .and_then(|deps| deps.as_table())
+            {
+                deps_list.extend(dependencies
+                    .iter()
+                    .map(poetry_toml_value_to_string)
+                    .collect::<Vec<_>>());
+                }
+            }
+        // [tool.poetry.group.*.dependencies]
+        // poetry might use project.dependencies and still store options in tool.poetry
+        if is_poetry {
             if let Some(opt_vec) = options {
                 for opt in opt_vec {
                     if let Some(dependencies) = value
@@ -223,9 +231,8 @@ impl DepManifest {
                     }
                 }
             }
-            return Self::from_iter(deps_list.iter());
         }
-        Err("Dependencies section not found in pyproject.toml".into())
+        return Self::from_iter(deps_list.iter());
     }
 
     pub(crate) fn from_pyproject_file(
@@ -234,7 +241,8 @@ impl DepManifest {
     ) -> ResultDynError<Self> {
         let content = fs::read_to_string(file_path)
             .map_err(|e| format!("Failed to read file: {}", e))?;
-        Self::from_pyproject(&content, bound_options)
+        let is_poetry = false;
+        Self::from_pyproject(&content, bound_options, is_poetry)
     }
 
     // Create a DepManifest from a URL point to a requirements.txt or pyproject.toml file.
@@ -246,7 +254,8 @@ impl DepManifest {
         let url_str = url.to_str().ok_or("Invalid URL")?;
         let content = client.get(url_str)?;
         if url_str.ends_with(".toml") {
-            Self::from_pyproject(&content, bound_options)
+            let is_poetry = false;
+            Self::from_pyproject(&content, bound_options, is_poetry)
         } else {
             // assume txt
             Self::from_iter(content.lines())
