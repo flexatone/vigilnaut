@@ -8,8 +8,16 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 
-// const FETTER_BIN: &str = "target/release/fetter"; // for testing
-const FETTER_BIN: &str = "fetter";
+// fetter_launcher.pth
+//      always called in start unless -S
+//      can be invoked with site.main()
+//      imports fetter_validate.py
+// fetter_validate.py
+//      import fetter and call fetter.run, in the same process
+
+// last resort: remove and replace pth file
+
+// const FETTER_BIN: &str = "fetter";
 
 fn get_validate_args(
     bound: &Path,
@@ -42,7 +50,7 @@ fn get_validate_command(
     let banner = format!("validate {}", validate_args.join(" "));
 
     let mut args = vec![
-        FETTER_BIN.to_string(),
+        "fetter".to_string(),
         "-b".to_string(),
         banner,
         "--cache-duration".to_string(),
@@ -55,15 +63,21 @@ fn get_validate_command(
     args
 }
 
-fn get_validation_subprocess(
+fn get_validation_module(
     executable: &Path,
     bound: &Path,
     bound_options: Option<Vec<String>>,
     vf: &ValidationFlags,
     exit_else_warn: Option<i32>,
-    cwd_option: Option<PathBuf>,
+    _cwd_option: Option<PathBuf>,
 ) -> String {
-    let cmd_args = get_validate_command(executable, bound, bound_options, vf);
+    let mut cmd_args = get_validate_command(executable, bound, bound_options, vf);
+
+    let eew = exit_else_warn.map_or(Vec::with_capacity(0), |i| {
+        vec!["exit".to_string(), "--code".to_string(), format!("{}", i)]
+    });
+    cmd_args.extend(eew);
+
     // quote all arguments to represent as Python strings
     let cmd = format!(
         "[{}]",
@@ -73,18 +87,8 @@ fn get_validation_subprocess(
             .collect::<Vec<_>>()
             .join(", ")
     );
-    // NOTE: exit_else_warn is only handled here to achieve a true exit; raising an exception with `check=True` will not abort the process
-    let eew = exit_else_warn.map_or(String::new(), |i| {
-        format!(
-            "import sys\nif r.returncode != 0: sys.exit({}) # fetter validate failed",
-            i
-        )
-    });
-    let cwd = cwd_option.map_or(String::new(), |p| format!(", cwd='{}'", p.display()));
-    format!(
-        "from subprocess import run\nr = run({}{})\n{}",
-        cmd, cwd, eew
-    )
+
+    format!("import fetter\nr = fetter.run({})\n", cmd,)
 }
 
 const FN_LAUNCHER_PTH: &str = "fetter_launcher.pth";
@@ -101,7 +105,7 @@ pub(crate) fn install_validation(
     cwd_option: Option<PathBuf>,
     log: bool,
 ) -> io::Result<()> {
-    let code = get_validation_subprocess(
+    let module_code = get_validation_module(
         executable,
         bound,
         bound_options,
@@ -114,7 +118,7 @@ pub(crate) fn install_validation(
         logger!(module_path!(), "Writing: {}", fp_validate.display());
     }
     let mut file = File::create(&fp_validate)?;
-    writeln!(file, "{}", code)?;
+    writeln!(file, "{}", module_code)?;
 
     let fp_launcher = site.join(FN_LAUNCHER_PTH);
     if log {
@@ -200,7 +204,7 @@ mod tests {
     //--------------------------------------------------------------------------
 
     #[test]
-    fn test_get_validation_subprocess_a() {
+    fn test_get_validation_module_a() {
         let exe = PathBuf::from("python3");
         let bound = PathBuf::from("requirements.txt");
         let bound_options = None;
@@ -209,12 +213,12 @@ mod tests {
             permit_subset: true,
         };
         let ec: Option<i32> = Some(4);
-        let post = get_validation_subprocess(&exe, &bound, bound_options, &vf, ec, None);
-        assert_eq!(post, "from subprocess import run\nr = run(['fetter', '-b', 'validate --bound requirements.txt --subset', '--cache-duration', '0', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset'])\nimport sys\nif r.returncode != 0: sys.exit(4) # fetter validate failed")
+        let post = get_validation_module(&exe, &bound, bound_options, &vf, ec, None);
+        assert_eq!(post, "import fetter\nr = fetter.run(['fetter', '-b', 'validate --bound requirements.txt --subset', '--cache-duration', '0', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset', 'exit', '--code', '4'])\n")
     }
 
     #[test]
-    fn test_get_validation_subprocess_b() {
+    fn test_get_validation_module_b() {
         let exe = PathBuf::from("python3");
         let bound = PathBuf::from("requirements.txt");
         let bound_options = None;
@@ -223,12 +227,12 @@ mod tests {
             permit_subset: true,
         };
         let ec: Option<i32> = None;
-        let post = get_validation_subprocess(&exe, &bound, bound_options, &vf, ec, None);
-        assert_eq!(post, "from subprocess import run\nr = run(['fetter', '-b', 'validate --bound requirements.txt --subset', '--cache-duration', '0', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset'])\n")
+        let post = get_validation_module(&exe, &bound, bound_options, &vf, ec, None);
+        assert_eq!(post, "import fetter\nr = fetter.run(['fetter', '-b', 'validate --bound requirements.txt --subset', '--cache-duration', '0', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset'])\n")
     }
 
     #[test]
-    fn test_get_validation_subprocess_c() {
+    fn test_get_validation_module_c() {
         let exe = PathBuf::from("python3");
         let bound = PathBuf::from("requirements.txt");
         let bound_options = None;
@@ -238,7 +242,7 @@ mod tests {
         };
         let ec: Option<i32> = None;
         let cwd = Some(PathBuf::from("/home/foo"));
-        let post = get_validation_subprocess(&exe, &bound, bound_options, &vf, ec, cwd);
-        assert_eq!(post, "from subprocess import run\nr = run(['fetter', '-b', 'validate --bound requirements.txt --subset', '--cache-duration', '0', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset'], cwd='/home/foo')\n")
+        let post = get_validation_module(&exe, &bound, bound_options, &vf, ec, cwd);
+        assert_eq!(post, "import fetter\nr = fetter.run(['fetter', '-b', 'validate --bound requirements.txt --subset', '--cache-duration', '0', '-e', 'python3', 'validate', '--bound', 'requirements.txt', '--subset'])\n")
     }
 }

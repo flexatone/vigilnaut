@@ -186,8 +186,7 @@ repos:
   rev: v1.3.0
   hooks:
     - id: fetter-validate
-      args: [--bound, {FILE}, --superset, --subset]
-
+      args: [--bound, {FILE}, --superset, --subset, display, --code, 3]
 ```
 
 
@@ -267,6 +266,7 @@ repos:
   - `--superset`: Allow the observed packages to be a superset of the bound requirements.
 - Subcommands
   - `display`: Show validation results in the terminal.
+    - `--code, -c <INT>`: Optionally specify and exit with an error code (default: `3`).
   - `json`: Print validation results in JSON format.
   - `write`: Save validation results to a file.
     - `--output, -o <FILE>`: Specify the output file.
