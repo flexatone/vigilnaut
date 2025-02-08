@@ -40,8 +40,8 @@ impl PyProjectInfo {
         Ok(Self { parsed, has_project_dep, has_project_dep_optional, has_poetry_dep, has_poetry_dep_group })
     }
 
-    fn from_file(pyproject_path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
-        let contents = fs::read_to_string(pyproject_path)?;
+    fn from_file(fp: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+        let contents = fs::read_to_string(fp)?;
         Self::from_string(&contents)
     }
 }
