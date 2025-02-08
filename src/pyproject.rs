@@ -37,7 +37,7 @@ impl PyProjectInfo {
             .and_then(|t| t.get("poetry"))
             .and_then(|p| p.get("group"))
             .and_then(|groups| groups.as_table())
-            .map_or(false, |groups| {
+            .is_some_and(|groups| {
                 groups
                     .values()
                     .any(|group| group.get("dependencies").is_some())
