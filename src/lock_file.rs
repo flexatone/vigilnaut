@@ -1,3 +1,4 @@
+use crate::util::ResultDynError;
 use std::error::Error;
 use toml::Value; // Use the `toml` crate for parsing
 
@@ -50,7 +51,7 @@ impl LockFile {
     }
 
     /// Extracts dependencies from a `uv` lock file.
-    fn extract_uv_dependencies(&self) -> Result<Vec<String>, Box<dyn Error>> {
+    fn extract_uv_dependencies(&self) -> ResultDynError<Vec<String>> {
         let dependencies = self
             .contents
             .lines()
@@ -70,7 +71,7 @@ impl LockFile {
     }
 
     /// Extracts dependencies from a `Poetry` lock file and formats them as `package==version`.
-    fn extract_poetry_dependencies(&self) -> Result<Vec<String>, Box<dyn Error>> {
+    fn extract_poetry_dependencies(&self) -> ResultDynError<Vec<String>> {
         let parsed: Value = self.contents.parse()?; // Parse as TOML
         let mut dependencies = Vec::new();
 
@@ -89,7 +90,7 @@ impl LockFile {
     }
 
     /// Extracts dependency specifications from the lock file.
-    fn get_dependencies(&self) -> Result<Vec<String>, Box<dyn Error>> {
+    fn get_dependencies(&self) -> ResultDynError<Vec<String>> {
         match self.file_type {
             LockFileType::Uv => self.extract_uv_dependencies(),
             LockFileType::Poetry => self.extract_poetry_dependencies(),
