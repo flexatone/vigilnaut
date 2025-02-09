@@ -4,6 +4,7 @@ mod count_report;
 mod dep_manifest;
 mod dep_spec;
 mod exe_search;
+mod lock_file;
 mod osv_query;
 mod osv_vulns;
 mod package;
