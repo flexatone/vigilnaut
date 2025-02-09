@@ -55,7 +55,7 @@ impl PyProjectInfo {
                     .any(|group| group.get("dependencies").is_some())
             });
         if has_project_dep_optional && has_poetry_dep_group {
-            return Err("Cannot define optional dependencies in both project and tool.poetry.group".into())
+            return Err("Cannot define optional dependencies in both project and tool.poetry.group".into());
         }
         Ok(Self {
             parsed,
@@ -155,11 +155,13 @@ impl PyProjectInfo {
     ) -> ResultDynError<Vec<String>> {
         let mut deps_list: Vec<String> = Vec::new();
 
+        // if present, always sources
         // [project.dependencies]: take for project and poetry
         if self.has_project_dep {
             deps_list.extend(self.get_project_dep().unwrap());
         }
 
+        // only this or [tool.poetry.group.*.dependencies] is set
         // [project.optional-dependencies]
         if self.has_project_dep_optional {
             if let Some(opt) = options {
@@ -168,11 +170,13 @@ impl PyProjectInfo {
                 }
             }
         }
+        // if present, always source
         // [tool.poetry.dependencies]
         if self.has_poetry_dep {
             deps_list.extend(self.get_poetry_dep().unwrap());
         }
 
+        // only this or [project.optional-dependencies] is set
         // [tool.poetry.group.*.dependencies]
         if self.has_poetry_dep_group {
             if let Some(opt) = options {
@@ -188,7 +192,6 @@ impl PyProjectInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn test_pyprojectinfo_new_a() {
