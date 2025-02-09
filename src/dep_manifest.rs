@@ -1142,6 +1142,35 @@ pytest-github-actions-annotate-failures = "==0.1.7"
         );
     }
 
+    #[test]
+    fn test_from_pyproject_e1() {
+        let content = r#"
+[project]
+name = "example_package_YOUR_USERNAME_HERE"
+version = "0.0.1"
+description = "A small example package"
+dependencies = [
+  "httpx",
+  "gidgethub[httpx]>4.0.0",
+  "django>2.1; os_name != 'nt'",
+]
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = ">=2.10"
+setuptools = { version = ">=60", python = "<3.10" }
+
+"#;
+
+        let bo = vec!["dev".to_string()];
+        let dm1 = DepManifest::from_pyproject(&content, Some(&bo)).unwrap();
+        assert_eq!(
+            dm1.keys(),
+            vec!["django", "gidgethub", "httpx", "pre_commit", "setuptools"]
+        );
+        let dm2 = DepManifest::from_pyproject(&content, None).unwrap();
+        assert_eq!(dm2.keys(), vec!["django", "gidgethub", "httpx"]);
+    }
+
     //--------------------------------------------------------------------------
 
     #[test]
