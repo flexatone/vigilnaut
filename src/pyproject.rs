@@ -54,7 +54,9 @@ impl PyProjectInfo {
                     .values()
                     .any(|group| group.get("dependencies").is_some())
             });
-
+        if has_project_dep_optional && has_poetry_dep_group {
+            return Err("Cannot define optional dependencies in both project and tool.poetry.group".into())
+        }
         Ok(Self {
             parsed,
             has_project_dep,
@@ -153,7 +155,7 @@ impl PyProjectInfo {
     ) -> ResultDynError<Vec<String>> {
         let mut deps_list: Vec<String> = Vec::new();
 
-        // [project.dependencies]
+        // [project.dependencies]: take for project and poetry
         if self.has_project_dep {
             deps_list.extend(self.get_project_dep().unwrap());
         }
@@ -186,6 +188,46 @@ impl PyProjectInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+
+    #[test]
+    fn test_pyprojectinfo_new_a() {
+        let contents = r#"
+        [project]
+        dependencies = ["requests", "numpy"]
+        optional-dependencies = { dev = ["pytest", "black"] }
+
+        [tool.poetry]
+        dependencies = { flask = "^2.0.0" }
+
+        "#
+        .to_string();
+
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
+        assert!(info.has_project_dep);
+        assert!(info.has_project_dep_optional);
+        assert!(info.has_poetry_dep);
+        assert!(!info.has_poetry_dep_group);
+    }
+
+    #[test]
+    fn test_pyprojectinfo_new_b() {
+        let contents = r#"
+        [project]
+        dependencies = ["requests", "numpy"]
+        optional-dependencies = { dev = ["pytest", "black"] }
+
+        [tool.poetry]
+        dependencies = { flask = "^2.0.0" }
+
+        [tool.poetry.group.test.dependencies]
+        pytest = "^6.2.5"
+        "#
+        .to_string();
+        // cannot define both optional and group
+        let info = PyProjectInfo::new(&contents);
+        assert!(info.is_err())
+    }
 
     #[test]
     fn test_detects_project_dependencies() {
@@ -248,28 +290,6 @@ mod tests {
         assert!(!info.has_project_dep);
         assert!(!info.has_project_dep_optional);
         assert!(!info.has_poetry_dep);
-        assert!(info.has_poetry_dep_group);
-    }
-
-    #[test]
-    fn test_detects_multiple_project_and_poetry_dependencies() {
-        let contents = r#"
-        [project]
-        dependencies = ["requests", "numpy"]
-        optional-dependencies = { dev = ["pytest", "black"] }
-
-        [tool.poetry]
-        dependencies = { flask = "^2.0.0" }
-
-        [tool.poetry.group.test.dependencies]
-        pytest = "^6.2.5"
-        "#
-        .to_string();
-
-        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
-        assert!(info.has_project_dep);
-        assert!(info.has_project_dep_optional);
-        assert!(info.has_poetry_dep);
         assert!(info.has_poetry_dep_group);
     }
 

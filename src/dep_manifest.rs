@@ -133,7 +133,6 @@ impl DepManifest {
         options: Option<&Vec<String>>,
     ) -> ResultDynError<Self> {
         let ppi = PyProjectInfo::new(content)?;
-
         Self::from_iter(ppi.get_dependencies(options)?.iter())
     }
 
