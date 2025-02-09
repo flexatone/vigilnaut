@@ -1,20 +1,32 @@
-use std::fs;
-use std::path::Path;
+use crate::util::ResultDynError;
 use toml::Value;
 
+fn poetry_toml_value_to_string((name, value): (&String, &toml::Value)) -> String {
+    let version = match value {
+        toml::Value::String(v) => v.clone(),
+        toml::Value::Table(t) => t
+            .get("version")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        _ => String::new(),
+    };
+    format!("{}{}", name, version)
+}
+
 #[derive(Debug)]
-struct PyProjectInfo {
+pub(crate) struct PyProjectInfo {
     parsed: Value,
-    has_project_dep: bool,
-    has_project_dep_optional: bool,
-    has_poetry_dep: bool,
-    has_poetry_dep_group: bool,
+    pub(crate) has_project_dep: bool,
+    pub(crate) has_project_dep_optional: bool,
+    pub(crate) has_poetry_dep: bool,
+    pub(crate) has_poetry_dep_group: bool,
 }
 
 impl PyProjectInfo {
-    /// Parses `pyproject.toml` and initializes the struct with stored values.
-    fn from_string(contents: &String) -> Result<Self, Box<dyn std::error::Error>> {
-        let parsed: Value = toml::from_str(&contents)?;
+    pub(crate) fn new(content: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        // let parsed: Value = toml::from_str(&content)?;
+        let parsed: toml::Value = content.parse::<toml::Value>()?;
 
         let has_project_dep = parsed
             .get("project")
@@ -52,25 +64,94 @@ impl PyProjectInfo {
         })
     }
 
-    fn from_file(fp: &Path) -> Result<Self, Box<dyn std::error::Error>> {
-        let contents = fs::read_to_string(fp)?;
-        Self::from_string(&contents)
+    //--------------------------------------------------------------------------
+    pub(crate) fn get_project_dep(&self) -> ResultDynError<Vec<String>> {
+        if let Some(dependencies) = self
+            .parsed
+            .get("project")
+            .and_then(|project| project.get("dependencies"))
+            .and_then(|deps| deps.as_array())
+        {
+            Ok(dependencies
+                .iter()
+                .filter_map(|dep| dep.as_str().map(String::from))
+                .collect::<Vec<_>>())
+        } else {
+            Err("Could not extract from toml project.dependencies".into())
+        }
+    }
+
+    /// Extracts `[project.optional-dependencies.<key>]`
+    pub(crate) fn get_project_dep_optional(
+        &self,
+        key: &str,
+    ) -> ResultDynError<Vec<String>> {
+        if let Some(optional_deps) = self
+            .parsed
+            .get("project")
+            .and_then(|project| project.get("optional-dependencies"))
+            .and_then(|opt_deps| opt_deps.get(key))
+            .and_then(|deps| deps.as_array())
+        {
+            Ok(optional_deps
+                .iter()
+                .filter_map(|dep| dep.as_str().map(String::from))
+                .collect::<Vec<_>>())
+        } else {
+            Err(format!(
+                "Could not extract from toml project.optional-dependencies.{}",
+                key
+            )
+            .into())
+        }
+    }
+
+    /// Extracts `[tool.poetry.dependencies]`
+    pub(crate) fn get_poetry_dep(&self) -> ResultDynError<Vec<String>> {
+        if let Some(dependencies) = self
+            .parsed
+            .get("tool")
+            .and_then(|t| t.get("poetry"))
+            .and_then(|poetry| poetry.get("dependencies"))
+            .and_then(|deps| deps.as_table())
+        {
+            Ok(dependencies
+                .iter()
+                .map(|(name, value)| poetry_toml_value_to_string((name, value)))
+                .collect::<Vec<_>>())
+        } else {
+            Err("Could not extract from toml tool.poetry.dependencies".into())
+        }
+    }
+
+    /// Extracts `[tool.poetry.group.<key>.dependencies]`
+    pub(crate) fn get_poetry_dep_group(&self, key: &str) -> ResultDynError<Vec<String>> {
+        if let Some(dependencies) = self
+            .parsed
+            .get("tool")
+            .and_then(|t| t.get("poetry"))
+            .and_then(|p| p.get("group"))
+            .and_then(|groups| groups.get(key))
+            .and_then(|group| group.get("dependencies"))
+            .and_then(|deps| deps.as_table())
+        {
+            Ok(dependencies
+                .iter()
+                .map(|(name, value)| poetry_toml_value_to_string((name, value)))
+                .collect::<Vec<_>>())
+        } else {
+            Err(format!(
+                "Could not extract from toml tool.poetry.group.{}.dependencies",
+                key
+            )
+            .into())
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
-    use tempfile::NamedTempFile;
-
-    /// Helper function to create a temporary pyproject.toml file.
-    fn create_temp_pyproject(content: &str) -> NamedTempFile {
-        let mut file = NamedTempFile::new().expect("Failed to create temp file");
-        file.write_all(content.as_bytes())
-            .expect("Failed to write to temp file");
-        file
-    }
 
     #[test]
     fn test_detects_project_dependencies() {
@@ -80,7 +161,7 @@ mod tests {
         "#
         .to_string();
 
-        let info = PyProjectInfo::from_string(&contents).expect("Failed to parse toml");
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
         assert!(info.has_project_dep);
         assert!(!info.has_project_dep_optional);
         assert!(!info.has_poetry_dep);
@@ -95,7 +176,7 @@ mod tests {
         "#
         .to_string();
 
-        let info = PyProjectInfo::from_string(&contents).expect("Failed to parse toml");
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
         assert!(!info.has_project_dep);
         assert!(info.has_project_dep_optional);
         assert!(!info.has_poetry_dep);
@@ -110,7 +191,7 @@ mod tests {
         "#
         .to_string();
 
-        let info = PyProjectInfo::from_string(&contents).expect("Failed to parse toml");
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
         assert!(!info.has_project_dep);
         assert!(!info.has_project_dep_optional);
         assert!(info.has_poetry_dep);
@@ -129,7 +210,7 @@ mod tests {
         "#
         .to_string();
 
-        let info = PyProjectInfo::from_string(&contents).expect("Failed to parse toml");
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
         assert!(!info.has_project_dep);
         assert!(!info.has_project_dep_optional);
         assert!(!info.has_poetry_dep);
@@ -151,7 +232,7 @@ mod tests {
         "#
         .to_string();
 
-        let info = PyProjectInfo::from_string(&contents).expect("Failed to parse toml");
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
         assert!(info.has_project_dep);
         assert!(info.has_project_dep_optional);
         assert!(info.has_poetry_dep);
@@ -167,10 +248,137 @@ mod tests {
         "#
         .to_string();
 
-        let info = PyProjectInfo::from_string(&contents).expect("Failed to parse toml");
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
         assert!(!info.has_project_dep);
         assert!(!info.has_project_dep_optional);
         assert!(!info.has_poetry_dep);
         assert!(!info.has_poetry_dep_group);
+    }
+    //--------------------------------------------------------------------------
+
+    #[test]
+    fn test_get_project_dep_a() {
+        let contents = r#"
+        [project]
+        dependencies = ["requests", "numpy"]
+        "#
+        .to_string();
+
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
+        assert_eq!(info.get_project_dep().unwrap(), vec!["requests", "numpy"]);
+    }
+
+    #[test]
+    fn test_get_project_dep_b_empty() {
+        let contents = r#"
+        [project]
+        dependencies = []
+        "#
+        .to_string();
+
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
+        assert_eq!(info.get_project_dep().unwrap(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn test_get_project_dep_optional_a() {
+        let contents = r#"
+        [project.optional-dependencies]
+        dev = ["pytest", "black"]
+        "#
+        .to_string();
+
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
+        assert_eq!(
+            info.get_project_dep_optional("dev").unwrap(),
+            vec!["pytest", "black"]
+        );
+    }
+
+    #[test]
+    fn test_get_project_dep_optional_b_missing_key() {
+        let contents = r#"
+        [project.optional-dependencies]
+        dev = ["pytest"]
+        "#
+        .to_string();
+
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
+        assert!(info.get_project_dep_optional("docs").is_err());
+    }
+
+    #[test]
+    fn test_get_poetry_dep_a() {
+        let contents = r#"
+        [tool.poetry.dependencies]
+        requests = "^2.25.1"
+        cachecontrol = { version = "==0.14.0", extras = ["filecache"] }
+        flask = ">=2.0.0"
+        "#
+        .to_string();
+
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
+
+        let mut actual_deps = info.get_poetry_dep().unwrap();
+        let mut expected_deps = vec![
+            "requests^2.25.1".to_string(),
+            "cachecontrol==0.14.0".to_string(),
+            "flask>=2.0.0".to_string(),
+        ];
+        actual_deps.sort();
+        expected_deps.sort();
+        assert_eq!(actual_deps, expected_deps);
+    }
+
+    #[test]
+    fn test_get_poetry_dep_b_empty() {
+        let contents = r#"
+        [tool.poetry]
+        dependencies = {}
+        "#
+        .to_string();
+
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
+        assert_eq!(info.get_poetry_dep().unwrap(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn test_get_poetry_dep_group_a() {
+        let contents = r#"
+        [tool.poetry.group.dev.dependencies]
+        black = "^21.7b0"
+        pytest = "==6.2.5"
+        "#
+        .to_string();
+
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
+        assert_eq!(
+            info.get_poetry_dep_group("dev").unwrap(),
+            vec!["black^21.7b0", "pytest==6.2.5"]
+        );
+    }
+
+    #[test]
+    fn test_get_poetry_dep_group_b_missing_group() {
+        let contents = r#"
+        [tool.poetry.group.docs.dependencies]
+        sphinx = "^4.0.0"
+        "#
+        .to_string();
+
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
+        assert!(info.get_poetry_dep_group("dev").is_err());
+    }
+
+    #[test]
+    fn test_get_poetry_dep_group_c_empty() {
+        let contents = r#"
+        [tool.poetry.group.dev]
+        dependencies = {}
+        "#
+        .to_string();
+
+        let info = PyProjectInfo::new(&contents).expect("Failed to parse toml");
+        assert_eq!(info.get_poetry_dep_group("dev").unwrap().len(), 0);
     }
 }

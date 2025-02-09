@@ -19,6 +19,7 @@ use crate::ureq_client::UreqClient;
 
 use crate::dep_spec::DepSpec;
 use crate::package::Package;
+use crate::pyproject::PyProjectInfo;
 use crate::util::ResultDynError;
 
 //------------------------------------------------------------------------------
@@ -48,21 +49,6 @@ impl Tableable<DepManifestRecord> for DepManifestReport {
     fn get_records(&self) -> &Vec<DepManifestRecord> {
         &self.records
     }
-}
-
-//------------------------------------------------------------------------------
-
-fn poetry_toml_value_to_string((name, value): (&String, &toml::Value)) -> String {
-    let version = match value {
-        toml::Value::String(v) => v.clone(),
-        toml::Value::Table(t) => t
-            .get("version")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string(),
-        _ => String::new(),
-    };
-    format!("{}{}", name, version)
 }
 
 //------------------------------------------------------------------------------
@@ -145,94 +131,33 @@ impl DepManifest {
     pub(crate) fn from_pyproject(
         content: &str,
         options: Option<&Vec<String>>,
-        is_poetry: bool,
     ) -> ResultDynError<Self> {
-        let value: toml::Value = content
-            .parse::<toml::Value>()
-            .map_err(|e| format!("Failed to parse TOML: {}", e))?;
-
+        let ppi = PyProjectInfo::new(content)?;
         let mut deps_list: Vec<String> = Vec::new();
 
         // [project.dependencies]
-        if let Some(dependencies) = value
-            .get("project")
-            .and_then(|project| project.get("dependencies"))
-            .and_then(|deps| deps.as_array())
-        {
-            deps_list.extend(
-                dependencies
-                    .iter()
-                    .filter_map(|dep| dep.as_str().map(String::from))
-                    .collect::<Vec<_>>(),
-            );
+        if ppi.has_project_dep {
+            deps_list.extend(ppi.get_project_dep().unwrap());
         }
+
         // [project.optional-dependencies]
-        // NOTE: only look here if not poetry
-        if !is_poetry {
+        if ppi.has_project_dep_optional {
             if let Some(opt) = options {
-                let mut opt_set: HashSet<&String> = opt.iter().collect();
-                if let Some(dependencies_optional) = value
-                    .get("project")
-                    .and_then(|project| project.get("optional-dependencies"))
-                    .and_then(|dep_opt| dep_opt.as_table())
-                {
-                    for (key, deps) in dependencies_optional {
-                        if opt_set.take(key).is_some() {
-                            if let Some(array) = deps.as_array() {
-                                for dep in array.iter().filter_map(|d| d.as_str()) {
-                                    deps_list.push(dep.to_string());
-                                }
-                            }
-                        }
-                    }
-                }
-                if !opt_set.is_empty() {
-                    let msg = format!(
-                        "Requested optional dependencies not found: {:?}",
-                        opt_set
-                    );
-                    return Err(msg.into());
+                for o in opt {
+                    deps_list.extend(ppi.get_project_dep_optional(o)?);
                 }
             }
         }
         // [tool.poetry.dependencies]
-        if is_poetry {
-            if let Some(dependencies) = value
-                .get("tool")
-                .and_then(|tool| tool.get("poetry"))
-                .and_then(|poetry| poetry.get("dependencies"))
-                .and_then(|deps| deps.as_table())
-            {
-                deps_list.extend(
-                    dependencies
-                        .iter()
-                        .map(poetry_toml_value_to_string)
-                        .collect::<Vec<_>>(),
-                );
-            }
+        if ppi.has_poetry_dep {
+            deps_list.extend(ppi.get_poetry_dep().unwrap());
         }
+
         // [tool.poetry.group.*.dependencies]
-        // poetry might use project.dependencies and still store options in tool.poetry
-        if is_poetry {
-            if let Some(opt_vec) = options {
-                for opt in opt_vec {
-                    if let Some(dependencies) = value
-                        .get("tool")
-                        .and_then(|tool| tool.get("poetry"))
-                        .and_then(|poetry| poetry.get("group"))
-                        .and_then(|group| group.get(opt))
-                        .and_then(|group| group.get("dependencies"))
-                        .and_then(|deps| deps.as_table())
-                    {
-                        deps_list
-                            .extend(dependencies.iter().map(poetry_toml_value_to_string));
-                    } else {
-                        return Err(format!(
-                            "Requested optional dependency not found: {}",
-                            opt
-                        )
-                        .into());
-                    }
+        if ppi.has_poetry_dep_group {
+            if let Some(opt) = options {
+                for o in opt {
+                    deps_list.extend(ppi.get_poetry_dep_group(o)?);
                 }
             }
         }
@@ -245,8 +170,7 @@ impl DepManifest {
     ) -> ResultDynError<Self> {
         let content = fs::read_to_string(file_path)
             .map_err(|e| format!("Failed to read file: {}", e))?;
-        let is_poetry = false;
-        Self::from_pyproject(&content, bound_options, is_poetry)
+        Self::from_pyproject(&content, bound_options)
     }
 
     // Create a DepManifest from a URL point to a requirements.txt or pyproject.toml file.
@@ -258,8 +182,7 @@ impl DepManifest {
         let url_str = url.to_str().ok_or("Invalid URL")?;
         let content = client.get(url_str)?;
         if url_str.ends_with(".toml") {
-            let is_poetry = false;
-            Self::from_pyproject(&content, bound_options, is_poetry)
+            Self::from_pyproject(&content, bound_options)
         } else {
             // assume txt
             Self::from_iter(content.lines())
