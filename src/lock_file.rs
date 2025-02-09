@@ -49,15 +49,6 @@ impl LockFile {
         LockFileType::Unknown
     }
 
-    /// Extracts dependency specifications from the lock file.
-    fn get_dependencies(&self) -> Result<Vec<String>, Box<dyn Error>> {
-        match self.file_type {
-            LockFileType::Uv => self.extract_uv_dependencies(),
-            LockFileType::Poetry => self.extract_poetry_dependencies(),
-            LockFileType::Unknown => Err("Unknown lock file format".into()),
-        }
-    }
-
     /// Extracts dependencies from a `uv` lock file.
     fn extract_uv_dependencies(&self) -> Result<Vec<String>, Box<dyn Error>> {
         let dependencies = self
@@ -95,6 +86,15 @@ impl LockFile {
         }
 
         Ok(dependencies)
+    }
+
+    /// Extracts dependency specifications from the lock file.
+    fn get_dependencies(&self) -> Result<Vec<String>, Box<dyn Error>> {
+        match self.file_type {
+            LockFileType::Uv => self.extract_uv_dependencies(),
+            LockFileType::Poetry => self.extract_poetry_dependencies(),
+            LockFileType::Unknown => Err("Unknown lock file format".into()),
+        }
     }
 }
 
