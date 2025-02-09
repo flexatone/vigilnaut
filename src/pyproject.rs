@@ -82,10 +82,7 @@ impl PyProjectInfo {
     }
 
     /// Extracts `[project.optional-dependencies.<key>]`
-    fn get_project_dep_optional(
-        &self,
-        key: &str,
-    ) -> ResultDynError<Vec<String>> {
+    fn get_project_dep_optional(&self, key: &str) -> ResultDynError<Vec<String>> {
         if let Some(optional_deps) = self
             .parsed
             .get("project")
@@ -150,10 +147,10 @@ impl PyProjectInfo {
 
     //--------------------------------------------------------------------------
     // Public interface to get all dependencies, including poetry defined dependencies.
-    pub(crate) fn get_dependencies(&self,
+    pub(crate) fn get_dependencies(
+        &self,
         options: Option<&Vec<String>>,
     ) -> ResultDynError<Vec<String>> {
-
         let mut deps_list: Vec<String> = Vec::new();
 
         // [project.dependencies]
