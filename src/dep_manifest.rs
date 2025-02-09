@@ -133,35 +133,8 @@ impl DepManifest {
         options: Option<&Vec<String>>,
     ) -> ResultDynError<Self> {
         let ppi = PyProjectInfo::new(content)?;
-        let mut deps_list: Vec<String> = Vec::new();
 
-        // [project.dependencies]
-        if ppi.has_project_dep {
-            deps_list.extend(ppi.get_project_dep().unwrap());
-        }
-
-        // [project.optional-dependencies]
-        if ppi.has_project_dep_optional {
-            if let Some(opt) = options {
-                for o in opt {
-                    deps_list.extend(ppi.get_project_dep_optional(o)?);
-                }
-            }
-        }
-        // [tool.poetry.dependencies]
-        if ppi.has_poetry_dep {
-            deps_list.extend(ppi.get_poetry_dep().unwrap());
-        }
-
-        // [tool.poetry.group.*.dependencies]
-        if ppi.has_poetry_dep_group {
-            if let Some(opt) = options {
-                for o in opt {
-                    deps_list.extend(ppi.get_poetry_dep_group(o)?);
-                }
-            }
-        }
-        Self::from_iter(deps_list.iter())
+        Self::from_iter(ppi.get_dependencies(options)?.iter())
     }
 
     pub(crate) fn from_pyproject_file(

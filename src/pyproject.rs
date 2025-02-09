@@ -17,10 +17,10 @@ fn poetry_toml_value_to_string((name, value): (&String, &toml::Value)) -> String
 #[derive(Debug)]
 pub(crate) struct PyProjectInfo {
     parsed: Value,
-    pub(crate) has_project_dep: bool,
-    pub(crate) has_project_dep_optional: bool,
-    pub(crate) has_poetry_dep: bool,
-    pub(crate) has_poetry_dep_group: bool,
+    has_project_dep: bool,
+    has_project_dep_optional: bool,
+    has_poetry_dep: bool,
+    has_poetry_dep_group: bool,
 }
 
 impl PyProjectInfo {
@@ -65,7 +65,7 @@ impl PyProjectInfo {
     }
 
     //--------------------------------------------------------------------------
-    pub(crate) fn get_project_dep(&self) -> ResultDynError<Vec<String>> {
+    fn get_project_dep(&self) -> ResultDynError<Vec<String>> {
         if let Some(dependencies) = self
             .parsed
             .get("project")
@@ -82,7 +82,7 @@ impl PyProjectInfo {
     }
 
     /// Extracts `[project.optional-dependencies.<key>]`
-    pub(crate) fn get_project_dep_optional(
+    fn get_project_dep_optional(
         &self,
         key: &str,
     ) -> ResultDynError<Vec<String>> {
@@ -107,7 +107,7 @@ impl PyProjectInfo {
     }
 
     /// Extracts `[tool.poetry.dependencies]`
-    pub(crate) fn get_poetry_dep(&self) -> ResultDynError<Vec<String>> {
+    fn get_poetry_dep(&self) -> ResultDynError<Vec<String>> {
         if let Some(dependencies) = self
             .parsed
             .get("tool")
@@ -125,7 +125,7 @@ impl PyProjectInfo {
     }
 
     /// Extracts `[tool.poetry.group.<key>.dependencies]`
-    pub(crate) fn get_poetry_dep_group(&self, key: &str) -> ResultDynError<Vec<String>> {
+    fn get_poetry_dep_group(&self, key: &str) -> ResultDynError<Vec<String>> {
         if let Some(dependencies) = self
             .parsed
             .get("tool")
@@ -146,6 +146,43 @@ impl PyProjectInfo {
             )
             .into())
         }
+    }
+
+    //--------------------------------------------------------------------------
+    // Public interface to get all dependencies, including poetry defined dependencies.
+    pub(crate) fn get_dependencies(&self,
+        options: Option<&Vec<String>>,
+    ) -> ResultDynError<Vec<String>> {
+
+        let mut deps_list: Vec<String> = Vec::new();
+
+        // [project.dependencies]
+        if self.has_project_dep {
+            deps_list.extend(self.get_project_dep().unwrap());
+        }
+
+        // [project.optional-dependencies]
+        if self.has_project_dep_optional {
+            if let Some(opt) = options {
+                for o in opt {
+                    deps_list.extend(self.get_project_dep_optional(o)?);
+                }
+            }
+        }
+        // [tool.poetry.dependencies]
+        if self.has_poetry_dep {
+            deps_list.extend(self.get_poetry_dep().unwrap());
+        }
+
+        // [tool.poetry.group.*.dependencies]
+        if self.has_poetry_dep_group {
+            if let Some(opt) = options {
+                for o in opt {
+                    deps_list.extend(self.get_poetry_dep_group(o)?);
+                }
+            }
+        }
+        Ok(deps_list)
     }
 }
 
