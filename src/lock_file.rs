@@ -1,4 +1,5 @@
 use crate::util::ResultDynError;
+use serde_json::Value as JsonValue;
 use std::error::Error;
 use toml::Value; // Use the `toml` crate for parsing
 
@@ -6,6 +7,7 @@ use toml::Value; // Use the `toml` crate for parsing
 enum LockFileType {
     Uv,
     Poetry,
+    PipfileLock,
     Unknown,
 }
 
@@ -25,8 +27,13 @@ impl LockFile {
     }
 
     fn detect_type(contents: &str) -> LockFileType {
-        let mut non_comment_lines = 0;
+        if let Ok(json) = serde_json::from_str::<JsonValue>(contents) {
+            if json.get("_meta").is_some() && json.get("default").is_some() {
+                return LockFileType::PipfileLock;
+            }
+        }
 
+        let mut non_comment_lines = 0;
         for line in contents.lines() {
             let trimmed = line.trim();
             if trimmed.is_empty() || trimmed.starts_with('#') {
@@ -89,11 +96,44 @@ impl LockFile {
         Ok(dependencies)
     }
 
+    fn extract_pipfilelock_dependencies(
+        &self,
+        options: Option<&Vec<String>>,
+    ) -> ResultDynError<Vec<String>> {
+        let mut groups = vec!["default".to_string()];
+        if let Some(extra_groups) = options {
+            groups.extend(extra_groups.iter().cloned());
+        }
+
+        let parsed: JsonValue = serde_json::from_str(&self.contents)?;
+        let mut dependencies = Vec::new();
+        for group in groups {
+            if let Some(packages) = parsed.get(group).and_then(|g| g.as_object()) {
+                for (name, details) in packages.iter() {
+                    if let Some(version) = details.get("version").and_then(|v| v.as_str())
+                    {
+                        dependencies.push(format!("{}{}", name, version));
+                    }
+                }
+            }
+        }
+
+        Ok(dependencies)
+    }
+
     /// Extracts dependency specifications from the lock file.
-    fn get_dependencies(&self) -> ResultDynError<Vec<String>> {
+    fn get_dependencies(
+        &self,
+        options: Option<&Vec<String>>,
+    ) -> ResultDynError<Vec<String>> {
+        if options.is_some() && self.file_type != LockFileType::PipfileLock {
+            return Err("Options can only be used with Pipfile.lock".into());
+        }
+
         match self.file_type {
             LockFileType::Uv => self.extract_uv_dependencies(),
             LockFileType::Poetry => self.extract_poetry_dependencies(),
+            LockFileType::PipfileLock => self.extract_pipfilelock_dependencies(options),
             LockFileType::Unknown => Err("Unknown lock file format".into()),
         }
     }
@@ -116,7 +156,7 @@ opentelemetry-exporter-otlp==1.24.0
 apache-airflow
 "#;
         let lockfile = LockFile::new(uv_contents.to_string());
-        let dependencies = lockfile.get_dependencies().unwrap();
+        let dependencies = lockfile.get_dependencies(None).unwrap();
 
         assert_eq!(
             dependencies,
@@ -140,7 +180,39 @@ apache-airflow
             version = "2.31.0"
         "#;
         let lockfile = LockFile::new(poetry_contents.to_string());
-        let dependencies = lockfile.get_dependencies().unwrap();
+        let dependencies = lockfile.get_dependencies(None).unwrap();
         assert_eq!(dependencies, vec!["packaging==24.2", "requests==2.31.0"]);
+    }
+
+    #[test]
+    fn test_pipfilelock_get_dependencies() {
+        let pipfile_lock_contents = r#"
+        {
+            "_meta": { "hash": { "sha256": "abc123" } },
+            "default": {
+                "asgiref": { "version": "==3.6.0" },
+                "django": { "version": "==4.1.7" }
+            },
+            "develop": {
+                "attrs": { "version": "==22.2.0" }
+            }
+        }
+        "#;
+
+        let lockfile = LockFile::new(pipfile_lock_contents.to_string());
+
+        let dependencies_default = lockfile.get_dependencies(None).unwrap();
+        assert_eq!(
+            dependencies_default,
+            vec!["asgiref==3.6.0", "django==4.1.7"]
+        );
+
+        let dependencies_with_develop = lockfile
+            .get_dependencies(Some(&vec!["develop".to_string()]))
+            .unwrap();
+        assert_eq!(
+            dependencies_with_develop,
+            vec!["asgiref==3.6.0", "django==4.1.7", "attrs==22.2.0"]
+        );
     }
 }
