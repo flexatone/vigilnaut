@@ -20,9 +20,7 @@ use crate::scan_fs::ScanFS;
 use crate::spin::print_banner;
 use crate::spin::spin;
 use crate::table::Tableable;
-use crate::ureq_client::UreqClientLive;
 use crate::util::logger;
-use crate::util::path_normalize;
 use crate::util::DURATION_0;
 
 //------------------------------------------------------------------------------
@@ -424,26 +422,26 @@ fn get_scan(
 }
 
 // Given a Path, load a DepManifest. This might branch by extension to handle pyproject.toml and other formats.
-fn get_dep_manifest(
-    bound: &PathBuf,
-    bound_options: Option<&Vec<String>>,
-) -> Result<DepManifest, Box<dyn std::error::Error>> {
-    if bound.to_str().is_some_and(|s| s.ends_with(".git")) {
-        DepManifest::from_git_repo(bound, bound_options)
-    } else if bound
-        .to_str()
-        .is_some_and(|s| s.ends_with("pyproject.toml"))
-    {
-        DepManifest::from_pyproject_file(bound, bound_options)
-    } else if bound.to_str().is_some_and(|s| s.starts_with("http")) {
-        // might have URL based requirements or pyproject
-        DepManifest::from_url(&UreqClientLive, bound, bound_options)
-    } else {
-        // assume all text files are requirements-style
-        let fp = path_normalize(bound).unwrap_or_else(|_| bound.clone());
-        DepManifest::from_requirements_file(&fp)
-    }
-}
+// fn get_dep_manifest(
+//     bound: &PathBuf,
+//     bound_options: Option<&Vec<String>>,
+// ) -> Result<DepManifest, Box<dyn std::error::Error>> {
+//     if bound.to_str().is_some_and(|s| s.ends_with(".git")) {
+//         DepManifest::from_git_repo(bound, bound_options)
+//     } else if bound
+//         .to_str()
+//         .is_some_and(|s| s.ends_with("pyproject.toml"))
+//     {
+//         DepManifest::from_pyproject_file(bound, bound_options)
+//     } else if bound.to_str().is_some_and(|s| s.starts_with("http")) {
+//         // might have URL based requirements or pyproject
+//         DepManifest::from_url(&UreqClientLive, bound, bound_options)
+//     } else {
+//         // assume all text files are requirements-style
+//         let fp = path_normalize(bound).unwrap_or_else(|_| bound.clone());
+//         DepManifest::from_requirements_file(&fp)
+//     }
+// }
 
 //------------------------------------------------------------------------------
 pub fn run_cli<I, T>(args: I) -> Result<(), Box<dyn std::error::Error>>
@@ -531,7 +529,8 @@ where
             superset,
             subcommands,
         }) => {
-            let dm = get_dep_manifest(bound, bound_options.as_ref())?;
+            let dm = DepManifest::from_path_or_url(bound, bound_options.as_ref())?;
+            // let dm = get_dep_manifest(bound, bound_options.as_ref())?;
             let permit_superset = *superset;
             let permit_subset = *subset;
             let vr = sfs.to_validation_report(
@@ -657,7 +656,8 @@ where
             subset,
             superset,
         }) => {
-            let dm = get_dep_manifest(bound, bound_options.as_ref())?;
+            let dm = DepManifest::from_path_or_url(bound, bound_options.as_ref())?;
+            // let dm = get_dep_manifest(bound, bound_options.as_ref())?;
             let permit_superset = *superset;
             let permit_subset = *subset;
             let _ = sfs.to_purge_invalid(
