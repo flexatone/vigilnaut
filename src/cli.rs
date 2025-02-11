@@ -429,7 +429,6 @@ fn get_dep_manifest(
     bound_options: Option<&Vec<String>>,
 ) -> Result<DepManifest, Box<dyn std::error::Error>> {
     if bound.to_str().is_some_and(|s| s.ends_with(".git")) {
-        // if bound.to_str().map_or(false, |s| s.ends_with(".git")) {
         DepManifest::from_git_repo(bound, bound_options)
     } else if bound
         .to_str()
