@@ -4,10 +4,11 @@ use toml::Value as TomlValue; // Use the `toml` crate for parsing
 
 #[derive(Debug, PartialEq)]
 enum LockFileType {
-    Uv,
+    UvRequirements, // requirements.txt style
+    UvLock, // native TOML style
     Poetry,
     PipfileLock,
-    Unknown,
+    // Unknown,
 }
 
 #[derive(Debug)]
@@ -44,18 +45,21 @@ impl LockFile {
             if count > 20 {
                 break;
             }
-            // Poetry toml format
+            // Poetry TOML format
             if trimmed.starts_with("[metadata]") || trimmed.starts_with("[[package]]") {
                 return LockFileType::Poetry;
             }
-            return LockFileType::Uv;
+            // UV TOML format
+            if trimmed.starts_with("[[distribution]]") {
+                return LockFileType::UvLock;
+            }
         }
-
-        LockFileType::Unknown
+        LockFileType::UvRequirements
+        // LockFileType::Unknown
     }
 
-    /// Extracts dependencies from a `uv` lock file. Unlike with  requirements.txt files, this will not try to load other files
-    fn get_uv_dep(&self) -> ResultDynError<Vec<String>> {
+    /// Extracts dependencies from a `uv` requirements-style lock file. Unlike with  requirements.txt files, this will not try to load other files
+    fn get_uv_requirements_dep(&self) -> ResultDynError<Vec<String>> {
         let dependencies = self
             .contents
             .lines()
@@ -67,6 +71,25 @@ impl LockFile {
                 Some(trimmed.to_string())
             })
             .collect();
+        Ok(dependencies)
+    }
+
+    /// Extracts dependencies from a `uv` native file and formats them as `package==version`.
+    fn get_uv_native_dep(&self) -> ResultDynError<Vec<String>> {
+        let parsed: TomlValue = self.contents.parse()?; // Parse as TOML
+        let mut dependencies = Vec::new();
+
+        if let Some(dists) = parsed.get("distribution").and_then(|p| p.as_array()) {
+            for d in dists {
+                // assume that there is always a version nubmer
+                if let (Some(name), Some(version)) = (
+                    d.get("name").and_then(|n| n.as_str()),
+                    d.get("version").and_then(|v| v.as_str()),
+                ) {
+                    dependencies.push(format!("{}=={}", name, version));
+                }
+            }
+        }
         Ok(dependencies)
     }
 
@@ -125,10 +148,10 @@ impl LockFile {
         }
 
         match self.file_type {
-            LockFileType::Uv => self.get_uv_dep(),
+            LockFileType::UvRequirements => self.get_uv_requirements_dep(),
+            LockFileType::UvLock => self.get_uv_native_dep(),
             LockFileType::Poetry => self.get_poetry_dep(),
             LockFileType::PipfileLock => self.get_pipfilelock_dep(options),
-            LockFileType::Unknown => Err("Unknown lock file format".into()),
         }
     }
 }
@@ -326,17 +349,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/51/12/747c89bd6fcdd5d03c5565ca76448b5d6f641e436ea9f948ccaa7af20a15/static-frame-2.16.1.tar.gz", hash = "sha256:0f0e5e1c09c06891d71dca9b24e04526e99407dfae9d25d79e2011cb69c9ed9a", size = 733653 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f5/bf/d71b2bf7504437ce5365ad6ad975d7773adc55da6bde9b3ebd5c28a85d0b/static_frame-2.16.1-py3-none-any.whl", hash = "sha256:9f330f0672a6491bb9be0f64c64ee8abf06ffb9ee1b253f1f7695719538cc4df", size = 791035 },
-]
-
-[[distribution]]
-name = "test-poetry"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "jinja2" },
-    { name = "requests" },
-    { name = "static-frame" },
-    { name = "zipp" },
 ]
 
 [[distribution]]
