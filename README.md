@@ -22,7 +22,7 @@ Additionally, `fetter` can configure a virtual environment to validate package a
 
 
 * 🔎 System Scanning: Finds Python packages across system environments.
-* ⚖️ Package Validation: Checks installed packages against requirements.txt, pyproject.toml, or lock files sourced locally, via URLs, or via `git` repositories.
+* ⚖️ Package Validation: Checks installed packages against requirements.txt, pyproject.toml, or lock files created by `uv`, `poetry`, `pipenv`, or `pip-tools` that are sourced locally, via URLs, or via `git` repositories.
 * 🛡️ Vulnerability Audit: Scans packages for security vulnerabilites in the Open Source Vulnerability database.
 * ⚙️ CI Integration: Validate and audit with `pre-commit` [hooks](#Using-fetter-with-pre-commit).
 * 🚀 Fast: Multi-threaded Rust implementation.
