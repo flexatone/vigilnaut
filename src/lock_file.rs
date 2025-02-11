@@ -5,7 +5,7 @@ use toml::Value as TomlValue; // Use the `toml` crate for parsing
 #[derive(Debug, PartialEq)]
 enum LockFileType {
     UvRequirements, // requirements.txt style
-    UvLock, // native TOML style
+    UvLock,         // native TOML style
     Poetry,
     PipfileLock,
     // Unknown,
@@ -243,7 +243,6 @@ zipp==3.18.1
         );
     }
 
-
     #[test]
     fn test_get_dependencies_uv_c() {
         let uv_contents = r#"
@@ -400,8 +399,6 @@ wheels = [
             ]
         );
     }
-
-
 
     #[test]
     fn test_get_dependencies_poetry_a() {
@@ -663,5 +660,3 @@ content-hash = "88d4af2d19b75cf5d80ba6b72bbee80790fa9757747e24304c4b1c51e86f3837
         );
     }
 }
-
-
