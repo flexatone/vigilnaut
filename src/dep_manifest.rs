@@ -18,8 +18,11 @@ use crate::table::Tableable;
 use crate::ureq_client::UreqClient;
 
 use crate::dep_spec::DepSpec;
+use crate::lock_file::LockFile;
 use crate::package::Package;
 use crate::pyproject::PyProjectInfo;
+use crate::ureq_client::UreqClientLive;
+use crate::util::path_normalize;
 use crate::util::ResultDynError;
 
 //------------------------------------------------------------------------------
@@ -59,6 +62,9 @@ pub(crate) struct DepManifest {
 }
 
 impl DepManifest {
+    //--------------------------------------------------------------------------
+    // constructors from internal structs
+
     pub(crate) fn from_iter<I, S>(ds_iter: I) -> ResultDynError<Self>
     where
         I: IntoIterator<Item = S>,
@@ -80,6 +86,24 @@ impl DepManifest {
         }
         Ok(DepManifest { dep_specs })
     }
+
+    pub(crate) fn from_dep_specs(dep_specs: &Vec<DepSpec>) -> ResultDynError<Self> {
+        let mut ds: HashMap<String, DepSpec> = HashMap::new();
+        for dep_spec in dep_specs {
+            if let Some(dep_spec_prev) = ds.remove(&dep_spec.key) {
+                // remove and replace with composite
+                let dep_spec_new =
+                    DepSpec::from_dep_specs(vec![&dep_spec_prev, &dep_spec])?;
+                ds.insert(dep_spec_new.key.clone(), dep_spec_new);
+            } else {
+                ds.insert(dep_spec.key.clone(), dep_spec.clone());
+            }
+        }
+        Ok(DepManifest { dep_specs: ds })
+    }
+
+    //--------------------------------------------------------------------------
+
     // Create a DepManifest from a requirements.txt file, which might reference other requirements.txt files.
     pub(crate) fn from_requirements_file(file_path: &Path) -> ResultDynError<Self> {
         let mut files: VecDeque<PathBuf> = VecDeque::new();
@@ -113,20 +137,6 @@ impl DepManifest {
         }
         Ok(DepManifest { dep_specs })
     }
-    pub(crate) fn from_dep_specs(dep_specs: &Vec<DepSpec>) -> ResultDynError<Self> {
-        let mut ds: HashMap<String, DepSpec> = HashMap::new();
-        for dep_spec in dep_specs {
-            if let Some(dep_spec_prev) = ds.remove(&dep_spec.key) {
-                // remove and replace with composite
-                let dep_spec_new =
-                    DepSpec::from_dep_specs(vec![&dep_spec_prev, &dep_spec])?;
-                ds.insert(dep_spec_new.key.clone(), dep_spec_new);
-            } else {
-                ds.insert(dep_spec.key.clone(), dep_spec.clone());
-            }
-        }
-        Ok(DepManifest { dep_specs: ds })
-    }
 
     pub(crate) fn from_pyproject(
         content: &str,
@@ -145,6 +155,9 @@ impl DepManifest {
         Self::from_pyproject(&content, bound_options)
     }
 
+    //--------------------------------------------------------------------------
+    // from network-hosted resources
+
     // Create a DepManifest from a URL point to a requirements.txt or pyproject.toml file.
     pub(crate) fn from_url<U: UreqClient>(
         client: &U,
@@ -153,7 +166,7 @@ impl DepManifest {
     ) -> ResultDynError<Self> {
         let url_str = url.to_str().ok_or("Invalid URL")?;
         let content = client.get(url_str)?;
-        if url_str.ends_with(".toml") {
+        if url_str.ends_with("pyproject.toml") {
             Self::from_pyproject(&content, bound_options)
         } else {
             // assume txt
@@ -161,6 +174,7 @@ impl DepManifest {
         }
     }
 
+    /// TOOD: this should prioritize: file ending .lock, pyproject.toml, requirements.txt
     pub(crate) fn from_git_repo(
         url: &Path,
         _bound_options: Option<&Vec<String>>,
@@ -187,6 +201,46 @@ impl DepManifest {
         let requirements_path = repo_path.join("requirements.txt");
         let manifest = DepManifest::from_requirements_file(&requirements_path)?;
         Ok(manifest)
+    }
+
+    //--------------------------------------------------------------------------
+    pub(crate) fn from_path(
+        file_path: &PathBuf,
+        bound_options: Option<&Vec<String>>,
+    ) -> ResultDynError<Self> {
+        let fp = path_normalize(file_path).unwrap_or_else(|_| file_path.clone());
+        match fp.to_str() {
+            Some(s) if s.ends_with("pyproject.toml") => {
+                Self::from_pyproject_file(&fp, bound_options)
+            }
+            Some(s) if s.ends_with("requirements.txt") => {
+                Self::from_requirements_file(&fp)
+            }
+            Some(_) => {
+                let content = fs::read_to_string(fp)
+                    .map_err(|e| format!("Failed to read file: {}", e))?;
+                // handle uv.lock, poetry.lock, requirements.lock, Pipfile.lock, or a requirements.txt format (via uv or pip-compile)
+                let lf = LockFile::new(content);
+                Self::from_iter(lf.get_dependencies(bound_options)?)
+            }
+            None => Err("Path contains invalid UTF-8".into()),
+        }
+    }
+
+    pub(crate) fn from_path_or_url(
+        file_path: &PathBuf,
+        bound_options: Option<&Vec<String>>,
+    ) -> ResultDynError<Self> {
+        match file_path.to_str() {
+            Some(s) if s.ends_with(".git") => {
+                Self::from_git_repo(file_path, bound_options)
+            }
+            Some(s) if s.starts_with("http") => {
+                Self::from_url(&UreqClientLive, file_path, bound_options)
+            }
+            Some(_) => Self::from_path(file_path, bound_options),
+            None => Err("Path contains invalid UTF-8".into()),
+        }
     }
 
     //--------------------------------------------------------------------------

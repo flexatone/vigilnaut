@@ -5,40 +5,36 @@ use toml::Value as TomlValue; // Use the `toml` crate for parsing
 #[derive(Debug, PartialEq)]
 enum LockFileType {
     Requirements, // requirements.txt style, used by uv pip and pip-tools
-    UvLock,       // native TOML style
-    Poetry,
-    PipfileLock, // pip-compile
-    PEP751,      // pep still under consideration
-                 // Unknown,
+    UvLock,       // uv.lock native TOML style
+    Poetry,       // poetry.lock
+    PipfileLock,  // made with Pipenv Pipfile.lock
+    PEP751,       // pep still under consideration
 }
 
 #[derive(Debug)]
-struct LockFile {
+pub(crate) struct LockFile {
     file_type: LockFileType,
-    contents: String,
+    content: String,
 }
 
 impl LockFile {
-    fn new(contents: String) -> Self {
-        let file_type = Self::detect_type(&contents);
-        Self {
-            file_type,
-            contents,
-        }
+    pub(crate) fn new(content: String) -> Self {
+        let file_type = Self::detect_type(&content);
+        Self { file_type, content }
     }
 
-    fn detect_type(contents: &str) -> LockFileType {
-        if let Ok(json) = serde_json::from_str::<JsonValue>(contents) {
+    fn detect_type(content: &str) -> LockFileType {
+        if let Ok(json) = serde_json::from_str::<JsonValue>(content) {
             if json.get("_meta").is_some() && json.get("default").is_some() {
                 return LockFileType::PipfileLock;
             }
         }
 
         let mut count = 0;
-        for line in contents.lines() {
-            let trimmed = line.trim();
+        for line in content.lines() {
+            let t = line.trim();
             // both uv/requests and toml poetry files use # comments
-            if trimmed.is_empty() || trimmed.starts_with('#') {
+            if t.is_empty() || t.starts_with('#') {
                 continue;
             }
 
@@ -47,15 +43,15 @@ impl LockFile {
                 break;
             }
             // Poetry TOML format
-            if trimmed.starts_with("[metadata]") || trimmed.starts_with("[[package]]") {
+            if t.starts_with("[metadata]") || t.starts_with("[[package]]") {
                 return LockFileType::Poetry;
             }
             // UV TOML format
-            if trimmed.starts_with("[[distribution]]") {
+            if t.starts_with("[[distribution]]") {
                 return LockFileType::UvLock;
             }
             // PEP 751 TOML format
-            if trimmed.starts_with("[[packages]]") {
+            if t.starts_with("[[packages]]") {
                 return LockFileType::PEP751;
             }
         }
@@ -65,14 +61,14 @@ impl LockFile {
     /// Extracts dependencies from a `uv` requirements-style lock file. Unlike with  requirements.txt files, this will not try to load other files
     fn get_uv_requirements_dep(&self) -> ResultDynError<Vec<String>> {
         let dependencies = self
-            .contents
+            .content
             .lines()
             .filter_map(|line| {
-                let trimmed = line.trim();
-                if trimmed.is_empty() || trimmed.starts_with('#') {
+                let t = line.trim();
+                if t.is_empty() || t.starts_with('#') {
                     return None;
                 }
-                Some(trimmed.to_string())
+                Some(t.to_string())
             })
             .collect();
         Ok(dependencies)
@@ -80,7 +76,7 @@ impl LockFile {
 
     /// Extracts dependencies from a `uv` native file and formats them as `package==version`.
     fn get_uv_native_dep(&self) -> ResultDynError<Vec<String>> {
-        let parsed: TomlValue = self.contents.parse()?; // Parse as TOML
+        let parsed: TomlValue = self.content.parse()?; // Parse as TOML
         let mut dependencies = Vec::new();
 
         if let Some(dists) = parsed.get("distribution").and_then(|p| p.as_array()) {
@@ -99,7 +95,7 @@ impl LockFile {
 
     /// Extracts dependencies from a `Poetry` lock file and formats them as `package==version`.
     fn get_poetry_dep(&self) -> ResultDynError<Vec<String>> {
-        let parsed: TomlValue = self.contents.parse()?; // Parse as TOML
+        let parsed: TomlValue = self.content.parse()?; // Parse as TOML
         let mut dependencies = Vec::new();
 
         if let Some(packages) = parsed.get("package").and_then(|p| p.as_array()) {
@@ -118,7 +114,7 @@ impl LockFile {
 
     /// Extracts dependencies from a PEP 751 lock file and formats them as `package==version`.
     fn get_pep751_dep(&self) -> ResultDynError<Vec<String>> {
-        let parsed: TomlValue = self.contents.parse()?; // Parse as TOML
+        let parsed: TomlValue = self.content.parse()?; // Parse as TOML
         let mut dependencies = Vec::new();
 
         if let Some(packages) = parsed.get("packages").and_then(|p| p.as_array()) {
@@ -146,7 +142,7 @@ impl LockFile {
             groups.extend(opts.iter().cloned());
         }
 
-        let parsed: JsonValue = serde_json::from_str(&self.contents)?;
+        let parsed: JsonValue = serde_json::from_str(&self.content)?;
         let mut dependencies = Vec::new();
         for group in groups {
             if let Some(packages) = parsed.get(group).and_then(|g| g.as_object()) {
@@ -163,7 +159,7 @@ impl LockFile {
     }
 
     /// Extracts dependency specifications from the lock file.
-    fn get_dependencies(
+    pub(crate) fn get_dependencies(
         &self,
         options: Option<&Vec<String>>,
     ) -> ResultDynError<Vec<String>> {
@@ -187,7 +183,7 @@ mod tests {
 
     #[test]
     fn test_get_dependencies_uv_a() {
-        let contents = r#"
+        let content = r#"
 opentelemetry-api==1.24.0
     # via
     #   apache-airflow
@@ -197,7 +193,7 @@ opentelemetry-exporter-otlp==1.24.0
     # via apache-airflow
 apache-airflow
 "#;
-        let lockfile = LockFile::new(contents.to_string());
+        let lockfile = LockFile::new(content.to_string());
         let dependencies = lockfile.get_dependencies(None).unwrap();
 
         assert_eq!(
@@ -212,7 +208,7 @@ apache-airflow
 
     #[test]
     fn test_get_dependencies_uv_b() {
-        let contents = r#"
+        let content = r#"
 # This file was autogenerated by uv via the following command:
 #    uv pip compile pyproject.toml -o requiremnts.lock
 arraykit==0.10.0
@@ -245,7 +241,7 @@ urllib3==2.3.0
 zipp==3.18.1
     # via test-poetry (pyproject.toml)
 "#;
-        let lockfile = LockFile::new(contents.to_string());
+        let lockfile = LockFile::new(content.to_string());
         let dependencies = lockfile.get_dependencies(None).unwrap();
 
         assert_eq!(
@@ -270,7 +266,7 @@ zipp==3.18.1
 
     #[test]
     fn test_get_dependencies_uv_c() {
-        let contents = r#"
+        let content = r#"
 version = 1
 requires-python = ">=3.12"
 
@@ -402,7 +398,7 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/c2/0a/ba9d0ee9536d3ef73a3448e931776e658b36f128d344e175bc32b092a8bf/zipp-3.18.1-py3-none-any.whl", hash = "sha256:206f5a15f2af3dbaee80769fb7dc6f249695e940acca08dfb2a4769fe61e538b", size = 8247 },
 ]
 "#;
-        let lockfile = LockFile::new(contents.to_string());
+        let lockfile = LockFile::new(content.to_string());
         let dependencies = lockfile.get_dependencies(None).unwrap();
 
         assert_eq!(
@@ -427,7 +423,7 @@ wheels = [
 
     #[test]
     fn test_get_dependencies_poetry_a() {
-        let poetry_contents = r#"
+        let poetry_content = r#"
             [[package]]
             name = "packaging"
             version = "24.2"
@@ -436,14 +432,14 @@ wheels = [
             name = "requests"
             version = "2.31.0"
         "#;
-        let lockfile = LockFile::new(poetry_contents.to_string());
+        let lockfile = LockFile::new(poetry_content.to_string());
         let dependencies = lockfile.get_dependencies(None).unwrap();
         assert_eq!(dependencies, vec!["packaging==24.2", "requests==2.31.0"]);
     }
 
     #[test]
     fn test_get_dependencies_poetry_b() {
-        let poetry_contents = r#"
+        let poetry_content = r#"
 # This file is automatically @generated by Poetry 2.0.1 and should not be changed by hand.
 
 [[package]]
@@ -631,7 +627,7 @@ lock-version = "2.1"
 python-versions = ">=3.12"
 content-hash = "88d4af2d19b75cf5d80ba6b72bbee80790fa9757747e24304c4b1c51e86f3837"
         "#;
-        let lockfile = LockFile::new(poetry_contents.to_string());
+        let lockfile = LockFile::new(poetry_content.to_string());
         let dependencies = lockfile.get_dependencies(None).unwrap();
         assert_eq!(
             dependencies,
@@ -655,7 +651,7 @@ content-hash = "88d4af2d19b75cf5d80ba6b72bbee80790fa9757747e24304c4b1c51e86f3837
 
     #[test]
     fn test_get_dependencies_pipfilelock_a() {
-        let pipfile_lock_contents = r#"
+        let pipfile_lock_content = r#"
         {
             "_meta": { "hash": { "sha256": "abc123" } },
             "default": {
@@ -668,7 +664,7 @@ content-hash = "88d4af2d19b75cf5d80ba6b72bbee80790fa9757747e24304c4b1c51e86f3837
         }
         "#;
 
-        let lockfile = LockFile::new(pipfile_lock_contents.to_string());
+        let lockfile = LockFile::new(pipfile_lock_content.to_string());
 
         let dependencies_default = lockfile.get_dependencies(None).unwrap();
         assert_eq!(
@@ -687,7 +683,7 @@ content-hash = "88d4af2d19b75cf5d80ba6b72bbee80790fa9757747e24304c4b1c51e86f3837
 
     #[test]
     fn test_get_dependencies_pip_tools_a() {
-        let contents = r#"
+        let content = r#"
 #
 # This file is autogenerated by pip-compile with Python 3.13
 # by the following command:
@@ -711,7 +707,7 @@ urllib3==2.3.0
 zipp==3.18.1
     # via -r requirements.txt
 "#;
-        let lockfile = LockFile::new(contents.to_string());
+        let lockfile = LockFile::new(content.to_string());
         let dependencies = lockfile.get_dependencies(None).unwrap();
 
         assert_eq!(
@@ -731,7 +727,7 @@ zipp==3.18.1
 
     #[test]
     fn test_get_dependencies_pep751_a() {
-        let contents = r#"
+        let content = r#"
 metadata-version = "1.0"
 requires-python = ">=3.9"
 created-by = "PEP 751"
@@ -764,7 +760,7 @@ wheels = [
     {name = "numpy-2.0.1-cp312-cp312-win_amd64.whl", upload-time = 2024-07-21T13:40:17.532627Z, url = "https://files.pythonhosted.org/packages/b5/59/f6ad378ad85ed9c2785f271b39c3e5b6412c66e810d2c60934c9f/numpy-2.0.1-cp312-cp312-win_amd64.whl", size = 16255757, hashes = {sha256 = "bb2124fdc6e62baae159ebcfa368708867eb56806804d005860b6007388df171"} },
 ]
 "#;
-        let lockfile = LockFile::new(contents.to_string());
+        let lockfile = LockFile::new(content.to_string());
         let dependencies = lockfile.get_dependencies(None).unwrap();
 
         assert_eq!(
