@@ -1019,7 +1019,6 @@ mod tests {
             .is_err());
     }
 
-
     #[test]
     fn test_from_exes_a() {
         let exe1 = PathBuf::from("a");
@@ -1029,5 +1028,4 @@ mod tests {
         // error for bad exe
         assert!(post.is_err());
     }
-
 }
