@@ -15,10 +15,6 @@ use std::path::PathBuf;
 // fetter_validate.py
 //      import fetter and call fetter.run, in the same process
 
-// last resort: remove and replace pth file
-
-// const FETTER_BIN: &str = "fetter";
-
 fn get_validate_args(
     bound: &Path,
     bound_options: Option<Vec<String>>,
@@ -88,7 +84,7 @@ fn get_validation_module(
             .collect::<Vec<_>>()
             .join(", ")
     );
-    // we exclude fetter and package managers from ever running
+    // we exclude fetter and package managers from ever running; we match on startswith to catch "pip3" and related names.
     [
         "import sys",
         "import fetter",

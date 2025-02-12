@@ -543,10 +543,13 @@ impl ScanFS {
         exit_else_warn: Option<i32>,
         log: bool,
     ) -> ResultDynError<()> {
+        if self.exe_to_sites.len() > 1 {
+            return Err(format!("site-install will not operate on multiple ({}) Python environments; use `-e` to specify a single Python environment.", self.exe_to_sites.len()).into());
+        }
         let bound_abs = path_normalize(bound)?;
         // generally expect this to run with a single exe, so no need to parallelize
         for (exe, sites) in &self.exe_to_sites {
-            // NOTE: taking first, but might prioritize one in the user directory
+            // NOTE: taking the first site, but might prioritize by some other criteria
             if let Some(site) = sites.first() {
                 install_validation(
                     exe,
@@ -563,7 +566,10 @@ impl ScanFS {
         Ok(())
     }
 
-    pub(crate) fn site_validate_uninstall(&self, log: bool) -> io::Result<()> {
+    pub(crate) fn site_validate_uninstall(&self, log: bool) -> ResultDynError<()> {
+        if self.exe_to_sites.len() > 1 {
+            return Err(format!("site-install will not operate on multiple ({}) Python environments; use `-e` to specify a single Python environment.", self.exe_to_sites.len()).into());
+        }
         for sites in self.exe_to_sites.values() {
             if let Some(site) = sites.first() {
                 uninstall_validation(site, log)?;
@@ -967,5 +973,48 @@ mod tests {
             sfs.exes_hash,
             "973122597250deea4e62e359208ab4335782561c12032746ce044a387a201d09"
         );
+    }
+
+    #[test]
+    fn test_site_install_a() {
+        let site_shared1 = PathShared::from_str("foo");
+        let site_shared2 = PathShared::from_str("bar");
+        let exe1 = PathBuf::from("a");
+        let exe2 = PathBuf::from("b");
+
+        let p1 = Package::from_name_version_durl("numpy", "1.19.3", None).unwrap();
+        let p2 = Package::from_name_version_durl("static-frame", "2.13.0", None).unwrap();
+        let p3 = Package::from_name_version_durl("flask", "1.1.3", None).unwrap();
+
+        let mut exe_to_sites = HashMap::new();
+        exe_to_sites.insert(exe1.clone(), vec![site_shared1.clone()]);
+        exe_to_sites.insert(exe2.clone(), vec![site_shared2.clone()]);
+
+        let exes = vec![exe1, exe2];
+
+        let mut package_to_sites = HashMap::new();
+        package_to_sites.insert(p1, vec![site_shared1.clone()]);
+        package_to_sites.insert(p2, vec![site_shared1.clone()]);
+        package_to_sites.insert(p3, vec![site_shared1.clone(), site_shared2]);
+
+        let force_usite = false;
+        let exes_hash = hash_paths(&exes, force_usite);
+        let sfs = ScanFS {
+            exe_to_sites,
+            package_to_sites,
+            force_usite,
+            exes_hash,
+        };
+
+        let bound = PathBuf::from("foo");
+        let bound_options = None;
+        let vf = ValidationFlags {
+            permit_superset: false,
+            permit_subset: false,
+        };
+        // ensure this retruns an error when multiple exe are defined
+        assert!(sfs
+            .site_validate_install(&bound, &bound_options, &vf, None, false)
+            .is_err());
     }
 }

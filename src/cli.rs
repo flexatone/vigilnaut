@@ -52,7 +52,7 @@ Examples:
   fetter scan
   fetter scan write -o /tmp/pkgscan.txt --delimiter '|'
   fetter search --pattern pip*
-  fetter --exe python3 derive -a lower write -o /tmp/bound_requirements.txt
+  fetter -e python3 derive -a lower write -o /tmp/bound_requirements.txt
   fetter -e python3 validate --bound /tmp/bound_requirements.txt
   fetter audit
   fetter -e python3 -e /usr/bin/python audit write -o /tmp/audit.txt  -d '|'
@@ -151,7 +151,7 @@ enum Commands {
         #[command(subcommand)]
         subcommands: Option<ValidateSubcommand>,
     },
-    /// Install in site-packages automatic validation checks on every Python run.
+    /// Install in site-packages automatic validation checks on every Python run. This command will only run with one Python environment.
     SiteInstall {
         /// File path or URL from which to read bound requirements.
         #[arg(short, long, value_name = "FILE")]
@@ -172,7 +172,7 @@ enum Commands {
         #[command(subcommand)]
         subcommands: Option<SiteInstallSubcommand>,
     },
-    /// Uninstall from site-packages automatic validation checks on every Python run.
+    /// Uninstall from site-packages automatic validation checks. This command will only run with one Python environment.
     SiteUninstall,
     /// Search for package security vulnerabilities via the OSV DB.
     Audit {
@@ -421,28 +421,6 @@ fn get_scan(
     })
 }
 
-// Given a Path, load a DepManifest. This might branch by extension to handle pyproject.toml and other formats.
-// fn get_dep_manifest(
-//     bound: &PathBuf,
-//     bound_options: Option<&Vec<String>>,
-// ) -> Result<DepManifest, Box<dyn std::error::Error>> {
-//     if bound.to_str().is_some_and(|s| s.ends_with(".git")) {
-//         DepManifest::from_git_repo(bound, bound_options)
-//     } else if bound
-//         .to_str()
-//         .is_some_and(|s| s.ends_with("pyproject.toml"))
-//     {
-//         DepManifest::from_pyproject_file(bound, bound_options)
-//     } else if bound.to_str().is_some_and(|s| s.starts_with("http")) {
-//         // might have URL based requirements or pyproject
-//         DepManifest::from_url(&UreqClientLive, bound, bound_options)
-//     } else {
-//         // assume all text files are requirements-style
-//         let fp = path_normalize(bound).unwrap_or_else(|_| bound.clone());
-//         DepManifest::from_requirements_file(&fp)
-//     }
-// }
-
 //------------------------------------------------------------------------------
 pub fn run_cli<I, T>(args: I) -> Result<(), Box<dyn std::error::Error>>
 where
@@ -530,7 +508,6 @@ where
             subcommands,
         }) => {
             let dm = DepManifest::from_path_or_url(bound, bound_options.as_ref())?;
-            // let dm = get_dep_manifest(bound, bound_options.as_ref())?;
             let permit_superset = *superset;
             let permit_subset = *subset;
             let vr = sfs.to_validation_report(
@@ -657,7 +634,6 @@ where
             superset,
         }) => {
             let dm = DepManifest::from_path_or_url(bound, bound_options.as_ref())?;
-            // let dm = get_dep_manifest(bound, bound_options.as_ref())?;
             let permit_superset = *superset;
             let permit_subset = *subset;
             let _ = sfs.to_purge_invalid(
