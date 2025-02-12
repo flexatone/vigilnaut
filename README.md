@@ -183,7 +183,7 @@ To run `fetter validate` with `pre-commit`, add the following to your `.pre-comm
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v1.4.0
+  rev: v1.5.0
   hooks:
     - id: fetter-validate
       args: [--bound, {FILE}, --superset, --subset, display, --code, 3]
@@ -199,7 +199,7 @@ To run `fetter audit` with `pre-commit`, add the following to your `.pre-commit-
 ```yaml
 repos:
 - repo: https://github.com/fetter-io/fetter-rs
-  rev: v1.4.0
+  rev: v1.5.0
   hooks:
     - id: fetter-audit
 ```
@@ -349,6 +349,15 @@ repos:
 
 
 ## What is New in Fetter
+
+### 1.5.0
+
+Extended support for lock files provided to `--bound` to include `uv.lock`, `poetry.lock`, `Pipfile.lock`, as well as lock files produced by `uv pip compile` and `pip-tools`.
+
+Improved loading of `--bound` files sourced from a `git` repository to find and load various lock file formats as well as `pyproject.toml`.
+
+Improved loading of `--bound` files sourced from a URL to support various lock file formats as well as `pyproject.toml`.
+
 
 ### 1.4.0
 
