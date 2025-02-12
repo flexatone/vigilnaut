@@ -26,6 +26,16 @@ use crate::util::path_normalize;
 use crate::util::ResultDynError;
 
 //------------------------------------------------------------------------------
+static LOCK_PRIORITY: &[&str] = &[
+    "uv.lock",
+    "poetry.lock",
+    "Pipfile.lock",
+    "requirements.lock",
+    "requirements.txt",
+    "pyproject.toml",
+];
+
+//------------------------------------------------------------------------------
 pub(crate) struct DepManifestRecord {
     dep_spec: DepSpec,
 }
@@ -174,35 +184,6 @@ impl DepManifest {
         }
     }
 
-    /// TOOD: this should prioritize: file ending .lock, pyproject.toml, requirements.txt
-    pub(crate) fn from_git_repo(
-        url: &Path,
-        _bound_options: Option<&Vec<String>>,
-    ) -> ResultDynError<Self> {
-        let tmp_dir = tempdir()
-            .map_err(|e| format!("Failed to create temporary directory: {}", e))?;
-        let repo_path = tmp_dir.path().join("repo");
-
-        let status = Command::new("git")
-            .args([
-                "clone",
-                "--depth",
-                "1",
-                url.to_str().unwrap(),
-                repo_path.to_str().unwrap(),
-            ])
-            .status()
-            .map_err(|e| format!("Failed to execute git: {}", e))?;
-
-        if !status.success() {
-            return Err("Git clone failed".into());
-        }
-        // TODO: look for pyproject first
-        let requirements_path = repo_path.join("requirements.txt");
-        let manifest = DepManifest::from_requirements_file(&requirements_path)?;
-        Ok(manifest)
-    }
-
     //--------------------------------------------------------------------------
     pub(crate) fn from_path(
         file_path: &Path,
@@ -225,6 +206,48 @@ impl DepManifest {
             }
             None => Err("Path contains invalid UTF-8".into()),
         }
+    }
+
+    /// Given a directory, figure out what to load py priority list
+    pub(crate) fn from_dir(
+        dir: &Path,
+        bound_options: Option<&Vec<String>>,
+    ) -> ResultDynError<Self> {
+        match LOCK_PRIORITY
+            .iter()
+            .map(|file| dir.join(file))
+            .find(|path| path.exists())
+        {
+            Some(file_path) => Self::from_path(&file_path, bound_options),
+            None => {
+                Err("Cannot find lock file, requirements file, or pyproject.toml".into())
+            }
+        }
+    }
+
+    pub(crate) fn from_git_repo(
+        url: &Path,
+        bound_options: Option<&Vec<String>>,
+    ) -> ResultDynError<Self> {
+        let tmp_dir = tempdir()
+            .map_err(|e| format!("Failed to create temporary directory: {}", e))?;
+        let repo_path = tmp_dir.path().join("repo");
+
+        let status = Command::new("git")
+            .args([
+                "clone",
+                "--depth",
+                "1",
+                url.to_str().unwrap(),
+                repo_path.to_str().unwrap(),
+            ])
+            .status()
+            .map_err(|e| format!("Failed to execute git: {}", e))?;
+
+        if !status.success() {
+            return Err(format!("Git clone failed: {}", url.display()).into());
+        }
+        Self::from_dir(&repo_path, bound_options)
     }
 
     pub(crate) fn from_path_or_url(
