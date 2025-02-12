@@ -165,9 +165,6 @@ impl DepManifest {
         Self::from_pyproject(&content, bound_options)
     }
 
-    //--------------------------------------------------------------------------
-    // from network-hosted resources
-
     // Create a DepManifest from a URL point to a requirements.txt or pyproject.toml file.
     pub(crate) fn from_url<U: UreqClient>(
         client: &U,
@@ -179,8 +176,9 @@ impl DepManifest {
         if url_str.ends_with("pyproject.toml") {
             Self::from_pyproject(&content, bound_options)
         } else {
-            // assume txt
-            Self::from_iter(content.lines())
+            // handle any lock file format, or requirements.txt
+            let lf = LockFile::new(content);
+            Self::from_iter(lf.get_dependencies(bound_options)?)
         }
     }
 
@@ -208,7 +206,7 @@ impl DepManifest {
         }
     }
 
-    /// Given a directory, figure out what to load py priority list
+    /// Given a directory, load the first canddiate file based on LOCK_PRIORITY.
     pub(crate) fn from_dir(
         dir: &Path,
         bound_options: Option<&Vec<String>>,
