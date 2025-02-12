@@ -1396,4 +1396,248 @@ numpy>= 2.0
     }
 
     //--------------------------------------------------------------------------
+
+    #[test]
+    fn test_from_dir_a() {
+        let content = r#"
+[project]
+name = "example_package_YOUR_USERNAME_HERE"
+version = "0.0.1"
+description = "A small example package"
+requires-python = ">=3.8"
+dependencies = [
+  "httpx",
+  "gidgethub[httpx]>4.0.0",
+  "django>2.1; os_name != 'nt'",
+]
+"#;
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("pyproject.toml");
+        let mut file = File::create(&file_path).unwrap();
+        write!(file, "{}", content).unwrap();
+        let dm = DepManifest::from_dir(&dir.path(), None);
+        assert_eq!(dm.unwrap().keys(), vec!["django", "gidgethub", "httpx"]);
+    }
+
+    #[test]
+    fn test_from_dir_b() {
+        let dir = tempdir().unwrap();
+
+        let content1 = r#"
+[project]
+name = "example_package_YOUR_USERNAME_HERE"
+version = "0.0.1"
+description = "A small example package"
+requires-python = ">=3.8"
+dependencies = [
+  "httpx",
+  "gidgethub[httpx]>4.0.0",
+  "django>2.1; os_name != 'nt'",
+]
+"#;
+        let fp1 = dir.path().join("pyproject.toml");
+        let mut file1 = File::create(&fp1).unwrap();
+        write!(file1, "{}", content1).unwrap();
+
+        let content2 = r#"
+python-slugify==8.0.4
+    # via
+    #   apache-airflow
+    #   python-nvd3
+pytz==2023.3
+pytzdata==2020.1
+    # via pendulum
+pyyaml==6.0
+pyzmq==26.0.0
+        "#;
+
+        let fp2 = dir.path().join("requirements.txt");
+        let mut file2 = File::create(&fp2).unwrap();
+        write!(file2, "{}", content2).unwrap();
+
+        let dm = DepManifest::from_dir(&dir.path(), None);
+        assert_eq!(
+            dm.unwrap().keys(),
+            vec!["python_slugify", "pytz", "pytzdata", "pyyaml", "pyzmq"]
+        );
+    }
+
+    #[test]
+    fn test_from_dir_c() {
+        let dir = tempdir().unwrap();
+
+        let content1 = r#"
+[project]
+name = "example_package_YOUR_USERNAME_HERE"
+version = "0.0.1"
+description = "A small example package"
+requires-python = ">=3.8"
+dependencies = [
+  "httpx",
+  "gidgethub[httpx]>4.0.0",
+  "django>2.1; os_name != 'nt'",
+]
+"#;
+        let fp1 = dir.path().join("pyproject.toml");
+        let mut file1 = File::create(&fp1).unwrap();
+        write!(file1, "{}", content1).unwrap();
+
+        let content2 = r#"
+python-slugify==8.0.4
+    # via
+    #   apache-airflow
+    #   python-nvd3
+pytz==2023.3
+pytzdata==2020.1
+    # via pendulum
+pyyaml==6.0
+pyzmq==26.0.0
+        "#;
+
+        let fp2 = dir.path().join("requirements.lock");
+        let mut file2 = File::create(&fp2).unwrap();
+        write!(file2, "{}", content2).unwrap();
+
+        let dm = DepManifest::from_dir(&dir.path(), None);
+        assert_eq!(
+            dm.unwrap().keys(),
+            vec!["python_slugify", "pytz", "pytzdata", "pyyaml", "pyzmq"]
+        );
+    }
+
+    #[test]
+    fn test_from_dir_d() {
+        let dir = tempdir().unwrap();
+
+        let content1 = r#"
+[project]
+name = "example_package_YOUR_USERNAME_HERE"
+version = "0.0.1"
+description = "A small example package"
+requires-python = ">=3.8"
+dependencies = [
+  "httpx",
+  "gidgethub[httpx]>4.0.0",
+  "django>2.1; os_name != 'nt'",
+]
+"#;
+        let fp1 = dir.path().join("pyproject.toml");
+        let mut file1 = File::create(&fp1).unwrap();
+        write!(file1, "{}", content1).unwrap();
+
+        let content2 = r#"
+python-slugify==8.0.4
+    # via
+    #   apache-airflow
+    #   python-nvd3
+pytz==2023.3
+pytzdata==2020.1
+    # via pendulum
+pyyaml==6.0
+pyzmq==26.0.0
+        "#;
+
+        let fp2 = dir.path().join("requirements.txt");
+        let mut file2 = File::create(&fp2).unwrap();
+        write!(file2, "{}", content2).unwrap();
+
+        let content3 = r#"
+version = 1
+requires-python = ">=3.12"
+
+[[distribution]]
+name = "arraykit"
+version = "0.10.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d0/35/d1d6cc29d930eff913e49fe0081149f5cb630a630cf35b329d811dc390e2/arraykit-0.10.0.tar.gz", hash = "sha256:ee890b71c6e60505a9a77ad653ecb9c879e0f1a887980359d7fbaf29d33d5446", size = 83187 }
+
+
+[[distribution]]
+name = "arraymap"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6c/89/1d8b77225282b1a37029755ff53f63b1566bab8da1ac0e88f2fb8187c490/arraymap-0.4.0.tar.gz", hash = "sha256:af1aa15f9f0c799888326561275052b4ea709b0a3a2ff58d01c55a447f8b1213", size = 24770 }
+        "#;
+
+        let fp3 = dir.path().join("uv.lock");
+        let mut file3 = File::create(&fp3).unwrap();
+        write!(file3, "{}", content3).unwrap();
+
+        let dm = DepManifest::from_dir(&dir.path(), None);
+        assert_eq!(dm.unwrap().keys(), vec!["arraykit", "arraymap"]);
+    }
+
+    #[test]
+    fn test_from_dir_e() {
+        let dir = tempdir().unwrap();
+
+        let content1 = r#"
+[project]
+name = "example_package_YOUR_USERNAME_HERE"
+version = "0.0.1"
+description = "A small example package"
+requires-python = ">=3.8"
+dependencies = [
+  "httpx",
+  "gidgethub[httpx]>4.0.0",
+  "django>2.1; os_name != 'nt'",
+]
+"#;
+        let fp1 = dir.path().join("pyproject.toml");
+        let mut file1 = File::create(&fp1).unwrap();
+        write!(file1, "{}", content1).unwrap();
+
+        let content2 = r#"
+python-slugify==8.0.4
+    # via
+    #   apache-airflow
+    #   python-nvd3
+pytz==2023.3
+pytzdata==2020.1
+    # via pendulum
+pyyaml==6.0
+pyzmq==26.0.0
+        "#;
+
+        let fp2 = dir.path().join("requirements.txt");
+        let mut file2 = File::create(&fp2).unwrap();
+        write!(file2, "{}", content2).unwrap();
+
+        let content3 = r#"
+# This file is automatically @generated by Poetry 2.0.1 and should not be changed by hand.
+
+[[package]]
+name = "certifi"
+version = "2025.1.31"
+description = "Python package for providing Mozilla's CA Bundle."
+optional = false
+python-versions = ">=3.6"
+groups = ["main"]
+files = [
+    {file = "certifi-2025.1.31-py3-none-any.whl", hash = "sha256:ca78db4565a652026a4db2bcdf68f2fb589ea80d0be70e03929ed730746b84fe"},
+    {file = "certifi-2025.1.31.tar.gz", hash = "sha256:3d5da6925056f6f18f119200434a4780a94263f10d1c21d032a6f6b2baa20651"},
+]
+
+[[package]]
+name = "charset-normalizer"
+version = "3.4.1"
+description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+        "#;
+
+        let fp3 = dir.path().join("poetry.lock");
+        let mut file3 = File::create(&fp3).unwrap();
+        write!(file3, "{}", content3).unwrap();
+
+        let dm = DepManifest::from_dir(&dir.path(), None);
+        assert_eq!(dm.unwrap().keys(), vec!["certifi", "charset_normalizer"]);
+    }
 }
