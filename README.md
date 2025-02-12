@@ -22,7 +22,7 @@ Additionally, `fetter` can configure a virtual environment to validate package a
 
 
 * 🔎 System Scanning: Finds Python packages across system environments.
-* ⚖️ Package Validation: Checks installed packages against requirements.txt, pyproject.toml, or lock files sourced locally, via URLs, or via `git` repositories.
+* ⚖️ Package Validation: Checks installed packages against requirements.txt, pyproject.toml, or lock files created by `uv`, `poetry`, `pipenv`, or `pip-tools` that are sourced locally, via URLs, or via `git` repositories.
 * 🛡️ Vulnerability Audit: Scans packages for security vulnerabilites in the Open Source Vulnerability database.
 * ⚙️ CI Integration: Validate and audit with `pre-commit` [hooks](#Using-fetter-with-pre-commit).
 * 🚀 Fast: Multi-threaded Rust implementation.
@@ -173,7 +173,7 @@ Two `fetter` commands can be run via [pre-commit](https://pre-commit.com/) hooks
 ### Running `fetter validate` with `pre-commit`.
 
 
-The `fetter validate` command permits validating that the actually installed Python packages in the current environment are what are defined to be installed, as specified by a requirements.txt file, a pyproject.toml file, or a lock file such as one produced by `uv`.
+The `fetter validate` command permits validating that the actually installed Python packages in the current environment are what are defined to be installed, as specified by a requirements.txt file, a pyproject.toml file, or a lock file produced by `uv`, `poetry`, `pipenv`, or `pip-tools`.
 
 The `fetter validate` command takes a required argument, `--bound`, to specify that path or URL to the file to be used to define the bound requirements. The optional `--superset` argument permits packages not defined in the bound requirements to be present. The optional `--subset` argument permits not all packages in the bound requirements to be present.
 
@@ -260,7 +260,7 @@ repos:
 
 - Description: Validate if packages conform to a specified validation target.
 - Options
-  - `--bound, -b <FILE>`: Path or URL to the file containing bound requirements.
+  - `--bound, -b <FILE>`: Path or URL to the file containing bound requirements, which can be a requirements.txt, pyproject.toml or a lock file created by `uv`, `poetry`, `pipenv`, or `pip-tools`.
   - `--bound-options <OPTIONS>`: Names of additional optional dependency groups.
   - `--subset`: Allow the observed packages to be a subset of the bound requirements.
   - `--superset`: Allow the observed packages to be a superset of the bound requirements.
@@ -278,7 +278,7 @@ repos:
 
 - Description: Install in site-packages automatic validation checks on every Python run.
 - Options
-  - `--bound, -b <FILE>`: Path or URL to the file containing bound requirements.
+  - `--bound, -b <FILE>`: Path or URL to the file containing bound requirements, which can be a requirements.txt, pyproject.toml or a lock file created by `uv`, `poetry`, `pipenv`, or `pip-tools`.
   - `--bound-options <OPTIONS>`: Names of additional optional dependency groups.
   - `--subset`: Allow the observed packages to be a subset of the bound requirements.
   - `--superset`: Allow the observed packages to be a superset of the bound requirements.
@@ -340,7 +340,7 @@ repos:
 
 - Description: Purge packages that are invalid based on dependency specification.
 - Options
-  - `--bound, -b <FILE>`: Path or URL to the file containing bound requirements.
+  - `--bound, -b <FILE>`: Path or URL to the file containing bound requirements, which can be a requirements.txt, pyproject.toml or a lock file created by `uv`, `poetry`, `pipenv`, or `pip-tools`.
   - `--bound-options <OPTIONS>`: Names of additional optional dependency groups.
   - `--subset`: Allow the observed packages to be a subset of the bound requirements.
   - `--superset`: Allow the observed packages to be a superset of the bound requirements.
