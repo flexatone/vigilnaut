@@ -187,7 +187,7 @@ impl DepManifest {
         file_path: &Path,
         bound_options: Option<&Vec<String>>,
     ) -> ResultDynError<Self> {
-        let fp = path_normalize(file_path).unwrap_or_else(|_| file_path.to_path_buf());
+        let fp = path_normalize(file_path, true)?;
         match fp.to_str() {
             Some(s) if s.ends_with("pyproject.toml") => {
                 Self::from_pyproject_file(&fp, bound_options)

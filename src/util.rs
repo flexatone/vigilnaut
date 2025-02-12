@@ -172,7 +172,7 @@ pub(crate) fn path_cache(create: bool) -> Option<PathBuf> {
 }
 
 /// Given a Path, make it absolute, either expanding `~` or prepending current working directory.
-pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
+pub(crate) fn path_normalize(path: &Path, validate: bool) -> ResultDynError<PathBuf> {
     let mut fp = path.to_path_buf();
     if let Some(path_str) = fp.to_str() {
         if path_str.starts_with('~') {
@@ -180,12 +180,14 @@ pub(crate) fn path_normalize(path: &Path) -> ResultDynError<PathBuf> {
             let path_stripped =
                 fp.strip_prefix("~").map_err(|_| "Failed to strip prefix")?;
             fp = home.join(path_stripped);
-            println!("post conversion: {:?}", fp);
         }
     }
     if fp.is_relative() {
         let cwd = env::current_dir().map_err(|e| e.to_string())?;
         fp = cwd.join(fp);
+    }
+    if validate && !fp.exists() {
+        return Err(format!("File path does not exist: {}", fp.display()).into());
     }
     Ok(fp)
 }
@@ -210,7 +212,7 @@ pub(crate) fn exe_path_normalize(path: &Path) -> ResultDynError<PathBuf> {
             }
         };
     }
-    path_normalize(&fp)
+    path_normalize(&fp, true) // always validate
 }
 
 pub(crate) fn path_within_duration<P: AsRef<Path>>(
@@ -329,7 +331,7 @@ mod tests {
     #[test]
     fn test_path_normalize_a() {
         let p1 = Path::new("~/foo/bar");
-        let p2 = path_normalize(&p1).unwrap();
+        let p2 = path_normalize(&p1, false).unwrap();
         let home = path_home().unwrap();
         assert!(p2.starts_with(home));
     }

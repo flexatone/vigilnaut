@@ -21,6 +21,7 @@ use crate::spin::print_banner;
 use crate::spin::spin;
 use crate::table::Tableable;
 use crate::util::logger;
+use crate::util::ResultDynError;
 use crate::util::DURATION_0;
 
 //------------------------------------------------------------------------------
@@ -398,7 +399,7 @@ fn get_scan(
     animate: bool,
     cache_dur: Duration,
     log: bool,
-) -> Result<ScanFS, Box<dyn std::error::Error>> {
+) -> ResultDynError<ScanFS> {
     ScanFS::from_cache(exe_paths, force_usite, cache_dur, log).or_else(|err| {
         if log {
             logger!(module_path!(), "Could not load from cache: {:?}", err);
@@ -422,13 +423,13 @@ fn get_scan(
 }
 
 //------------------------------------------------------------------------------
-pub fn run_cli<I, T>(args: I) -> Result<(), Box<dyn std::error::Error>>
+pub fn run_cli<I, T>(args: I) -> ResultDynError<()>
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString> + Clone,
 {
     if env::consts::OS != "macos" && env::consts::OS != "linux" {
-        return Err("No support for this platform. To request support, visit https://github.com/fetter-io/fetter-rs/issues/66".into());
+        return Err("No support for this platform. To request support, visit https://github.com/fetter-io/fetter-rs/issues/112".into());
     }
     let cli = Cli::parse_from(args);
     if cli.command.is_none() {
@@ -438,7 +439,7 @@ where
     let quiet = cli.quiet;
     let banner = cli.banner;
 
-    // doa fresh scan or load a cached scan
+    // do a fresh scan or load a cached scan
     let sfs = get_scan(
         &cli.exe,
         cli.user_site,
