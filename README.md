@@ -350,6 +350,13 @@ repos:
 
 ## What is New in Fetter
 
+### 1.6.0-dev
+
+Better file path validation and error reporting.
+
+Limit `site-install` and `site-uninstall` to only operate on single-Python environment selections.
+
+
 ### 1.5.0
 
 Extended support for lock files provided to `--bound` to include `uv.lock`, `poetry.lock`, `Pipfile.lock`, as well as lock files produced by `uv pip compile` and `pip-tools`.
