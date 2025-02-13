@@ -1,5 +1,6 @@
 use pest::Parser;
 use pest_derive::Parser;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fmt;
@@ -71,7 +72,6 @@ impl fmt::Display for DepOperator {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 struct MarkerExpression {
     left: String,
@@ -81,7 +81,7 @@ struct MarkerExpression {
 
 fn extract_marker_expr(
     pair: pest::iterators::Pair<Rule>,
-    expressions: &mut Vec<MarkerExpression>,
+    expressions: &mut HashMap<String, MarkerExpression>,
 ) {
     match pair.as_rule() {
         Rule::marker_expr => {
@@ -91,22 +91,23 @@ fn extract_marker_expr(
             let right = inner_pairs.next().map(|p| p.as_str().trim().to_string());
 
             if let (Some(left), Some(operator), Some(right)) = (left, operator, right) {
-                expressions.push(MarkerExpression { left, operator, right });
+                expressions.insert(
+                    pair.to_string(),
+                    MarkerExpression {
+                        left,
+                        operator,
+                        right,
+                    },
+                );
             }
         }
-        Rule::marker_or | Rule::marker_and | Rule::marker => {
-            for inner in pair.into_inner() {
-                extract_marker_expr(inner, expressions);
-            }
-        }
-        _ => {
+        Rule::marker_or | Rule::marker_and | Rule::marker | _ => {
             for inner in pair.into_inner() {
                 extract_marker_expr(inner, expressions);
             }
         }
     }
 }
-
 
 // Dependency Specification: A model of a specification for one package with pairs of versions and operators, such as "numpy>1.18,<2.0".
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -117,7 +118,7 @@ pub(crate) struct DepSpec {
     operators: Vec<DepOperator>,
     versions: Vec<VersionSpec>,
     marker: String,
-    marker_expr: Vec<MarkerExpression>,
+    marker_expr: HashMap<String, MarkerExpression>,
 }
 
 impl DepSpec {
@@ -147,7 +148,7 @@ impl DepSpec {
                     operators,
                     versions,
                     marker: String::new(),
-                    marker_expr: Vec::with_capacity(0),
+                    marker_expr: HashMap::with_capacity(0),
                 });
             }
         }
@@ -177,8 +178,8 @@ impl DepSpec {
         let mut url = None;
         let mut operators = Vec::new();
         let mut versions = Vec::new();
-        let marker = String::new();
-        let mut marker_expr = Vec::new();
+        let mut marker = String::new();
+        let mut marker_expr = HashMap::new();
 
         let inner_pairs: Vec<_> = parse_result.into_inner().collect();
         for pair in inner_pairs {
@@ -216,11 +217,11 @@ impl DepSpec {
                     }
                 }
                 Rule::quoted_marker => {
-                    let marker = pair.as_str().trim_start_matches(';').trim().to_string();
+                    marker = pair.as_str().trim_start_matches(';').trim().to_string();
                     for inner_pair in pair.into_inner() {
                         extract_marker_expr(inner_pair, &mut marker_expr);
                     }
-                    println!("got marker: {:?} {:?}", marker, marker_expr);
+                    // println!("got marker: {:?} {:?}", marker, marker_expr);
                 }
                 _ => {}
             }
@@ -266,7 +267,7 @@ impl DepSpec {
             operators,
             versions,
             marker: String::new(),
-            marker_expr: Vec::with_capacity(0),
+            marker_expr: HashMap::with_capacity(0),
         })
     }
 
@@ -292,7 +293,7 @@ impl DepSpec {
                 operators,
                 versions,
                 marker: String::new(),
-                marker_expr: Vec::with_capacity(0),
+                marker_expr: HashMap::with_capacity(0),
             });
         }
         Err(format!("Unreconcilable dependency specifiers: {:?}", dep_specs).into())
@@ -855,7 +856,7 @@ mod tests {
     fn test_dep_spec_json_a() {
         let ds = DepSpec::from_whl("https://example.com/app-1.0.whl").unwrap();
         let json = serde_json::to_string(&ds).unwrap();
-        assert_eq!(json, "{\"name\":\"app\",\"key\":\"app\",\"url\":\"https://example.com/app-1.0.whl\",\"operators\":[\"Eq\"],\"versions\":[\"1.0\"],\"marker\":\"\",\"marker_expr\":[]}")
+        assert_eq!(json, "{\"name\":\"app\",\"key\":\"app\",\"url\":\"https://example.com/app-1.0.whl\",\"operators\":[\"Eq\"],\"versions\":[\"1.0\"],\"marker\":\"\",\"marker_expr\":{}}")
     }
 
     //--------------------------------------------------------------------------
@@ -871,5 +872,4 @@ mod tests {
         let input = "foo >= 3.4 ; python_version < '2.7.9' or (python_version >= '3.0' and python_version < '3.4')";
         let ds1 = DepSpec::from_string(input).unwrap();
     }
-
 }
