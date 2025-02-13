@@ -1,5 +1,6 @@
 use pest::Parser;
 use pest_derive::Parser;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fmt;
@@ -8,6 +9,7 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
+use crate::env_marker::EnvMarkerExpr;
 use crate::package::Package;
 use crate::util::name_to_key;
 use crate::util::url_strip_user;
@@ -71,6 +73,68 @@ impl fmt::Display for DepOperator {
     }
 }
 
+fn extract_marker_component(pair: pest::iterators::Pair<Rule>) -> String {
+    let s = pair.as_str().trim();
+    if (s.starts_with('"') && s.ends_with('"'))
+        || (s.starts_with('\'') && s.ends_with('\''))
+    {
+        s[1..s.len() - 1].to_string()
+    } else {
+        s.to_string()
+    }
+}
+
+// Collect all environment marker expression into structured binary expressions
+fn extract_marker_expr(
+    pair: pest::iterators::Pair<Rule>,
+    exprs: &mut HashMap<String, EnvMarkerExpr>,
+) {
+    match pair.as_rule() {
+        Rule::marker_expr => {
+            println!("marker_expr: {}", pair.as_str().to_string());
+
+            let mut inner_pairs = pair.clone().into_inner();
+
+            // If this `marker_expr` contains only one item and is parenthesized, unwrap it
+            if inner_pairs.len() == 1 {
+                let inner = inner_pairs.next().unwrap();
+                if matches!(inner.as_rule(), Rule::marker_or | Rule::marker_and) {
+                    extract_marker_expr(inner, exprs); // Unwrap and process its contents
+                    return;
+                }
+            }
+
+            // let mut inner_pairs = pair.clone().into_inner();
+            let left = inner_pairs.next().map(extract_marker_component);
+            let operator = inner_pairs.next().map(extract_marker_component);
+            let right = inner_pairs.next().map(extract_marker_component);
+            if let (Some(left), Some(operator), Some(right)) = (left, operator, right) {
+                exprs.insert(
+                    pair.as_str().to_string(),
+                    EnvMarkerExpr {
+                        left,
+                        operator,
+                        right,
+                    },
+                );
+            }
+        }
+        Rule::marker_or | Rule::marker_and => {
+            println!("marker_or, marker_and: {}", pair.as_str());
+            for inner in pair.into_inner() {
+                extract_marker_expr(inner, exprs);
+            }
+        }
+        Rule::marker => {
+            println!("marker: {}", pair.as_str());
+            for inner in pair.into_inner() {
+                extract_marker_expr(inner, exprs);
+            }
+        }
+        _ => {}
+    }
+}
+
 // Dependency Specification: A model of a specification for one package with pairs of versions and operators, such as "numpy>1.18,<2.0".
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct DepSpec {
@@ -79,6 +143,8 @@ pub(crate) struct DepSpec {
     pub(crate) url: Option<String>,
     operators: Vec<DepOperator>,
     versions: Vec<VersionSpec>,
+    marker: String,
+    marker_expr: HashMap<String, EnvMarkerExpr>,
 }
 
 impl DepSpec {
@@ -107,6 +173,8 @@ impl DepSpec {
                     url: Some(input.to_string()),
                     operators,
                     versions,
+                    marker: String::new(),
+                    marker_expr: HashMap::with_capacity(0),
                 });
             }
         }
@@ -136,6 +204,8 @@ impl DepSpec {
         let mut url = None;
         let mut operators = Vec::new();
         let mut versions = Vec::new();
+        let mut marker = String::new();
+        let mut marker_expr = HashMap::new();
 
         let inner_pairs: Vec<_> = parse_result.into_inner().collect();
         for pair in inner_pairs {
@@ -172,6 +242,12 @@ impl DepSpec {
                         versions.push(VersionSpec::new(&version));
                     }
                 }
+                Rule::quoted_marker => {
+                    marker = pair.as_str().trim_start_matches(';').trim().to_string();
+                    for inner_pair in pair.into_inner() {
+                        extract_marker_expr(inner_pair, &mut marker_expr);
+                    }
+                }
                 _ => {}
             }
         }
@@ -196,6 +272,8 @@ impl DepSpec {
             url,
             operators,
             versions,
+            marker,
+            marker_expr,
         })
     }
     /// Create a DepSpec from a Package struct.
@@ -213,6 +291,8 @@ impl DepSpec {
             url: None,
             operators,
             versions,
+            marker: String::new(),
+            marker_expr: HashMap::with_capacity(0),
         })
     }
 
@@ -237,6 +317,8 @@ impl DepSpec {
                 url: None,
                 operators,
                 versions,
+                marker: String::new(),
+                marker_expr: HashMap::with_capacity(0),
             });
         }
         Err(format!("Unreconcilable dependency specifiers: {:?}", dep_specs).into())
@@ -799,6 +881,34 @@ mod tests {
     fn test_dep_spec_json_a() {
         let ds = DepSpec::from_whl("https://example.com/app-1.0.whl").unwrap();
         let json = serde_json::to_string(&ds).unwrap();
-        assert_eq!(json, "{\"name\":\"app\",\"key\":\"app\",\"url\":\"https://example.com/app-1.0.whl\",\"operators\":[\"Eq\"],\"versions\":[\"1.0\"]}")
+        assert_eq!(json, "{\"name\":\"app\",\"key\":\"app\",\"url\":\"https://example.com/app-1.0.whl\",\"operators\":[\"Eq\"],\"versions\":[\"1.0\"],\"marker\":\"\",\"marker_expr\":{}}")
+    }
+
+    //--------------------------------------------------------------------------
+    #[test]
+    fn test_dep_spec_env_marker_a() {
+        let input =
+            "requests [security,tests] >= 2.8.1, == 2.8.*, < 3; python_version < '2.7'";
+        let ds1 = DepSpec::from_string(input).unwrap();
+        assert_eq!(format!("{:?}", ds1.versions), "[VersionSpec([Number(2), Number(8), Number(1)]), VersionSpec([Number(2), Number(8), Text(\"*\")]), VersionSpec([Number(3)])]");
+        assert_eq!(
+            format!("{:?}", ds1.operators),
+            "[GreaterThanOrEq, Eq, LessThan]"
+        );
+        assert_eq!(ds1.marker, "python_version < '2.7'");
+        assert_eq!(format!("{:?}", ds1.marker_expr), "{\"python_version < '2.7'\": EnvMarkerExpr { left: \"python_version\", operator: \"<\", right: \"2.7\" }}");
+    }
+
+    #[test]
+    fn test_dep_spec_env_marker_b() {
+        let input = "foo >= 3.4 ; python_version < '2.7.9' or (python_version >= '3.0' and python_version < '3.4')";
+        let ds1 = DepSpec::from_string(input).unwrap();
+        assert_eq!(ds1.marker, "python_version < '2.7.9' or (python_version >= '3.0' and python_version < '3.4')");
+        // assert_eq!(ds1.marker_expr.len(), 3);
+
+
+        assert_eq!(format!("{:?}", ds1.marker_expr), "{\"python_version < '2.7'\": EnvMarkerExpr { left: \"python_version\", operator: \"<\", right: \"2.7\" }}");
+
+
     }
 }
