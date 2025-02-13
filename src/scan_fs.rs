@@ -255,13 +255,12 @@ impl ScanFS {
         log: bool,
     ) -> ResultDynError<Self> {
         let path_wild = PathBuf::from("*");
-        let exes_hash = hash_paths(exes, force_usite);
         let mut exes_norm = Vec::new();
         for e in exes {
             if path_is_component(e) && *e == path_wild {
                 exes_norm.extend(find_exe());
-            } else if let Ok(normalized) = exe_path_normalize(e) {
-                exes_norm.push(normalized);
+            } else {
+                exes_norm.push(exe_path_normalize(e)?);
             }
         }
 
@@ -272,6 +271,8 @@ impl ScanFS {
                 (exe, dirs)
             })
             .collect();
+
+        let exes_hash = hash_paths(exes, force_usite);
         Self::from_exe_to_sites(exe_to_sites, force_usite, exes_hash)
     }
 
@@ -546,14 +547,14 @@ impl ScanFS {
         if self.exe_to_sites.len() > 1 {
             return Err(format!("site-install will not operate on multiple ({}) Python environments; use `-e` to specify a single Python environment.", self.exe_to_sites.len()).into());
         }
-        let bound_abs = path_normalize(bound)?;
+        let ba = path_normalize(bound, true)?;
         // generally expect this to run with a single exe, so no need to parallelize
         for (exe, sites) in &self.exe_to_sites {
             // NOTE: taking the first site, but might prioritize by some other criteria
             if let Some(site) = sites.first() {
                 install_validation(
                     exe,
-                    &bound_abs,
+                    &ba,
                     bound_options.clone(),
                     vf,
                     exit_else_warn,
@@ -1016,5 +1017,15 @@ mod tests {
         assert!(sfs
             .site_validate_install(&bound, &bound_options, &vf, None, false)
             .is_err());
+    }
+
+    #[test]
+    fn test_from_exes_a() {
+        let exe1 = PathBuf::from("a");
+        let exe2 = PathBuf::from("b");
+        let exes = vec![exe1, exe2];
+        let post = ScanFS::from_exes(&exes, false, false);
+        // error for bad exe
+        assert!(post.is_err());
     }
 }
