@@ -134,7 +134,7 @@ pub(crate) struct DepSpec {
     operators: Vec<DepOperator>,
     versions: Vec<VersionSpec>,
     marker: String,
-    marker_expr: HashMap<String, EnvMarkerExpr>,
+    marker_expr: Option<HashMap<String, EnvMarkerExpr>>,
 }
 
 impl DepSpec {
@@ -164,7 +164,7 @@ impl DepSpec {
                     operators,
                     versions,
                     marker: String::new(),
-                    marker_expr: HashMap::with_capacity(0),
+                    marker_expr: None,
                 });
             }
         }
@@ -195,7 +195,7 @@ impl DepSpec {
         let mut operators = Vec::new();
         let mut versions = Vec::new();
         let mut marker = String::new();
-        let mut marker_expr = HashMap::new(); // TODO: make this an option
+        let mut marker_expr: Option<HashMap<String, EnvMarkerExpr>> = None;
 
         let inner_pairs: Vec<_> = parse_result.into_inner().collect();
         for pair in inner_pairs {
@@ -234,8 +234,13 @@ impl DepSpec {
                 }
                 Rule::quoted_marker => {
                     marker = pair.as_str().trim_start_matches(';').trim().to_string();
-                    for inner_pair in pair.into_inner() {
-                        extract_marker_expr(inner_pair, &mut marker_expr);
+                    if !marker.is_empty() {
+                        // only create hashmap if we hae content
+                        let mut me: HashMap<String, EnvMarkerExpr> = HashMap::new();
+                        for inner_pair in pair.into_inner() {
+                            extract_marker_expr(inner_pair, &mut me);
+                        };
+                        marker_expr = Some(me);
                     }
                 }
                 _ => {}
@@ -282,7 +287,7 @@ impl DepSpec {
             operators,
             versions,
             marker: String::new(),
-            marker_expr: HashMap::with_capacity(0),
+            marker_expr: None,
         })
     }
 
@@ -308,7 +313,7 @@ impl DepSpec {
                 operators,
                 versions,
                 marker: String::new(),
-                marker_expr: HashMap::with_capacity(0),
+                marker_expr: None,
             });
         }
         Err(format!("Unreconcilable dependency specifiers: {:?}", dep_specs).into())
@@ -871,7 +876,7 @@ mod tests {
     fn test_dep_spec_json_a() {
         let ds = DepSpec::from_whl("https://example.com/app-1.0.whl").unwrap();
         let json = serde_json::to_string(&ds).unwrap();
-        assert_eq!(json, "{\"name\":\"app\",\"key\":\"app\",\"url\":\"https://example.com/app-1.0.whl\",\"operators\":[\"Eq\"],\"versions\":[\"1.0\"],\"marker\":\"\",\"marker_expr\":{}}")
+        assert_eq!(json, "{\"name\":\"app\",\"key\":\"app\",\"url\":\"https://example.com/app-1.0.whl\",\"operators\":[\"Eq\"],\"versions\":[\"1.0\"],\"marker\":\"\",\"marker_expr\":null}")
     }
 
     //--------------------------------------------------------------------------
@@ -886,7 +891,7 @@ mod tests {
             "[GreaterThanOrEq, Eq, LessThan]"
         );
         assert_eq!(ds1.marker, "python_version < '2.7'");
-        assert_eq!(format!("{:?}", ds1.marker_expr), "{\"python_version < '2.7'\": EnvMarkerExpr { left: \"python_version\", operator: \"<\", right: \"2.7\" }}");
+        assert_eq!(format!("{:?}", ds1.marker_expr.unwrap()), "{\"python_version < '2.7'\": EnvMarkerExpr { left: \"python_version\", operator: \"<\", right: \"2.7\" }}");
     }
 
     #[test]
@@ -896,7 +901,7 @@ mod tests {
         assert_eq!(ds1.marker, "python_version < '2.7.9' or (python_version >= '3.0' and python_version < '3.4')");
         // assert_eq!(ds1.marker_expr.len(), 3);
 
-        let mut keys: Vec<String> = ds1.marker_expr.keys().cloned().collect();
+        let mut keys: Vec<String> = ds1.marker_expr.as_ref().unwrap().keys().cloned().collect();
         keys.sort();
         assert_eq!(
             keys,
@@ -913,9 +918,9 @@ mod tests {
         let input = "foo >= 3.4 ;(python_version > '2.0' and python_version < '2.7.9') or (python_version >= '3.0' and python_version < '3.4')";
         let ds1 = DepSpec::from_string(input).unwrap();
         assert_eq!(ds1.marker, "(python_version > '2.0' and python_version < '2.7.9') or (python_version >= '3.0' and python_version < '3.4')");
-        assert_eq!(ds1.marker_expr.len(), 4);
+        assert_eq!(ds1.marker_expr.as_ref().unwrap().len(), 4);
 
-        let mut keys: Vec<String> = ds1.marker_expr.keys().cloned().collect();
+        let mut keys: Vec<String> = ds1.marker_expr.unwrap().keys().cloned().collect();
         keys.sort();
         assert_eq!(
             keys,
@@ -933,9 +938,9 @@ mod tests {
         let input = "foo >= 3.4 ;(python_version > '2.0' and python_version < '2.7.9') or python_version >= '3.0'";
         let ds1 = DepSpec::from_string(input).unwrap();
         assert_eq!(ds1.marker, "(python_version > '2.0' and python_version < '2.7.9') or python_version >= '3.0'");
-        assert_eq!(ds1.marker_expr.len(), 3);
+        assert_eq!(ds1.marker_expr.as_ref().unwrap().len(), 3);
 
-        let mut keys: Vec<String> = ds1.marker_expr.keys().cloned().collect();
+        let mut keys: Vec<String> = ds1.marker_expr.unwrap().keys().cloned().collect();
         keys.sort();
         assert_eq!(
             keys,
