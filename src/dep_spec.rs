@@ -91,11 +91,10 @@ fn extract_marker_expr(
 ) {
     match pair.as_rule() {
         Rule::marker_expr => {
-            println!("marker_expr: {}", pair.as_str().to_string());
-
+            // println!("marker_expr: {}", pair.as_str().to_string());
             let mut inner_pairs = pair.clone().into_inner();
 
-            // If this `marker_expr` contains only one item and is parenthesized, unwrap it
+            // contains only one parenthesized marker_or or marker_and
             if inner_pairs.len() == 1 {
                 let inner = inner_pairs.next().unwrap();
                 if matches!(inner.as_rule(), Rule::marker_or | Rule::marker_and) {
@@ -103,8 +102,6 @@ fn extract_marker_expr(
                     return;
                 }
             }
-
-            // let mut inner_pairs = pair.clone().into_inner();
             let left = inner_pairs.next().map(extract_marker_component);
             let operator = inner_pairs.next().map(extract_marker_component);
             let right = inner_pairs.next().map(extract_marker_component);
@@ -119,14 +116,8 @@ fn extract_marker_expr(
                 );
             }
         }
-        Rule::marker_or | Rule::marker_and => {
-            println!("marker_or, marker_and: {}", pair.as_str());
-            for inner in pair.into_inner() {
-                extract_marker_expr(inner, exprs);
-            }
-        }
-        Rule::marker => {
-            println!("marker: {}", pair.as_str());
+        Rule::marker_or | Rule::marker_and | Rule::marker => {
+            // println!("marker: {}", pair.as_str());
             for inner in pair.into_inner() {
                 extract_marker_expr(inner, exprs);
             }
@@ -906,9 +897,54 @@ mod tests {
         assert_eq!(ds1.marker, "python_version < '2.7.9' or (python_version >= '3.0' and python_version < '3.4')");
         // assert_eq!(ds1.marker_expr.len(), 3);
 
+        let mut keys: Vec<String> = ds1.marker_expr.keys().cloned().collect();
+        keys.sort();
+        assert_eq!(
+            keys,
+            vec![
+                "python_version < '2.7.9'",
+                "python_version < '3.4'",
+                "python_version >= '3.0'"
+            ]
+        );
+    }
 
-        assert_eq!(format!("{:?}", ds1.marker_expr), "{\"python_version < '2.7'\": EnvMarkerExpr { left: \"python_version\", operator: \"<\", right: \"2.7\" }}");
+    #[test]
+    fn test_dep_spec_env_marker_c() {
+        let input = "foo >= 3.4 ;(python_version > '2.0' and python_version < '2.7.9') or (python_version >= '3.0' and python_version < '3.4')";
+        let ds1 = DepSpec::from_string(input).unwrap();
+        assert_eq!(ds1.marker, "(python_version > '2.0' and python_version < '2.7.9') or (python_version >= '3.0' and python_version < '3.4')");
+        assert_eq!(ds1.marker_expr.len(), 4);
 
+        let mut keys: Vec<String> = ds1.marker_expr.keys().cloned().collect();
+        keys.sort();
+        assert_eq!(
+            keys,
+            vec![
+                "python_version < '2.7.9'",
+                "python_version < '3.4'",
+                "python_version > '2.0'",
+                "python_version >= '3.0'"
+            ]
+        );
+    }
 
+    #[test]
+    fn test_dep_spec_env_marker_d() {
+        let input = "foo >= 3.4 ;(python_version > '2.0' and python_version < '2.7.9') or python_version >= '3.0'";
+        let ds1 = DepSpec::from_string(input).unwrap();
+        assert_eq!(ds1.marker, "(python_version > '2.0' and python_version < '2.7.9') or python_version >= '3.0'");
+        assert_eq!(ds1.marker_expr.len(), 3);
+
+        let mut keys: Vec<String> = ds1.marker_expr.keys().cloned().collect();
+        keys.sort();
+        assert_eq!(
+            keys,
+            vec![
+                "python_version < '2.7.9'",
+                "python_version > '2.0'",
+                "python_version >= '3.0'"
+            ]
+        );
     }
 }
