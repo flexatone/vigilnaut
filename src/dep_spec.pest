@@ -21,12 +21,10 @@ env_var = { "python_version" | "python_full_version" | "os_name" | "sys_platform
             "implementation_name" | "implementation_version" | "extra" }
 
 marker_var = { env_var | python_str }
-marker_expr = { marker_var ~ wsp? ~ marker_op ~ wsp? ~ marker_var }
+marker_expr = { marker_var ~ wsp? ~ marker_op ~ wsp? ~ marker_var | "(" ~ wsp? ~ marker_or ~ wsp? ~ ")" }
 marker_and = { marker_expr ~ ("and" ~ wsp? ~ marker_expr)* }
 marker_or = { marker_and ~ ("or" ~ wsp? ~ marker_and)* }
-
 marker = { marker_or | marker_expr }
-
 quoted_marker = { ";" ~ wsp? ~ marker }
 
 url_scheme = { "git+" ~ ("https" | "ssh") | "file" | "https" | "http" }

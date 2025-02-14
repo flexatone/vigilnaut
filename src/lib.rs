@@ -3,6 +3,7 @@ mod cli;
 mod count_report;
 mod dep_manifest;
 mod dep_spec;
+mod env_marker;
 mod exe_search;
 mod lock_file;
 mod osv_query;

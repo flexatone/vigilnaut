@@ -1,0 +1,501 @@
+use crate::util::ResultDynError;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::Path;
+use std::process::Command;
+
+use crate::version_spec::VersionSpec;
+
+//------------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct EnvMarkerExpr {
+    pub(crate) left: String,
+    pub(crate) operator: String,
+    pub(crate) right: String,
+}
+
+impl EnvMarkerExpr {
+    pub fn new(left: &str, operator: &str, right: &str) -> Self {
+        Self {
+            left: left.to_string(),
+            operator: operator.to_string(),
+            right: right.to_string(),
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+
+//1 os_name 	                    os.name
+//2 sys_platform 	                sys.platform
+//3 platform_machine 	            platform.machine()
+//4 platform_python_implementation 	platform.python_implementation()
+//5 platform_release 	            platform.release()
+//6 platform_system 	            platform.system()
+//7 python_version 	                '.'.join(platform.python_version_tuple()[:2])
+//8 python_full_version 	        platform.python_version()
+//9 implementation_name 	        sys.implementation.name
+
+const PY_ENV_MARKERS: &str = "import os;import sys;import platform;print(os.name);print(sys.platform);print(platform.machine());print(platform.python_implementation());print(platform.release());print(platform.system());print('.'.join(platform.python_version_tuple()[:2]));print(platform.python_version());print(sys.implementation.name)";
+
+// NOTE: not implementing "implementation_version", "platform.version", or "extra"
+#[derive(Debug)]
+struct EnvMarkerState {
+    os_name: String,
+    sys_platform: String,
+    platform_machine: String,
+    platform_python_implementation: String,
+    platform_release: String,
+    platform_system: String,
+    python_version: String,
+    python_full_version: String,
+    implementation_name: String,
+}
+
+impl EnvMarkerState {
+    fn from_exe(executable: &Path) -> ResultDynError<Self> {
+        let output = Command::new(executable)
+            .arg("-S") // disable site on startup
+            .arg("-c")
+            .arg(PY_ENV_MARKERS)
+            .output()?;
+
+        let mut lines = std::str::from_utf8(&output.stdout)?
+            .trim()
+            .lines()
+            .map(String::from)
+            .into_iter();
+
+        Ok(EnvMarkerState {
+            os_name: lines.next().ok_or("Missing os_name")?,
+            sys_platform: lines.next().ok_or("Missing sys_platform")?,
+            platform_machine: lines.next().ok_or("Missing platform_machine")?,
+            platform_python_implementation: lines
+                .next()
+                .ok_or("Missing platform_python_implementation")?,
+            platform_release: lines.next().ok_or("Missing platform_release")?,
+            platform_system: lines.next().ok_or("Missing platform_system")?,
+            python_version: lines.next().ok_or("Missing python_version")?,
+            python_full_version: lines.next().ok_or("Missing python_full_version")?,
+            implementation_name: lines.next().ok_or("Missing implementation_name")?,
+        })
+    }
+
+    /// For testing.
+    #[allow(dead_code)]
+    fn from_sample() -> ResultDynError<Self> {
+        Ok(EnvMarkerState {
+            os_name: "posix".to_string(),
+            sys_platform: "darwin".to_string(),
+            platform_machine: "arm64".to_string(),
+            platform_python_implementation: "CPython".to_string(),
+            platform_release: "23.1.0".to_string(),
+            platform_system: "Darwin".to_string(),
+            python_version: "3.13".to_string(),
+            python_full_version: "3.13.1".to_string(),
+            implementation_name: "cpython".to_string(),
+        })
+    }
+
+    fn eval_version(&self, eme: &EnvMarkerExpr) -> ResultDynError<bool> {
+        let l_str = match eme.left.as_ref() {
+            "platform_release" => self.platform_release.as_ref(),
+            "python_version" => self.python_version.as_ref(),
+            "python_full_version" => self.python_full_version.as_ref(),
+            _ => return Err("Version eval not supperted".into()),
+        };
+        let r_str = &eme.right;
+        let lv = VersionSpec::new(&l_str);
+        let rv = VersionSpec::new(&r_str);
+        let result = match eme.operator.as_ref() {
+            "<" => lv < rv,
+            "<=" => lv <= rv,
+            "==" => lv == rv,
+            "!=" => lv != rv,
+            ">" => lv > rv,
+            ">=" => lv >= rv,
+            "~=" => lv.is_compatible(&rv),
+            "===" => lv.is_arbitrary_equal(&rv),
+            "^" => lv.is_caret(&rv),
+            "~" => lv.is_tilde(&rv),
+            "in" => l_str.contains(&*r_str),
+            "not in" => !l_str.contains(&*r_str),
+            _ => return Err(format!("Unknown operator: {}", eme.operator).into()),
+        };
+        Ok(result)
+    }
+
+    fn eval_string(&self, eme: &EnvMarkerExpr) -> ResultDynError<bool> {
+        let lv = match eme.left.as_ref() {
+            "os_name" => self.os_name.clone(),
+            "sys_platform" => self.sys_platform.clone(),
+            "platform_machine" => self.platform_machine.clone(),
+            "platform_python_implementation" => {
+                self.platform_python_implementation.clone()
+            }
+            "platform_system" => self.platform_system.clone(),
+            "implementation_name" => self.implementation_name.clone(),
+            _ => return Err("String eval not supperted".into()),
+        };
+        let rv = eme.right.clone();
+        let result = match eme.operator.as_ref() {
+            "<" => lv < rv,
+            "<=" => lv <= rv,
+            "==" => lv == rv,
+            "!=" => lv != rv,
+            ">" => lv > rv,
+            ">=" => lv >= rv,
+            "in" => rv.contains(&lv),
+            "not in" => !rv.contains(&lv),
+            _ => return Err(format!("Unknown operator: {}", eme.operator).into()),
+        };
+        Ok(result)
+    }
+
+    pub(crate) fn eval(&self, eme: &EnvMarkerExpr) -> ResultDynError<bool> {
+        match eme.left.as_ref() {
+            "os_name"
+            | "sys_platform"
+            | "platform_machine"
+            | "platform_python_implementation"
+            | "platform_system"
+            | "implementation_name" => self.eval_string(&eme),
+            "platform_release" | "python_version" | "python_full_version" => {
+                self.eval_version(&eme)
+            }
+            _ => Err("invalid key".into()),
+        }
+    }
+
+    // fn get(&self, key: &str) -> Option<&str> {
+    //     match key {
+    //         "os_name" => Some(&self.os_name),
+    //         "sys_platform" => Some(&self.sys_platform),
+    //         "platform_machine" => Some(&self.platform_machine),
+    //         "platform_python_implementation" => {
+    //             Some(&self.platform_python_implementation)
+    //         }
+    //         "platform_release" => Some(&self.platform_release),
+    //         "platform_system" => Some(&self.platform_system),
+    //         "python_version" => Some(&self.python_version),
+    //         "python_full_version" => Some(&self.python_full_version),
+    //         "implementation_name" => Some(&self.implementation_name),
+    //         _ => None,
+    //     }
+    // }
+}
+
+//------------------------------------------------------------------------------
+
+#[derive(Debug, PartialEq)]
+enum BExpToken {
+    And,
+    Or,
+    ParenOpen,
+    ParenClose,
+    Phrase(String), // Arbitrary strings
+}
+
+fn bexp_tokenize(expr: &str) -> Vec<BExpToken> {
+    let mut tokens = Vec::new();
+    let mut chars = expr.chars().peekable();
+    let mut phrase = String::new();
+
+    while let Some(&ch) = chars.peek() {
+        match ch {
+            '(' => {
+                if !phrase.is_empty() {
+                    tokens.push(BExpToken::Phrase(phrase.clone()));
+                    phrase.clear();
+                }
+                tokens.push(BExpToken::ParenOpen);
+                chars.next();
+            }
+            ')' => {
+                if !phrase.is_empty() {
+                    tokens.push(BExpToken::Phrase(phrase.clone()));
+                    phrase.clear();
+                }
+                tokens.push(BExpToken::ParenClose);
+                chars.next();
+            }
+            _ => {
+                while let Some(&c) = chars.peek() {
+                    if c == ' ' {
+                        // only accumulate if not leading
+                        if !phrase.is_empty() {
+                            phrase.push(c);
+                        }
+                        chars.next();
+                    } else if c != '(' && c != ')' {
+                        phrase.push(c);
+                        chars.next();
+
+                        if c == 'r' && phrase.ends_with(" or") {
+                            let pre_op = phrase[..phrase.len() - 3].trim();
+                            if !pre_op.is_empty() {
+                                tokens.push(BExpToken::Phrase(pre_op.to_string()));
+                            }
+                            tokens.push(BExpToken::Or);
+                            phrase.clear();
+                        } else if c == 'd' && phrase.ends_with(" and") {
+                            let pre_op = phrase[..phrase.len() - 4].trim();
+                            if !pre_op.is_empty() {
+                                tokens.push(BExpToken::Phrase(pre_op.to_string()));
+                            }
+                            tokens.push(BExpToken::And);
+                            phrase.clear();
+                        }
+                    } else {
+                        break; // c is ( or )
+                    }
+                }
+            }
+        }
+    }
+    if !phrase.is_empty() {
+        tokens.push(BExpToken::Phrase(phrase.clone()));
+    }
+    tokens
+}
+
+fn bexp_eval(tokens: &[BExpToken], lookup: &HashMap<String, bool>) -> bool {
+    let mut index = 0;
+
+    fn eval(
+        tokens: &[BExpToken],
+        index: &mut usize,
+        lookup: &HashMap<String, bool>,
+    ) -> bool {
+        let mut result = false;
+        let mut op = None;
+
+        while *index < tokens.len() {
+            match &tokens[*index] {
+                BExpToken::Phrase(phrase) => {
+                    result = *lookup.get(phrase).unwrap(); // should never happen
+                    *index += 1;
+                }
+                BExpToken::And => {
+                    op = Some(BExpToken::And);
+                    *index += 1;
+                }
+                BExpToken::Or => {
+                    op = Some(BExpToken::Or);
+                    *index += 1;
+                }
+                BExpToken::ParenOpen => {
+                    *index += 1;
+                    let sub_result = eval(tokens, index, lookup);
+                    if let Some(BExpToken::ParenClose) = tokens.get(*index) {
+                        *index += 1;
+                    }
+                    result = sub_result;
+                }
+                _ => break,
+            }
+
+            if let Some(BExpToken::And) = op {
+                result = result && eval(tokens, index, lookup);
+            } else if let Some(BExpToken::Or) = op {
+                result = result || eval(tokens, index, lookup);
+            }
+        }
+        result
+    }
+    eval(tokens, &mut index, lookup)
+}
+
+//------------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_bexp_a() {
+        let expression = "foo bar or (baz qux and quux corge)";
+
+        let lookup: HashMap<String, bool> = vec![
+            ("foo bar".to_string(), true),
+            ("baz qux".to_string(), false),
+            ("quux corge".to_string(), true),
+        ]
+        .into_iter()
+        .collect();
+
+        let tokens = bexp_tokenize(expression);
+        let result = bexp_eval(&tokens, &lookup);
+        assert_eq!(result, false);
+    }
+
+    #[test]
+    fn test_bexp_b() {
+        let expression = "a or b or c";
+
+        let lookup: HashMap<String, bool> = vec![
+            ("a".to_string(), false),
+            ("b".to_string(), false),
+            ("c".to_string(), true),
+        ]
+        .into_iter()
+        .collect();
+
+        let tokens = bexp_tokenize(expression);
+        let result = bexp_eval(&tokens, &lookup);
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn test_bexp_c() {
+        let expression = "a a or b b b b or c c c";
+
+        let lookup: HashMap<String, bool> = vec![
+            ("a a".to_string(), false),
+            ("b b b b".to_string(), false),
+            ("c c c".to_string(), false),
+        ]
+        .into_iter()
+        .collect();
+
+        let tokens = bexp_tokenize(expression);
+        let result = bexp_eval(&tokens, &lookup);
+        assert_eq!(result, false);
+    }
+
+    #[test]
+    fn test_bexp_d() {
+        let expression = "'a a' or ('b b b b' and 'c c c')";
+
+        let lookup: HashMap<String, bool> = vec![
+            ("'a a'".to_string(), false),
+            ("'b b b b'".to_string(), true),
+            ("'c c c'".to_string(), true),
+        ]
+        .into_iter()
+        .collect();
+
+        let tokens = bexp_tokenize(expression);
+        let result = bexp_eval(&tokens, &lookup);
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn test_bexp_e1() {
+        let expression = "foo and bar";
+
+        let lookup: HashMap<String, bool> =
+            vec![("foo".to_string(), true), ("bar".to_string(), true)]
+                .into_iter()
+                .collect();
+
+        let tokens = bexp_tokenize(expression);
+        println!("{:?}", tokens);
+        let result = bexp_eval(&tokens, &lookup);
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn test_bexp_e2() {
+        let expression = "foo and bar";
+
+        let lookup: HashMap<String, bool> =
+            vec![("foo".to_string(), true), ("bar".to_string(), false)]
+                .into_iter()
+                .collect();
+
+        let tokens = bexp_tokenize(expression);
+        let result = bexp_eval(&tokens, &lookup);
+        assert_eq!(result, false);
+    }
+
+    #[test]
+    fn test_bexp_f1() {
+        let expression = "foo and (bar or (baz or (zab or pax)))";
+
+        let lookup: HashMap<String, bool> = vec![
+            ("foo".to_string(), true),
+            ("bar".to_string(), false),
+            ("baz".to_string(), false),
+            ("zab".to_string(), false),
+            ("pax".to_string(), true),
+        ]
+        .into_iter()
+        .collect();
+
+        let tokens = bexp_tokenize(expression);
+        println!("{:?}", tokens);
+        let result = bexp_eval(&tokens, &lookup);
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn test_bexp_f2() {
+        let expression = "foo and (bar or (baz or (zab or pax)))";
+
+        let lookup: HashMap<String, bool> = vec![
+            ("foo".to_string(), true),
+            ("bar".to_string(), false),
+            ("baz".to_string(), false),
+            ("zab".to_string(), false),
+            ("pax".to_string(), false),
+        ]
+        .into_iter()
+        .collect();
+
+        let tokens = bexp_tokenize(expression);
+        println!("{:?}", tokens);
+        let result = bexp_eval(&tokens, &lookup);
+        assert_eq!(result, false);
+    }
+
+    //--------------------------------------------------------------------------
+
+    #[test]
+    fn test_emv_a() {
+        let emv = EnvMarkerState::from_exe(&PathBuf::from("python3"));
+        assert_eq!(emv.is_ok(), true);
+    }
+
+    #[test]
+    fn test_emv_eval_a() {
+        let emv = EnvMarkerState::from_sample().unwrap();
+        let eme1 = EnvMarkerExpr::new("python_version", "<", "3.9");
+        assert_eq!(emv.eval(&eme1).unwrap(), false);
+        let eme2 = EnvMarkerExpr::new("python_version", ">=", "3.13");
+        assert_eq!(emv.eval(&eme2).unwrap(), true);
+        let eme3 = EnvMarkerExpr::new("python_version", ">", "3.12");
+        assert_eq!(emv.eval(&eme3).unwrap(), true);
+    }
+
+    #[test]
+    fn test_emv_eval_b() {
+        let emv = EnvMarkerState::from_sample().unwrap();
+        let eme1 = EnvMarkerExpr::new("platform_machine", "in", "arm64");
+        assert_eq!(emv.eval(&eme1).unwrap(), true);
+        let eme2 = EnvMarkerExpr::new("platform_machine", "==", "arm64");
+        assert_eq!(emv.eval(&eme2).unwrap(), true);
+        let eme3 = EnvMarkerExpr::new("platform_machine", "not in", "unarm64");
+        assert_eq!(emv.eval(&eme3).unwrap(), false);
+    }
+
+    // #[test]
+    // fn test_env_mark_value_get() {
+    //     let env = EnvMarkerState::from_sample().unwrap();
+
+    //     assert_eq!(env.get("os_name"), Some("posix"));
+    //     assert_eq!(env.get("sys_platform"), Some("darwin"));
+    //     assert_eq!(env.get("platform_machine"), Some("arm64"));
+    //     assert_eq!(env.get("platform_python_implementation"), Some("CPython"));
+    //     assert_eq!(env.get("platform_release"), Some("23.1.0"));
+    //     assert_eq!(env.get("platform_system"), Some("Darwin"));
+    //     assert_eq!(env.get("python_version"), Some("3.13"));
+    //     assert_eq!(env.get("python_full_version"), Some("3.13.1"));
+    //     assert_eq!(env.get("implementation_name"), Some("cpython"));
+
+    //     // Test for an invalid key
+    //     assert_eq!(env.get("non_existent_key"), None);
+    // }
+}

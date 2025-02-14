@@ -24,7 +24,7 @@ pub(crate) struct PyProjectInfo {
 }
 
 impl PyProjectInfo {
-    pub(crate) fn new(content: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub(crate) fn new(content: &str) -> ResultDynError<Self> {
         // let parsed: Value = toml::from_str(&content)?;
         let parsed: toml::Value = content.parse::<toml::Value>()?;
 
