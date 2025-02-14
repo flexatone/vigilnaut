@@ -450,13 +450,24 @@ mod tests {
     }
 
     #[test]
-    fn test_emv_eval_a() {
+    fn test_emv_eval_a1() {
         let emv = EnvMarkerState::from_sample().unwrap();
         let eme1 = EnvMarkerExpr::new("python_version", "<", "3.9");
         assert_eq!(emv.eval(&eme1).unwrap(), false);
         let eme2 = EnvMarkerExpr::new("python_version", ">=", "3.13");
         assert_eq!(emv.eval(&eme2).unwrap(), true);
         let eme3 = EnvMarkerExpr::new("python_version", ">", "3.12");
+        assert_eq!(emv.eval(&eme3).unwrap(), true);
+    }
+
+    #[test]
+    fn test_emv_eval_a2() {
+        let emv = EnvMarkerState::from_sample().unwrap();
+        let eme1 = EnvMarkerExpr::new("python_full_version", ">", "3.13.0");
+        assert_eq!(emv.eval(&eme1).unwrap(), true);
+        let eme2 = EnvMarkerExpr::new("python_full_version", ">=", "3.13.3");
+        assert_eq!(emv.eval(&eme2).unwrap(), false);
+        let eme3 = EnvMarkerExpr::new("python_full_version", "==", "3.13.*");
         assert_eq!(emv.eval(&eme3).unwrap(), true);
     }
 
@@ -469,5 +480,16 @@ mod tests {
         assert_eq!(emv.eval(&eme2).unwrap(), true);
         let eme3 = EnvMarkerExpr::new("platform_machine", "not in", "unarm64");
         assert_eq!(emv.eval(&eme3).unwrap(), false);
+    }
+
+    #[test]
+    fn test_emv_eval_c() {
+        let emv = EnvMarkerState::from_sample().unwrap();
+        let eme1 = EnvMarkerExpr::new("os_name", "in", "posix");
+        assert_eq!(emv.eval(&eme1).unwrap(), true);
+        let eme2 = EnvMarkerExpr::new("os_name", "==", "posix");
+        assert_eq!(emv.eval(&eme2).unwrap(), true);
+        let eme3 = EnvMarkerExpr::new("os_name", "!=", "nt");
+        assert_eq!(emv.eval(&eme3).unwrap(), true);
     }
 }
