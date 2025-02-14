@@ -239,7 +239,7 @@ impl DepSpec {
                         let mut me: HashMap<String, EnvMarkerExpr> = HashMap::new();
                         for inner_pair in pair.into_inner() {
                             extract_marker_expr(inner_pair, &mut me);
-                        };
+                        }
                         marker_expr = Some(me);
                     }
                 }
@@ -901,7 +901,8 @@ mod tests {
         assert_eq!(ds1.marker, "python_version < '2.7.9' or (python_version >= '3.0' and python_version < '3.4')");
         // assert_eq!(ds1.marker_expr.len(), 3);
 
-        let mut keys: Vec<String> = ds1.marker_expr.as_ref().unwrap().keys().cloned().collect();
+        let mut keys: Vec<String> =
+            ds1.marker_expr.as_ref().unwrap().keys().cloned().collect();
         keys.sort();
         assert_eq!(
             keys,

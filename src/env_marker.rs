@@ -152,26 +152,26 @@ impl EnvMarkerState {
     }
 
     pub(crate) fn eval(&self, eme: &EnvMarkerExpr) -> ResultDynError<bool> {
-        let left_value = match eme.left.as_ref() {
-            "os_name" => &self.os_name,
-            "sys_platform" => &self.sys_platform,
-            "platform_machine" => &self.platform_machine,
-            "platform_python_implementation" => &self.platform_python_implementation,
-            "platform_system" => &self.platform_system,
-            "implementation_name" => &self.implementation_name,
-            "platform_release" => &self.platform_release,
-            "python_version" => &self.python_version,
-            "python_full_version" => &self.python_full_version,
+        use EvalType::*;
+
+        let (left_value, eval_type) = match eme.left.as_ref() {
+            "os_name" => (&self.os_name, StringEval),
+            "sys_platform" => (&self.sys_platform, StringEval),
+            "platform_machine" => (&self.platform_machine, StringEval),
+            "platform_python_implementation" => {
+                (&self.platform_python_implementation, StringEval)
+            }
+            "platform_system" => (&self.platform_system, StringEval),
+            "implementation_name" => (&self.implementation_name, StringEval),
+            "platform_release" => (&self.platform_release, VersionEval),
+            "python_version" => (&self.python_version, VersionEval),
+            "python_full_version" => (&self.python_full_version, VersionEval),
             _ => return Err("invalid key".into()),
         };
 
-        if matches!(
-            eme.left.as_ref(),
-            "platform_release" | "python_version" | "python_full_version"
-        ) {
-            self.eval_version(left_value, &eme.operator, &eme.right)
-        } else {
-            self.eval_string(left_value, &eme.operator, &eme.right)
+        match eval_type {
+            VersionEval => self.eval_version(left_value, &eme.operator, &eme.right),
+            StringEval => self.eval_string(left_value, &eme.operator, &eme.right),
         }
     }
 }
