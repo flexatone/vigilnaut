@@ -133,8 +133,8 @@ pub(crate) struct DepSpec {
     pub(crate) url: Option<String>,
     operators: Vec<DepOperator>,
     versions: Vec<VersionSpec>,
-    marker: String,
-    marker_expr: Option<HashMap<String, EnvMarkerExpr>>,
+    pub(crate) marker: String,
+    pub(crate) marker_expr: Option<HashMap<String, EnvMarkerExpr>>,
 }
 
 impl DepSpec {

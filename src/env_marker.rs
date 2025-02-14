@@ -213,9 +213,18 @@ fn bexp_tokenize(expr: &str) -> Vec<BExpToken> {
             _ => {
                 while let Some(&c) = chars.peek() {
                     if c == ' ' {
-                        // only accumulate if not leading
+                        // when adding a space, can check if we have a leading or / and
                         if !phrase.is_empty() {
-                            phrase.push(c);
+                            if phrase.eq("or") {
+                                tokens.push(BExpToken::Or);
+                                phrase.clear();
+                            } else if phrase.eq("and") {
+                                tokens.push(BExpToken::Or);
+                                phrase.clear();
+                            } else {
+                                // only accumulate if not leading
+                                phrase.push(c);
+                            }
                         }
                         chars.next();
                     } else if c != '(' && c != ')' {
@@ -264,6 +273,7 @@ fn bexp_eval(tokens: &[BExpToken], lookup: &HashMap<String, bool>) -> bool {
         while *index < tokens.len() {
             match &tokens[*index] {
                 BExpToken::Phrase(phrase) => {
+                    println!("lookup phrase: {:?}", phrase);
                     result = *lookup.get(phrase).unwrap(); // should never happen
                     *index += 1;
                 }
@@ -297,11 +307,28 @@ fn bexp_eval(tokens: &[BExpToken], lookup: &HashMap<String, bool>) -> bool {
     eval(tokens, &mut index, lookup)
 }
 
+// Given an EMS (which will need to be stored in HashMap<ExePath, EnvMarkerState>), validate the marker string.
+fn marker_eval(
+    marker: &String,
+    marker_expr: &HashMap<String, EnvMarkerExpr>,
+    ems: &EnvMarkerState,
+) -> ResultDynError<bool> {
+    // replace marker_expr with evaluated bools
+    let mut marker_values: HashMap<String, bool> = HashMap::new();
+    for (exp, eme) in marker_expr {
+        marker_values.insert(exp.clone(), ems.eval(&eme)?);
+    }
+
+    let tokens = bexp_tokenize(marker);
+    Ok(bexp_eval(&tokens, &marker_values))
+}
+
 //------------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dep_spec::DepSpec;
     use std::path::PathBuf;
 
     #[test]
@@ -441,6 +468,24 @@ mod tests {
         assert_eq!(result, false);
     }
 
+    #[test]
+    fn test_bexp_g1() {
+        let expression = "(python_version > '2.0' and python_version < '2.7.9') or python_version >= '3.0'";
+
+        let lookup: HashMap<String, bool> = vec![
+            ("python_version > '2.0'".to_string(), true),
+            ("python_version < '2.7.9'".to_string(), false),
+            ("python_version >= '3.0'".to_string(), false),
+        ]
+        .into_iter()
+        .collect();
+
+        let tokens = bexp_tokenize(expression);
+        println!("{:?}", tokens);
+        let result = bexp_eval(&tokens, &lookup);
+        assert_eq!(result, false);
+    }
+
     //--------------------------------------------------------------------------
 
     #[test]
@@ -491,5 +536,36 @@ mod tests {
         assert_eq!(emv.eval(&eme2).unwrap(), true);
         let eme3 = EnvMarkerExpr::new("os_name", "!=", "nt");
         assert_eq!(emv.eval(&eme3).unwrap(), true);
+    }
+
+    //--------------------------------------------------------------------------
+    #[test]
+    fn test_marker_eval_a1() {
+        let ds = DepSpec::from_string("foo >= 3.4 ;(python_version > '2.0' and python_version < '2.7.9') or python_version >= '3.0'").unwrap();
+        let ems = EnvMarkerState::from_sample().unwrap();
+        assert_eq!(
+            marker_eval(&ds.marker, &ds.marker_expr.unwrap(), &ems).unwrap(),
+            true
+        )
+    }
+
+    #[test]
+    fn test_marker_eval_a2() {
+        let ds = DepSpec::from_string("foo >= 3.4 ;(python_version > '2.0' and python_version < '2.7.9') or python_version >= '3.15'").unwrap();
+        let ems = EnvMarkerState::from_sample().unwrap();
+        assert_eq!(
+            marker_eval(&ds.marker, &ds.marker_expr.unwrap(), &ems).unwrap(),
+            false
+        )
+    }
+
+    #[test]
+    fn test_marker_eval_a3() {
+        let ds = DepSpec::from_string("foo >= 3.4 ;(python_version > '2.0' and python_version < '2.7.9') or python_version < '3.5' or python_version >= '3.13'").unwrap();
+        let ems = EnvMarkerState::from_sample().unwrap();
+        assert_eq!(
+            marker_eval(&ds.marker, &ds.marker_expr.unwrap(), &ems).unwrap(),
+            true
+        )
     }
 }
