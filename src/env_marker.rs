@@ -394,5 +394,4 @@ mod tests {
         // Test for an invalid key
         assert_eq!(env.get("non_existent_key"), None);
     }
-
 }
