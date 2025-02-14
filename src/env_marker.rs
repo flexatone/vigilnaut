@@ -69,8 +69,7 @@ impl EnvMarkerState {
         let mut lines = std::str::from_utf8(&output.stdout)?
             .trim()
             .lines()
-            .map(String::from)
-            .into_iter();
+            .map(String::from);
 
         Ok(EnvMarkerState {
             os_name: lines.next().ok_or("Missing os_name")?,
@@ -219,7 +218,7 @@ fn bexp_tokenize(expr: &str) -> Vec<BExpToken> {
                                 tokens.push(BExpToken::Or);
                                 phrase.clear();
                             } else if phrase.eq("and") {
-                                tokens.push(BExpToken::Or);
+                                tokens.push(BExpToken::And);
                                 phrase.clear();
                             } else {
                                 // only accumulate if not leading
@@ -309,14 +308,14 @@ fn bexp_eval(tokens: &[BExpToken], lookup: &HashMap<String, bool>) -> bool {
 
 // Given an EMS (which will need to be stored in HashMap<ExePath, EnvMarkerState>), validate the marker string.
 fn marker_eval(
-    marker: &String,
+    marker: &str,
     marker_expr: &HashMap<String, EnvMarkerExpr>,
     ems: &EnvMarkerState,
 ) -> ResultDynError<bool> {
     // replace marker_expr with evaluated bools
     let mut marker_values: HashMap<String, bool> = HashMap::new();
     for (exp, eme) in marker_expr {
-        marker_values.insert(exp.clone(), ems.eval(&eme)?);
+        marker_values.insert(exp.clone(), ems.eval(eme)?);
     }
 
     let tokens = bexp_tokenize(marker);
