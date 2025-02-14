@@ -2,6 +2,7 @@ use crate::util::ResultDynError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 
 //------------------------------------------------------------------------------
@@ -15,19 +16,21 @@ pub(crate) struct EnvMarkerExpr {
 
 //------------------------------------------------------------------------------
 
-// os_name 	os.name
-// sys_platform 	sys.platform
-// platform_machine 	platform.machine() 	x86_64
-// platform_python_implementation 	platform.python_implementation()
-// platform_release 	platform.release()
-// platform_system 	platform.system() 	Linux, Windows, Java
-// python_version 	'.'.join(platform.python_version_tuple()[:2])
-// python_full_version 	platform.python_version()
-// implementation_name 	sys.implementation.name
+//1 os_name 	                    os.name
+//2 sys_platform 	                sys.platform
+//3 platform_machine 	            platform.machine()
+//4 platform_python_implementation 	platform.python_implementation()
+//5 platform_release 	            platform.release()
+//6 platform_system 	            platform.system()
+//7 python_version 	                '.'.join(platform.python_version_tuple()[:2])
+//8 python_full_version 	        platform.python_version()
+//9 implementation_name 	        sys.implementation.name
+
+const PY_ENV_MARKERS: &str = "import os;import sys;import platform;print(os.name);print(sys.platform);print(platform.machine());print(platform.python_implementation());print(platform.release());print(platform.system());print('.'.join(platform.python_version_tuple()[:2]));print(platform.python_version());print(sys.implementation.name)";
 
 // NOTE: not implementing "implementation_version", "platform.version", or "extra"
 #[derive(Debug)]
-struct EnvMarkLeft {
+struct EnvMarkValue {
     os_name: String,
     sys_platform: String,
     platform_machine: String,
@@ -39,9 +42,7 @@ struct EnvMarkLeft {
     implementation_name: String,
 }
 
-const PY_ENV_MARKERS: &str = "import os;import sys;import platform;print(os.name);print(platform.machine());print(platform.python_implementation());print(platform.release());print(platform.system());print('.'.join(platform.python_version_tuple()[:2]));print(platform.python_version());print(sys.implementation.name)";
-
-impl EnvMarkLeft {
+impl EnvMarkValue {
     fn from_exe(executable: &Path) -> ResultDynError<Self> {
         let output = Command::new(executable)
             .arg("-S") // disable site on startup
@@ -49,31 +50,40 @@ impl EnvMarkLeft {
             .arg(PY_ENV_MARKERS)
             .output()?;
 
-        let lines: Vec<_> = std::str::from_utf8(&output.stdout)
-            .expect("Failed to convert to UTF-8")
+        let mut lines = std::str::from_utf8(&output.stdout)?
             .trim()
             .lines()
-            .collect();
-        let os_name = lines[0];
-        let sys_platform = lines[0];
-        let platform_machine = lines[0];
-        let platform_python_implementation = lines[0];
-        let platform_release = lines[0];
-        let platform_system = lines[0];
-        let python_version = lines[0];
-        let python_full_version = lines[0];
-        let implementation_name = lines[0];
+            .map(String::from)
+            .into_iter();
 
-        Ok(EnvMarkLeft {
-            os_name,
-            sys_platform,
-            platform_machine,
-            platform_python_implementation,
-            platform_release,
-            platform_system,
-            python_version,
-            python_full_version,
-            implementation_name,
+        Ok(EnvMarkValue {
+            os_name: lines.next().ok_or("Missing os_name")?,
+            sys_platform: lines.next().ok_or("Missing sys_platform")?,
+            platform_machine: lines.next().ok_or("Missing platform_machine")?,
+            platform_python_implementation: lines
+                .next()
+                .ok_or("Missing platform_python_implementation")?,
+            platform_release: lines.next().ok_or("Missing platform_release")?,
+            platform_system: lines.next().ok_or("Missing platform_system")?,
+            python_version: lines.next().ok_or("Missing python_version")?,
+            python_full_version: lines.next().ok_or("Missing python_full_version")?,
+            implementation_name: lines.next().ok_or("Missing implementation_name")?,
+        })
+    }
+
+    /// For testing.
+    #[allow(dead_code)]
+    fn from_sample() -> ResultDynError<Self> {
+        Ok(EnvMarkValue {
+            os_name: "posix".to_string(),
+            sys_platform: "darwin".to_string(),
+            platform_machine: "arm64".to_string(),
+            platform_python_implementation: "CPython".to_string(),
+            platform_release: "23.1.0".to_string(),
+            platform_system: "Darwin".to_string(),
+            python_version: "3.13".to_string(),
+            python_full_version: "3.13.1".to_string(),
+            implementation_name: "cpython".to_string(),
         })
     }
 }
@@ -146,7 +156,6 @@ fn bexp_tokenize(expr: &str) -> Vec<BExpToken> {
             }
         }
     }
-    // Push any remaining phrase
     if !phrase.is_empty() {
         tokens.push(BExpToken::Phrase(phrase.clone()));
     }
@@ -167,7 +176,6 @@ fn bexp_eval(tokens: &[BExpToken], lookup: &HashMap<String, bool>) -> bool {
         while *index < tokens.len() {
             match &tokens[*index] {
                 BExpToken::Phrase(phrase) => {
-                    // println!("phrase: {}", phrase);
                     result = *lookup.get(phrase).unwrap(); // should never happen
                     *index += 1;
                 }
@@ -342,5 +350,13 @@ mod tests {
         println!("{:?}", tokens);
         let result = bexp_eval(&tokens, &lookup);
         assert_eq!(result, false);
+    }
+
+    //--------------------------------------------------------------------------
+
+    #[test]
+    fn test_env_a() {
+        let emv = EnvMarkValue::from_exe(&PathBuf::from("python3"));
+        println!("{:?}", emv);
     }
 }
