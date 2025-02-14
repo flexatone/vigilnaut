@@ -44,17 +44,13 @@ fn bexp_tokenize(expr: &str) -> Vec<BExpToken> {
             _ => {
                 // Read characters into word buffer
                 while let Some(&c) = chars.peek() {
-                    if c == ' ' { // only accumulate if not leading
+                    if c == ' ' {
+                        // only accumulate if not leading
                         if !word.is_empty() {
                             word.push(c);
                         }
                         chars.next();
-                    }
-                    else if c.is_alphanumeric()
-                        || c == '_'
-                        || c == '\"'
-                        || c == '\''
-                    {
+                    } else if c.is_alphanumeric() || c == '_' || c == '\"' || c == '\'' {
                         word.push(c);
                         chars.next();
 
