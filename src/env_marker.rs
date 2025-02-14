@@ -374,6 +374,25 @@ mod tests {
     #[test]
     fn test_env_a() {
         let emv = EnvMarkValue::from_exe(&PathBuf::from("python3"));
-        println!("{:?}", emv);
+        assert_eq!(emv.is_ok(), true);
     }
+
+    #[test]
+    fn test_env_mark_value_get() {
+        let env = EnvMarkValue::from_sample().unwrap();
+
+        assert_eq!(env.get("os_name"), Some("posix"));
+        assert_eq!(env.get("sys_platform"), Some("darwin"));
+        assert_eq!(env.get("platform_machine"), Some("arm64"));
+        assert_eq!(env.get("platform_python_implementation"), Some("CPython"));
+        assert_eq!(env.get("platform_release"), Some("23.1.0"));
+        assert_eq!(env.get("platform_system"), Some("Darwin"));
+        assert_eq!(env.get("python_version"), Some("3.13"));
+        assert_eq!(env.get("python_full_version"), Some("3.13.1"));
+        assert_eq!(env.get("implementation_name"), Some("cpython"));
+
+        // Test for an invalid key
+        assert_eq!(env.get("non_existent_key"), None);
+    }
+
 }
