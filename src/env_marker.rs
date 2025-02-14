@@ -53,6 +53,11 @@ struct EnvMarkerState {
     implementation_name: String,
 }
 
+enum EvalType {
+    StringEval,
+    VersionEval,
+}
+
 impl EnvMarkerState {
     fn from_exe(executable: &Path) -> ResultDynError<Self> {
         let output = Command::new(executable)
@@ -98,17 +103,12 @@ impl EnvMarkerState {
         })
     }
 
-    fn eval_version(&self, eme: &EnvMarkerExpr) -> ResultDynError<bool> {
-        let l_str = match eme.left.as_ref() {
-            "platform_release" => self.platform_release.as_ref(),
-            "python_version" => self.python_version.as_ref(),
-            "python_full_version" => self.python_full_version.as_ref(),
-            _ => return Err("Version eval not supperted".into()),
-        };
-        let r_str = &eme.right;
-        let lv = VersionSpec::new(&l_str);
-        let rv = VersionSpec::new(&r_str);
-        let result = match eme.operator.as_ref() {
+    //--------------------------------------------------------------------------
+
+    fn eval_version(&self, left_value: &str, operator: &str, right_value: &str) -> ResultDynError<bool> {
+        let lv = VersionSpec::new(left_value);
+        let rv = VersionSpec::new(right_value);
+        let result = match operator {
             "<" => lv < rv,
             "<=" => lv <= rv,
             "==" => lv == rv,
@@ -119,72 +119,55 @@ impl EnvMarkerState {
             "===" => lv.is_arbitrary_equal(&rv),
             "^" => lv.is_caret(&rv),
             "~" => lv.is_tilde(&rv),
-            "in" => l_str.contains(&*r_str),
-            "not in" => !l_str.contains(&*r_str),
-            _ => return Err(format!("Unknown operator: {}", eme.operator).into()),
+            "in" => left_value.contains(right_value),
+            "not in" => !left_value.contains(right_value),
+            _ => return Err(format!("Unsupported operator: {}", operator).into()),
         };
         Ok(result)
     }
 
-    fn eval_string(&self, eme: &EnvMarkerExpr) -> ResultDynError<bool> {
-        let lv = match eme.left.as_ref() {
-            "os_name" => self.os_name.clone(),
-            "sys_platform" => self.sys_platform.clone(),
-            "platform_machine" => self.platform_machine.clone(),
-            "platform_python_implementation" => {
-                self.platform_python_implementation.clone()
-            }
-            "platform_system" => self.platform_system.clone(),
-            "implementation_name" => self.implementation_name.clone(),
-            _ => return Err("String eval not supperted".into()),
-        };
-        let rv = eme.right.clone();
-        let result = match eme.operator.as_ref() {
-            "<" => lv < rv,
-            "<=" => lv <= rv,
-            "==" => lv == rv,
-            "!=" => lv != rv,
-            ">" => lv > rv,
-            ">=" => lv >= rv,
-            "in" => rv.contains(&lv),
-            "not in" => !rv.contains(&lv),
-            _ => return Err(format!("Unknown operator: {}", eme.operator).into()),
+    fn eval_string(&self, left_value: &str, operator: &str, right_value: &str) -> ResultDynError<bool> {
+        let result = match operator {
+            "<" => left_value < right_value,
+            "<=" => left_value <= right_value,
+            "==" => left_value == right_value,
+            "!=" => left_value != right_value,
+            ">" => left_value > right_value,
+            ">=" => left_value >= right_value,
+            "in" => right_value.contains(left_value),
+            "not in" => !right_value.contains(left_value),
+            _ => return Err(format!("Unsupported operator: {}", operator).into()),
         };
         Ok(result)
     }
 
     pub(crate) fn eval(&self, eme: &EnvMarkerExpr) -> ResultDynError<bool> {
-        match eme.left.as_ref() {
-            "os_name"
-            | "sys_platform"
-            | "platform_machine"
-            | "platform_python_implementation"
-            | "platform_system"
-            | "implementation_name" => self.eval_string(&eme),
-            "platform_release" | "python_version" | "python_full_version" => {
-                self.eval_version(&eme)
-            }
-            _ => Err("invalid key".into()),
+        let left_value = match eme.left.as_ref() {
+            "os_name" => &self.os_name,
+            "sys_platform" => &self.sys_platform,
+            "platform_machine" => &self.platform_machine,
+            "platform_python_implementation" => &self.platform_python_implementation,
+            "platform_system" => &self.platform_system,
+            "implementation_name" => &self.implementation_name,
+            "platform_release" => &self.platform_release,
+            "python_version" => &self.python_version,
+            "python_full_version" => &self.python_full_version,
+            _ => return Err("invalid key".into()),
+        };
+
+        if matches!(
+            eme.left.as_ref(),
+            "platform_release" | "python_version" | "python_full_version"
+        ) {
+            self.eval_version(left_value, &eme.operator, &eme.right)
+        } else {
+            self.eval_string(left_value, &eme.operator, &eme.right)
         }
     }
 
-    // fn get(&self, key: &str) -> Option<&str> {
-    //     match key {
-    //         "os_name" => Some(&self.os_name),
-    //         "sys_platform" => Some(&self.sys_platform),
-    //         "platform_machine" => Some(&self.platform_machine),
-    //         "platform_python_implementation" => {
-    //             Some(&self.platform_python_implementation)
-    //         }
-    //         "platform_release" => Some(&self.platform_release),
-    //         "platform_system" => Some(&self.platform_system),
-    //         "python_version" => Some(&self.python_version),
-    //         "python_full_version" => Some(&self.python_full_version),
-    //         "implementation_name" => Some(&self.implementation_name),
-    //         _ => None,
-    //     }
-    // }
 }
+
+
 
 //------------------------------------------------------------------------------
 
@@ -481,21 +464,4 @@ mod tests {
         assert_eq!(emv.eval(&eme3).unwrap(), false);
     }
 
-    // #[test]
-    // fn test_env_mark_value_get() {
-    //     let env = EnvMarkerState::from_sample().unwrap();
-
-    //     assert_eq!(env.get("os_name"), Some("posix"));
-    //     assert_eq!(env.get("sys_platform"), Some("darwin"));
-    //     assert_eq!(env.get("platform_machine"), Some("arm64"));
-    //     assert_eq!(env.get("platform_python_implementation"), Some("CPython"));
-    //     assert_eq!(env.get("platform_release"), Some("23.1.0"));
-    //     assert_eq!(env.get("platform_system"), Some("Darwin"));
-    //     assert_eq!(env.get("python_version"), Some("3.13"));
-    //     assert_eq!(env.get("python_full_version"), Some("3.13.1"));
-    //     assert_eq!(env.get("implementation_name"), Some("cpython"));
-
-    //     // Test for an invalid key
-    //     assert_eq!(env.get("non_existent_key"), None);
-    // }
 }
