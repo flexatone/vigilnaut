@@ -1,6 +1,10 @@
-use std::collections::HashMap;
-
+use crate::util::ResultDynError;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::Path;
+use std::process::Command;
+
+//------------------------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct EnvMarkerExpr {
@@ -8,6 +12,73 @@ pub(crate) struct EnvMarkerExpr {
     pub(crate) operator: String,
     pub(crate) right: String,
 }
+
+//------------------------------------------------------------------------------
+
+// os_name 	os.name
+// sys_platform 	sys.platform
+// platform_machine 	platform.machine() 	x86_64
+// platform_python_implementation 	platform.python_implementation()
+// platform_release 	platform.release()
+// platform_system 	platform.system() 	Linux, Windows, Java
+// python_version 	'.'.join(platform.python_version_tuple()[:2])
+// python_full_version 	platform.python_version()
+// implementation_name 	sys.implementation.name
+
+// NOTE: not implementing "implementation_version", "platform.version", or "extra"
+#[derive(Debug)]
+struct EnvMarkLeft {
+    os_name: String,
+    sys_platform: String,
+    platform_machine: String,
+    platform_python_implementation: String,
+    platform_release: String,
+    platform_system: String,
+    python_version: String,
+    python_full_version: String,
+    implementation_name: String,
+}
+
+const PY_ENV_MARKERS: &str = "import os;import sys;import platform;print(os.name);print(platform.machine());print(platform.python_implementation());print(platform.release());print(platform.system());print('.'.join(platform.python_version_tuple()[:2]));print(platform.python_version());print(sys.implementation.name)";
+
+impl EnvMarkLeft {
+    fn from_exe(executable: &Path) -> ResultDynError<Self> {
+        let output = Command::new(executable)
+            .arg("-S") // disable site on startup
+            .arg("-c")
+            .arg(PY_ENV_MARKERS)
+            .output()?;
+
+        let lines: Vec<_> = std::str::from_utf8(&output.stdout)
+            .expect("Failed to convert to UTF-8")
+            .trim()
+            .lines()
+            .collect();
+        let os_name = lines[0];
+        let sys_platform = lines[0];
+        let platform_machine = lines[0];
+        let platform_python_implementation = lines[0];
+        let platform_release = lines[0];
+        let platform_system = lines[0];
+        let python_version = lines[0];
+        let python_full_version = lines[0];
+        let implementation_name = lines[0];
+
+        Ok(EnvMarkLeft {
+            os_name,
+            sys_platform,
+            platform_machine,
+            platform_python_implementation,
+            platform_release,
+            platform_system,
+            python_version,
+            python_full_version,
+            implementation_name,
+        })
+    }
+}
+
+//------------------------------------------------------------------------------
 
 #[derive(Debug, PartialEq)]
 enum BExpToken {
