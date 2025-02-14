@@ -86,6 +86,23 @@ impl EnvMarkValue {
             implementation_name: "cpython".to_string(),
         })
     }
+
+    fn get(&self, key: &str) -> Option<&str> {
+        match key {
+            "os_name" => Some(&self.os_name),
+            "sys_platform" => Some(&self.sys_platform),
+            "platform_machine" => Some(&self.platform_machine),
+            "platform_python_implementation" => {
+                Some(&self.platform_python_implementation)
+            }
+            "platform_release" => Some(&self.platform_release),
+            "platform_system" => Some(&self.platform_system),
+            "python_version" => Some(&self.python_version),
+            "python_full_version" => Some(&self.python_full_version),
+            "implementation_name" => Some(&self.implementation_name),
+            _ => None,
+        }
+    }
 }
 
 //------------------------------------------------------------------------------
