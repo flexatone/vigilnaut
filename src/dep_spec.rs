@@ -117,7 +117,6 @@ fn extract_marker_expr(
             }
         }
         Rule::marker_or | Rule::marker_and | Rule::marker => {
-            // println!("marker: {}", pair.as_str());
             for inner in pair.into_inner() {
                 extract_marker_expr(inner, exprs);
             }
@@ -196,7 +195,7 @@ impl DepSpec {
         let mut operators = Vec::new();
         let mut versions = Vec::new();
         let mut marker = String::new();
-        let mut marker_expr = HashMap::new();
+        let mut marker_expr = HashMap::new(); // TODO: make this an option
 
         let inner_pairs: Vec<_> = parse_result.into_inner().collect();
         for pair in inner_pairs {
@@ -316,7 +315,7 @@ impl DepSpec {
     }
 
     //--------------------------------------------------------------------------
-    pub(crate) fn validate_version(&self, version: &VersionSpec) -> bool {
+    fn validate_version(&self, version: &VersionSpec) -> bool {
         // operators and versions are always the same length
         for (op, spec_version) in self.operators.iter().zip(&self.versions) {
             let valid = match op {
@@ -338,7 +337,7 @@ impl DepSpec {
         true
     }
 
-    pub(crate) fn validate_url(&self, package: &Package) -> bool {
+    fn validate_url(&self, package: &Package) -> bool {
         // if the DepSpec has a URL (the requirements specfied a URL) we have to validate that the installed package has a direct url.
         if let Some(url) = &self.url {
             if let Some(durl) = &package.direct_url {
@@ -351,7 +350,7 @@ impl DepSpec {
         true
     }
 
-    #[allow(dead_code)]
+    // Primary public interfaced for validation
     pub(crate) fn validate_package(&self, package: &Package) -> bool {
         self.key == package.key
             && self.validate_version(&package.version)

@@ -303,7 +303,7 @@ impl DepManifest {
         permit_superset: bool,
     ) -> (bool, Option<&DepSpec>) {
         if let Some(ds) = self.dep_specs.get(&package.key) {
-            let valid = ds.validate_version(&package.version) && ds.validate_url(package);
+            let valid = ds.validate_package(package);
             (valid, Some(ds))
         } else {
             (permit_superset, None) // cannot get a dep spec

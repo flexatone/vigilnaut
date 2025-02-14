@@ -105,7 +105,12 @@ impl EnvMarkerState {
 
     //--------------------------------------------------------------------------
 
-    fn eval_version(&self, left_value: &str, operator: &str, right_value: &str) -> ResultDynError<bool> {
+    fn eval_version(
+        &self,
+        left_value: &str,
+        operator: &str,
+        right_value: &str,
+    ) -> ResultDynError<bool> {
         let lv = VersionSpec::new(left_value);
         let rv = VersionSpec::new(right_value);
         let result = match operator {
@@ -126,7 +131,12 @@ impl EnvMarkerState {
         Ok(result)
     }
 
-    fn eval_string(&self, left_value: &str, operator: &str, right_value: &str) -> ResultDynError<bool> {
+    fn eval_string(
+        &self,
+        left_value: &str,
+        operator: &str,
+        right_value: &str,
+    ) -> ResultDynError<bool> {
         let result = match operator {
             "<" => left_value < right_value,
             "<=" => left_value <= right_value,
@@ -164,10 +174,7 @@ impl EnvMarkerState {
             self.eval_string(left_value, &eme.operator, &eme.right)
         }
     }
-
 }
-
-
 
 //------------------------------------------------------------------------------
 
@@ -463,5 +470,4 @@ mod tests {
         let eme3 = EnvMarkerExpr::new("platform_machine", "not in", "unarm64");
         assert_eq!(emv.eval(&eme3).unwrap(), false);
     }
-
 }
