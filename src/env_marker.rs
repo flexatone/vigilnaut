@@ -272,7 +272,11 @@ fn bexp_eval(tokens: &[BExpToken], lookup: &HashMap<String, bool>) -> bool {
         while *index < tokens.len() {
             match &tokens[*index] {
                 BExpToken::Phrase(phrase) => {
-                    println!("lookup phrase: {:?}", phrase);
+                    println!(
+                        "lookup phrase: {:?} lookup keys: {:?}",
+                        phrase,
+                        lookup.keys()
+                    );
                     result = *lookup.get(phrase).unwrap(); // should never happen
                     *index += 1;
                 }
@@ -561,6 +565,69 @@ mod tests {
     #[test]
     fn test_marker_eval_a3() {
         let ds = DepSpec::from_string("foo >= 3.4 ;(python_version > '2.0' and python_version < '2.7.9') or python_version < '3.5' or python_version >= '3.13'").unwrap();
+        let ems = EnvMarkerState::from_sample().unwrap();
+        assert_eq!(
+            marker_eval(&ds.marker, &ds.marker_expr.unwrap(), &ems).unwrap(),
+            true
+        )
+    }
+
+    #[test]
+    fn test_marker_eval_b1() {
+        let ds = DepSpec::from_string(
+            "foo >= 3.4 ;sys_platform == 'darwin' and platform_machine == 'arm64'",
+        )
+        .unwrap();
+        let ems = EnvMarkerState::from_sample().unwrap();
+        assert_eq!(
+            marker_eval(&ds.marker, &ds.marker_expr.unwrap(), &ems).unwrap(),
+            true
+        )
+    }
+
+    #[test]
+    fn test_marker_eval_b2() {
+        let ds = DepSpec::from_string("foo >= 3.4;   sys_platform == 'darwin' and platform_machine == 'arm64' and   platform_system   == 'foo' ").unwrap();
+        let ems = EnvMarkerState::from_sample().unwrap();
+        assert_eq!(
+            marker_eval(&ds.marker, &ds.marker_expr.unwrap(), &ems).unwrap(),
+            false
+        )
+    }
+
+    #[test]
+    fn test_marker_eval_b3() {
+        let ds = DepSpec::from_string("foo >= 3.4;   sys_platform == 'darwin' and platform_machine == 'arm64' and   platform_system   == 'Darwin' ").unwrap();
+        let ems = EnvMarkerState::from_sample().unwrap();
+        assert_eq!(
+            marker_eval(&ds.marker, &ds.marker_expr.unwrap(), &ems).unwrap(),
+            true
+        )
+    }
+
+    #[test]
+    fn test_marker_eval_c1() {
+        let ds = DepSpec::from_string("foo >= 3.4;   os_name == 'posix' and platform_python_implementation == 'CPython' and   platform_release  == '23.*' ").unwrap();
+        let ems = EnvMarkerState::from_sample().unwrap();
+        assert_eq!(
+            marker_eval(&ds.marker, &ds.marker_expr.unwrap(), &ems).unwrap(),
+            true
+        )
+    }
+
+    #[test]
+    fn test_marker_eval_c2() {
+        let ds = DepSpec::from_string("foo >= 3.4;   os_name == 'posix' and platform_python_implementation == 'foo' and   platform_release  == '23.*' ").unwrap();
+        let ems = EnvMarkerState::from_sample().unwrap();
+        assert_eq!(
+            marker_eval(&ds.marker, &ds.marker_expr.unwrap(), &ems).unwrap(),
+            false
+        )
+    }
+
+    #[test]
+    fn test_marker_eval_c3() {
+        let ds = DepSpec::from_string("foo >= 3.4;   os_name == 'posix' and platform_python_implementation == 'CPython' and  implementation_name  == 'cpython' ").unwrap();
         let ems = EnvMarkerState::from_sample().unwrap();
         assert_eq!(
             marker_eval(&ds.marker, &ds.marker_expr.unwrap(), &ems).unwrap(),

@@ -98,7 +98,7 @@ fn extract_marker_expr(
             if inner_pairs.len() == 1 {
                 let inner = inner_pairs.next().unwrap();
                 if matches!(inner.as_rule(), Rule::marker_or | Rule::marker_and) {
-                    extract_marker_expr(inner, exprs); // Unwrap and process its contents
+                    extract_marker_expr(inner, exprs);
                     return;
                 }
             }
@@ -107,7 +107,11 @@ fn extract_marker_expr(
             let right = inner_pairs.next().map(extract_marker_component);
             if let (Some(left), Some(operator), Some(right)) = (left, operator, right) {
                 exprs.insert(
-                    pair.as_str().to_string(),
+                    // normalize all whitespace to one space
+                    pair.as_str()
+                        .split_whitespace()
+                        .collect::<Vec<_>>()
+                        .join(" "),
                     EnvMarkerExpr {
                         left,
                         operator,
@@ -233,7 +237,15 @@ impl DepSpec {
                     }
                 }
                 Rule::quoted_marker => {
-                    marker = pair.as_str().trim_start_matches(';').trim().to_string();
+                    // normalize all whitespace to one space
+                    marker = pair
+                        .as_str()
+                        .trim_start_matches(';')
+                        .split_whitespace()
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    println!("marker: {}", marker);
+                    // marker = pair.as_str().trim_start_matches(';').trim().to_string();
                     if !marker.is_empty() {
                         // only create hashmap if we hae content
                         let mut me: HashMap<String, EnvMarkerExpr> = HashMap::new();
@@ -365,17 +377,21 @@ impl DepSpec {
 
 impl fmt::Display for DepSpec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let marker = match self.marker.is_empty() {
+            true => "".to_string(),
+            false => format!("; {}", &self.marker),
+        };
         let mut parts = Vec::new();
         // if we have versions, we do not need URL
         if !self.versions.is_empty() {
             for (op, ver) in self.operators.iter().zip(self.versions.iter()) {
                 parts.push(format!("{}{}", op, ver));
             }
-            write!(f, "{}{}", self.name, parts.join(","))
+            write!(f, "{}{}{}", self.name, parts.join(","), marker)
         } else if let Some(url) = &self.url {
-            write!(f, "{} @ {}", self.name, url_strip_user(url))
+            write!(f, "{} @ {}{}", self.name, url_strip_user(url), marker)
         } else {
-            write!(f, "{}", self.name)
+            write!(f, "{}{}", self.name, marker)
         }
     }
 }
@@ -479,6 +495,12 @@ mod tests {
     fn test_dep_spec_h5() {
         let ds1 = DepSpec::from_string("pip @ https://github.com/pypa/pip/archive/1.3.1.zip#sha1=da9234ee9982d4bbb3c72346a6de940a148ea686").unwrap();
         assert_eq!(ds1.to_string(), "pip @ https://github.com/pypa/pip/archive/1.3.1.zip#sha1=da9234ee9982d4bbb3c72346a6de940a148ea686");
+    }
+
+    #[test]
+    fn test_dep_spec_i1() {
+        let ds1 = DepSpec::from_string("foo >= 3.4; os_name == 'posix' and platform_python_implementation == 'CPython' and   implementation_name ==   'cpython' ").unwrap();
+        assert_eq!(ds1.to_string(), "foo>=3.4; os_name == 'posix' and platform_python_implementation == 'CPython' and implementation_name == 'cpython'");
     }
 
     //--------------------------------------------------------------------------
