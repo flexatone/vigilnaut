@@ -481,7 +481,6 @@ mod tests {
         assert_eq!(emv.eval(&eme3).unwrap(), false);
     }
 
-
     // #[test]
     // fn test_env_mark_value_get() {
     //     let env = EnvMarkerState::from_sample().unwrap();
