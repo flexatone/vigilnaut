@@ -21,65 +21,63 @@ enum BExpToken {
 fn bexp_tokenize(expr: &str) -> Vec<BExpToken> {
     let mut tokens = Vec::new();
     let mut chars = expr.chars().peekable();
-    let mut word = String::new(); // Buffer for phrases
+    let mut phrase = String::new();
 
     while let Some(&ch) = chars.peek() {
         match ch {
             '(' => {
-                if !word.is_empty() {
-                    tokens.push(BExpToken::Phrase(word.clone()));
-                    word.clear();
+                if !phrase.is_empty() {
+                    tokens.push(BExpToken::Phrase(phrase.clone()));
+                    phrase.clear();
                 }
                 tokens.push(BExpToken::ParenOpen);
                 chars.next();
             }
             ')' => {
-                if !word.is_empty() {
-                    tokens.push(BExpToken::Phrase(word.clone()));
-                    word.clear();
+                if !phrase.is_empty() {
+                    tokens.push(BExpToken::Phrase(phrase.clone()));
+                    phrase.clear();
                 }
                 tokens.push(BExpToken::ParenClose);
                 chars.next();
             }
             _ => {
-                // Read characters into word buffer
                 while let Some(&c) = chars.peek() {
                     if c == ' ' {
                         // only accumulate if not leading
-                        if !word.is_empty() {
-                            word.push(c);
+                        if !phrase.is_empty() {
+                            phrase.push(c);
                         }
                         chars.next();
-                    } else if c.is_alphanumeric() || c == '_' || c == '\"' || c == '\'' {
-                        word.push(c);
+                    } else if c != '(' && c != ')' {
+                        phrase.push(c);
                         chars.next();
 
-                        if c == 'r' && word.ends_with(" or") {
-                            let pre_op = word[..word.len() - 3].trim();
+                        if c == 'r' && phrase.ends_with(" or") {
+                            let pre_op = phrase[..phrase.len() - 3].trim();
                             if !pre_op.is_empty() {
                                 tokens.push(BExpToken::Phrase(pre_op.to_string()));
                             }
                             tokens.push(BExpToken::Or);
-                            word.clear();
-                        } else if c == 'd' && word.ends_with(" and") {
-                            let pre_op = word[..word.len() - 4].trim();
+                            phrase.clear();
+                        } else if c == 'd' && phrase.ends_with(" and") {
+                            let pre_op = phrase[..phrase.len() - 4].trim();
                             if !pre_op.is_empty() {
                                 tokens.push(BExpToken::Phrase(pre_op.to_string()));
                             }
                             tokens.push(BExpToken::And);
-                            word.clear();
+                            phrase.clear();
                         }
-                        // keep accumulating works
                     } else {
-                        break;
+                        break; // c is ( or )
                     }
                 }
             }
         }
     }
     // Push any remaining phrase
-    if !word.is_empty() {
-        tokens.push(BExpToken::Phrase(word.clone()));
+    if !phrase.is_empty() {
+        tokens.push(BExpToken::Phrase(phrase.clone()));
     }
     tokens
 }
@@ -129,7 +127,6 @@ fn bexp_eval(tokens: &[BExpToken], lookup: &HashMap<String, bool>) -> bool {
         }
         result
     }
-
     eval(tokens, &mut index, lookup)
 }
 
@@ -152,7 +149,6 @@ mod tests {
         .collect();
 
         let tokens = bexp_tokenize(expression);
-        println!("{:?}", tokens);
         let result = bexp_eval(&tokens, &lookup);
         assert_eq!(result, false);
     }
@@ -170,7 +166,6 @@ mod tests {
         .collect();
 
         let tokens = bexp_tokenize(expression);
-        println!("{:?}", tokens);
         let result = bexp_eval(&tokens, &lookup);
         assert_eq!(result, true);
     }
@@ -188,7 +183,6 @@ mod tests {
         .collect();
 
         let tokens = bexp_tokenize(expression);
-        println!("{:?}", tokens);
         let result = bexp_eval(&tokens, &lookup);
         assert_eq!(result, false);
     }
@@ -206,8 +200,76 @@ mod tests {
         .collect();
 
         let tokens = bexp_tokenize(expression);
+        let result = bexp_eval(&tokens, &lookup);
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn test_bexp_e1() {
+        let expression = "foo and bar";
+
+        let lookup: HashMap<String, bool> =
+            vec![("foo".to_string(), true), ("bar".to_string(), true)]
+                .into_iter()
+                .collect();
+
+        let tokens = bexp_tokenize(expression);
         println!("{:?}", tokens);
         let result = bexp_eval(&tokens, &lookup);
         assert_eq!(result, true);
+    }
+
+    #[test]
+    fn test_bexp_e2() {
+        let expression = "foo and bar";
+
+        let lookup: HashMap<String, bool> =
+            vec![("foo".to_string(), true), ("bar".to_string(), false)]
+                .into_iter()
+                .collect();
+
+        let tokens = bexp_tokenize(expression);
+        let result = bexp_eval(&tokens, &lookup);
+        assert_eq!(result, false);
+    }
+
+    #[test]
+    fn test_bexp_f1() {
+        let expression = "foo and (bar or (baz or (zab or pax)))";
+
+        let lookup: HashMap<String, bool> = vec![
+            ("foo".to_string(), true),
+            ("bar".to_string(), false),
+            ("baz".to_string(), false),
+            ("zab".to_string(), false),
+            ("pax".to_string(), true),
+        ]
+        .into_iter()
+        .collect();
+
+        let tokens = bexp_tokenize(expression);
+        println!("{:?}", tokens);
+        let result = bexp_eval(&tokens, &lookup);
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn test_bexp_f2() {
+        let expression = "foo and (bar or (baz or (zab or pax)))";
+
+        let lookup: HashMap<String, bool> = vec![
+            ("foo".to_string(), true),
+            ("bar".to_string(), false),
+            ("baz".to_string(), false),
+            ("zab".to_string(), false),
+            ("pax".to_string(), false),
+        ]
+        .into_iter()
+        .collect();
+
+        let tokens = bexp_tokenize(expression);
+        println!("{:?}", tokens);
+        let result = bexp_eval(&tokens, &lookup);
+        assert_eq!(result, false);
     }
 }
