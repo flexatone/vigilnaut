@@ -41,7 +41,7 @@ const PY_ENV_MARKERS: &str = "import os;import sys;import platform;print(os.name
 
 // NOTE: not implementing "implementation_version", "platform.version", or "extra"
 #[derive(Debug)]
-struct EnvMarkerState {
+pub(crate) struct EnvMarkerState {
     os_name: String,
     sys_platform: String,
     platform_machine: String,
@@ -59,7 +59,7 @@ enum EvalType {
 }
 
 impl EnvMarkerState {
-    fn from_exe(executable: &Path) -> ResultDynError<Self> {
+    pub(crate) fn from_exe(executable: &Path) -> ResultDynError<Self> {
         let output = Command::new(executable)
             .arg("-S") // disable site on startup
             .arg("-c")

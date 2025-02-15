@@ -40,7 +40,7 @@ use crate::util::DURATION_0;
 use crate::validation_report::ValidationFlags;
 use crate::validation_report::ValidationRecord;
 use crate::validation_report::ValidationReport;
-
+use crate::env_marker::EnvMarkerState;
 //------------------------------------------------------------------------------
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum Anchor {
@@ -124,6 +124,9 @@ pub(crate) struct ScanFS {
     pub(crate) exe_to_sites: HashMap<PathBuf, Vec<PathShared>>,
     /// A mapping of Package tp a site package paths
     pub(crate) package_to_sites: HashMap<Package, Vec<PathShared>>,
+    /// Optionally populate EnvMarkerState for all exe, only if env markers are found
+    pub(crate) exe_to_ems: Option<HashMap<PathBuf, EnvMarkerState>>,
+    /// Optionally force usage of user site
     force_usite: bool,
     /// Store the hash of the un-normalized exe inputs for cache lookup.
     exes_hash: String,
@@ -307,8 +310,12 @@ impl ScanFS {
     }
 
     //--------------------------------------------------------------------------
-    // searching
 
+    pub(crate) fn load_env_marker_state(&self) {
+
+    }
+
+    // searching
     pub(crate) fn search_by_match(
         &self,
         pattern: &str,
@@ -324,8 +331,6 @@ impl ScanFS {
             .collect();
         matched
     }
-
-    //--------------------------------------------------------------------------
 
     /// Return sorted packages.
     pub(crate) fn get_packages(&self) -> Vec<Package> {
