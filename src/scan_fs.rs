@@ -13,6 +13,7 @@ use std::time::Duration;
 
 use rayon::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use ureq::rustls::crypto::hash::Hash;
 
 use crate::audit_report::AuditReport;
 use crate::count_report::CountReport;
@@ -177,6 +178,7 @@ impl<'de> Deserialize<'de> for ScanFS {
         Ok(ScanFS {
             exe_to_sites,
             package_to_sites,
+            exe_to_ems: None,
             force_usite,
             exes_hash,
         })
@@ -213,6 +215,7 @@ impl ScanFS {
         Ok(ScanFS {
             exe_to_sites,
             package_to_sites,
+            exe_to_ems: None,
             force_usite,
             exes_hash,
         })
@@ -304,6 +307,7 @@ impl ScanFS {
         Ok(ScanFS {
             exe_to_sites,
             package_to_sites,
+            exe_to_ems: None,
             force_usite,
             exes_hash,
         })
@@ -311,8 +315,16 @@ impl ScanFS {
 
     //--------------------------------------------------------------------------
 
-    pub(crate) fn load_env_marker_state(&self) {
-
+    // If not set, optionally load EnvMarkerState for each exe
+    pub(crate) fn load_env_marker_state(&mut self) -> ResultDynError<()> {
+        if self.exe_to_ems.is_none() {
+            let mut ems_map = HashMap::new();
+            for exe in self.exe_to_sites.keys() {
+                ems_map.insert(exe.clone(), EnvMarkerState::from_exe(exe)?);
+            }
+            self.exe_to_ems = Some(ems_map);
+        }
+        Ok(())
     }
 
     // searching
@@ -1008,6 +1020,7 @@ mod tests {
         let sfs = ScanFS {
             exe_to_sites,
             package_to_sites,
+            exe_to_ems: None,
             force_usite,
             exes_hash,
         };
