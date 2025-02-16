@@ -124,6 +124,9 @@ pub(crate) struct ScanFS {
     pub(crate) exe_to_sites: HashMap<PathBuf, Vec<PathShared>>,
     /// A mapping of Package tp a site package paths
     pub(crate) package_to_sites: HashMap<Package, Vec<PathShared>>,
+
+    // A mapping of site package to exe paths
+
     /// Optionally populate EnvMarkerState for all exe, only if env markers are found
     pub(crate) exe_to_ems: Option<HashMap<PathBuf, EnvMarkerState>>,
     /// Optionally force usage of user site
@@ -391,6 +394,7 @@ impl ScanFS {
 
         // iterate over found packages in order for better reporting
         for package in self.get_packages() {
+            // For each package, if the DepManifest has env_marker_active, we have to get the EnvMarkerState for the python exe from which this Package came. That means that we hae to get each site package associated with this Package, git the exe for each site package, and then determine if the dependency remains after filtering EnvMarkerState
             let (valid, ds) = dm.validate(&package, vf.permit_superset);
             if let Some(ds) = ds {
                 ds_keys_matched.insert(&ds.key);

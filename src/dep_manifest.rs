@@ -297,6 +297,7 @@ impl DepManifest {
         self.dep_specs.len()
     }
 
+    // Given a Package, return true or false if it is valid. This is the main public interface for validation.
     pub(crate) fn validate(
         &self,
         package: &Package,
