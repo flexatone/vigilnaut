@@ -69,9 +69,6 @@ impl Tableable<DepManifestRecord> for DepManifestReport {
 #[derive(Debug, Clone)]
 pub(crate) struct DepManifest {
     dep_specs: HashMap<String, DepSpec>,
-    // dep_spec_pool: Vec<DepSpec>
-    // mapping from exe to dependency map
-    // dep_specs: HashMap<PathBuf, HashMap<String, &DepSpec>>
 }
 
 impl DepManifest {

@@ -318,6 +318,7 @@ impl ScanFS {
     // If not set, optionally load EnvMarkerState for each exe
     pub(crate) fn load_env_marker_state(&mut self) -> ResultDynError<()> {
         if self.exe_to_ems.is_none() {
+            // TODO: multi-thread
             let mut ems_map = HashMap::new();
             for exe in self.exe_to_sites.keys() {
                 ems_map.insert(exe.clone(), EnvMarkerState::from_exe(exe)?);
