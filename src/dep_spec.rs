@@ -9,7 +9,9 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
+use crate::env_marker::marker_eval;
 use crate::env_marker::EnvMarkerExpr;
+use crate::env_marker::EnvMarkerState;
 use crate::package::Package;
 use crate::util::name_to_key;
 use crate::util::url_strip_user;
@@ -366,11 +368,22 @@ impl DepSpec {
         true
     }
 
+    //--------------------------------------------------------------------------
+    // public validators
+
     // Primary public interfaced for validation
     pub(crate) fn validate_package(&self, package: &Package) -> bool {
         self.key == package.key
             && self.validate_version(&package.version)
             && self.validate_url(package)
+    }
+
+    // Given an EnvMarkerState, determine if this DepSpec should be included.
+    pub(crate) fn validate_env_marker(&self, ems: &EnvMarkerState) -> bool {
+        if let Some(me) = &self.marker_expr {
+            return marker_eval(&self.marker, &me, ems).unwrap();
+        }
+        true
     }
 }
 
@@ -972,5 +985,24 @@ mod tests {
                 "python_version >= '3.0'"
             ]
         );
+    }
+
+    //--------------------------------------------------------------------------
+    #[test]
+    fn test_dep_spec_validate_env_marker_a1() {
+        let input = "foo >= 3.4 ;(python_version > '2.0' and python_version < '2.7.9') or python_version >= '3.0'";
+        let ds1 = DepSpec::from_string(input).unwrap();
+
+        let em = EnvMarkerState::from_sample().unwrap();
+        assert_eq!(ds1.validate_env_marker(&em), true);
+    }
+
+    #[test]
+    fn test_dep_spec_validate_env_marker_a2() {
+        let input = "foo >= 3.4 ;(python_version > '2.0' and python_version < '2.7.9') or python_version < '3.12'";
+        let ds1 = DepSpec::from_string(input).unwrap();
+
+        let em = EnvMarkerState::from_sample().unwrap();
+        assert_eq!(ds1.validate_env_marker(&em), false);
     }
 }

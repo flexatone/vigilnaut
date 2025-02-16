@@ -88,7 +88,7 @@ impl EnvMarkerState {
 
     /// For testing.
     #[allow(dead_code)]
-    fn from_sample() -> ResultDynError<Self> {
+    pub(crate) fn from_sample() -> ResultDynError<Self> {
         Ok(EnvMarkerState {
             os_name: "posix".to_string(),
             sys_platform: "darwin".to_string(),
@@ -311,7 +311,7 @@ fn bexp_eval(tokens: &[BExpToken], lookup: &HashMap<String, bool>) -> bool {
 }
 
 // Given an EMS (which will need to be stored in HashMap<ExePath, EnvMarkerState>), validate the marker string.
-fn marker_eval(
+pub(crate) fn marker_eval(
     marker: &str,
     marker_expr: &HashMap<String, EnvMarkerExpr>,
     ems: &EnvMarkerState,

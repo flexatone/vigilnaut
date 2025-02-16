@@ -13,13 +13,13 @@ use std::time::Duration;
 
 use rayon::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use ureq::rustls::crypto::hash::Hash;
 
 use crate::audit_report::AuditReport;
 use crate::count_report::CountReport;
 use crate::dep_manifest::DepManifest;
 use crate::dep_spec::DepOperator;
 use crate::dep_spec::DepSpec;
+use crate::env_marker::EnvMarkerState;
 use crate::exe_search::find_exe;
 use crate::package::Package;
 use crate::package_match::match_str;
@@ -41,7 +41,6 @@ use crate::util::DURATION_0;
 use crate::validation_report::ValidationFlags;
 use crate::validation_report::ValidationRecord;
 use crate::validation_report::ValidationReport;
-use crate::env_marker::EnvMarkerState;
 //------------------------------------------------------------------------------
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum Anchor {
