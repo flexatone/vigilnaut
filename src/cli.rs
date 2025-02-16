@@ -508,6 +508,7 @@ where
             superset,
             subcommands,
         }) => {
+            // a DepManifest can be specialized for different python versions; if any DepManifest constituents have
             let dm = DepManifest::from_path_or_url(bound, bound_options.as_ref())?;
             let permit_superset = *superset;
             let permit_subset = *subset;

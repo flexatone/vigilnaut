@@ -19,6 +19,7 @@ use crate::count_report::CountReport;
 use crate::dep_manifest::DepManifest;
 use crate::dep_spec::DepOperator;
 use crate::dep_spec::DepSpec;
+use crate::env_marker::EnvMarkerState;
 use crate::exe_search::find_exe;
 use crate::package::Package;
 use crate::package_match::match_str;
@@ -40,7 +41,6 @@ use crate::util::DURATION_0;
 use crate::validation_report::ValidationFlags;
 use crate::validation_report::ValidationRecord;
 use crate::validation_report::ValidationReport;
-
 //------------------------------------------------------------------------------
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum Anchor {
@@ -124,6 +124,12 @@ pub(crate) struct ScanFS {
     pub(crate) exe_to_sites: HashMap<PathBuf, Vec<PathShared>>,
     /// A mapping of Package tp a site package paths
     pub(crate) package_to_sites: HashMap<Package, Vec<PathShared>>,
+
+    // A mapping of site package to exe paths
+
+    /// Optionally populate EnvMarkerState for all exe, only if env markers are found
+    pub(crate) exe_to_ems: Option<HashMap<PathBuf, EnvMarkerState>>,
+    /// Optionally force usage of user site
     force_usite: bool,
     /// Store the hash of the un-normalized exe inputs for cache lookup.
     exes_hash: String,
@@ -174,6 +180,7 @@ impl<'de> Deserialize<'de> for ScanFS {
         Ok(ScanFS {
             exe_to_sites,
             package_to_sites,
+            exe_to_ems: None,
             force_usite,
             exes_hash,
         })
@@ -210,6 +217,7 @@ impl ScanFS {
         Ok(ScanFS {
             exe_to_sites,
             package_to_sites,
+            exe_to_ems: None,
             force_usite,
             exes_hash,
         })
@@ -301,14 +309,28 @@ impl ScanFS {
         Ok(ScanFS {
             exe_to_sites,
             package_to_sites,
+            exe_to_ems: None,
             force_usite,
             exes_hash,
         })
     }
 
     //--------------------------------------------------------------------------
-    // searching
 
+    // If not set, optionally load EnvMarkerState for each exe
+    pub(crate) fn load_env_marker_state(&mut self) -> ResultDynError<()> {
+        if self.exe_to_ems.is_none() {
+            // TODO: multi-thread
+            let mut ems_map = HashMap::new();
+            for exe in self.exe_to_sites.keys() {
+                ems_map.insert(exe.clone(), EnvMarkerState::from_exe(exe)?);
+            }
+            self.exe_to_ems = Some(ems_map);
+        }
+        Ok(())
+    }
+
+    // searching
     pub(crate) fn search_by_match(
         &self,
         pattern: &str,
@@ -324,8 +346,6 @@ impl ScanFS {
             .collect();
         matched
     }
-
-    //--------------------------------------------------------------------------
 
     /// Return sorted packages.
     pub(crate) fn get_packages(&self) -> Vec<Package> {
@@ -374,6 +394,7 @@ impl ScanFS {
 
         // iterate over found packages in order for better reporting
         for package in self.get_packages() {
+            // For each package, if the DepManifest has env_marker_active, we have to get the EnvMarkerState for the python exe from which this Package came. That means that we hae to get each site package associated with this Package, git the exe for each site package, and then determine if the dependency remains after filtering EnvMarkerState
             let (valid, ds) = dm.validate(&package, vf.permit_superset);
             if let Some(ds) = ds {
                 ds_keys_matched.insert(&ds.key);
@@ -1003,6 +1024,7 @@ mod tests {
         let sfs = ScanFS {
             exe_to_sites,
             package_to_sites,
+            exe_to_ems: None,
             force_usite,
             exes_hash,
         };

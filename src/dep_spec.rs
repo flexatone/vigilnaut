@@ -1,5 +1,6 @@
 use pest::Parser;
 use pest_derive::Parser;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fmt;
@@ -8,6 +9,9 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
+use crate::env_marker::marker_eval;
+use crate::env_marker::EnvMarkerExpr;
+use crate::env_marker::EnvMarkerState;
 use crate::package::Package;
 use crate::util::name_to_key;
 use crate::util::url_strip_user;
@@ -71,6 +75,61 @@ impl fmt::Display for DepOperator {
     }
 }
 
+fn extract_marker_component(pair: pest::iterators::Pair<Rule>) -> String {
+    let s = pair.as_str().trim();
+    if (s.starts_with('"') && s.ends_with('"'))
+        || (s.starts_with('\'') && s.ends_with('\''))
+    {
+        s[1..s.len() - 1].to_string()
+    } else {
+        s.to_string()
+    }
+}
+
+// Collect all environment marker expression into structured binary expressions
+fn extract_marker_expr(
+    pair: pest::iterators::Pair<Rule>,
+    exprs: &mut HashMap<String, EnvMarkerExpr>,
+) {
+    match pair.as_rule() {
+        Rule::marker_expr => {
+            let mut inner_pairs = pair.clone().into_inner();
+
+            // contains only one parenthesized marker_or or marker_and
+            if inner_pairs.len() == 1 {
+                let inner = inner_pairs.next().unwrap();
+                if matches!(inner.as_rule(), Rule::marker_or | Rule::marker_and) {
+                    extract_marker_expr(inner, exprs);
+                    return;
+                }
+            }
+            let left = inner_pairs.next().map(extract_marker_component);
+            let operator = inner_pairs.next().map(extract_marker_component);
+            let right = inner_pairs.next().map(extract_marker_component);
+            if let (Some(left), Some(operator), Some(right)) = (left, operator, right) {
+                exprs.insert(
+                    // normalize all whitespace to one space
+                    pair.as_str()
+                        .split_whitespace()
+                        .collect::<Vec<_>>()
+                        .join(" "),
+                    EnvMarkerExpr {
+                        left,
+                        operator,
+                        right,
+                    },
+                );
+            }
+        }
+        Rule::marker_or | Rule::marker_and | Rule::marker => {
+            for inner in pair.into_inner() {
+                extract_marker_expr(inner, exprs);
+            }
+        }
+        _ => {}
+    }
+}
+
 // Dependency Specification: A model of a specification for one package with pairs of versions and operators, such as "numpy>1.18,<2.0".
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct DepSpec {
@@ -79,6 +138,8 @@ pub(crate) struct DepSpec {
     pub(crate) url: Option<String>,
     operators: Vec<DepOperator>,
     versions: Vec<VersionSpec>,
+    pub(crate) marker: String,
+    pub(crate) marker_expr: Option<HashMap<String, EnvMarkerExpr>>,
 }
 
 impl DepSpec {
@@ -107,6 +168,8 @@ impl DepSpec {
                     url: Some(input.to_string()),
                     operators,
                     versions,
+                    marker: String::new(),
+                    marker_expr: None,
                 });
             }
         }
@@ -136,6 +199,8 @@ impl DepSpec {
         let mut url = None;
         let mut operators = Vec::new();
         let mut versions = Vec::new();
+        let mut marker = String::new();
+        let mut marker_expr: Option<HashMap<String, EnvMarkerExpr>> = None;
 
         let inner_pairs: Vec<_> = parse_result.into_inner().collect();
         for pair in inner_pairs {
@@ -172,6 +237,25 @@ impl DepSpec {
                         versions.push(VersionSpec::new(&version));
                     }
                 }
+                Rule::quoted_marker => {
+                    // normalize all whitespace to one space
+                    marker = pair
+                        .as_str()
+                        .trim_start_matches(';')
+                        .split_whitespace()
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    println!("marker: {}", marker);
+                    // marker = pair.as_str().trim_start_matches(';').trim().to_string();
+                    if !marker.is_empty() {
+                        // only create hashmap if we hae content
+                        let mut me: HashMap<String, EnvMarkerExpr> = HashMap::new();
+                        for inner_pair in pair.into_inner() {
+                            extract_marker_expr(inner_pair, &mut me);
+                        }
+                        marker_expr = Some(me);
+                    }
+                }
                 _ => {}
             }
         }
@@ -196,6 +280,8 @@ impl DepSpec {
             url,
             operators,
             versions,
+            marker,
+            marker_expr,
         })
     }
     /// Create a DepSpec from a Package struct.
@@ -213,6 +299,8 @@ impl DepSpec {
             url: None,
             operators,
             versions,
+            marker: String::new(),
+            marker_expr: None,
         })
     }
 
@@ -237,13 +325,15 @@ impl DepSpec {
                 url: None,
                 operators,
                 versions,
+                marker: String::new(),
+                marker_expr: None,
             });
         }
         Err(format!("Unreconcilable dependency specifiers: {:?}", dep_specs).into())
     }
 
     //--------------------------------------------------------------------------
-    pub(crate) fn validate_version(&self, version: &VersionSpec) -> bool {
+    fn validate_version(&self, version: &VersionSpec) -> bool {
         // operators and versions are always the same length
         for (op, spec_version) in self.operators.iter().zip(&self.versions) {
             let valid = match op {
@@ -265,7 +355,7 @@ impl DepSpec {
         true
     }
 
-    pub(crate) fn validate_url(&self, package: &Package) -> bool {
+    fn validate_url(&self, package: &Package) -> bool {
         // if the DepSpec has a URL (the requirements specfied a URL) we have to validate that the installed package has a direct url.
         if let Some(url) = &self.url {
             if let Some(durl) = &package.direct_url {
@@ -278,27 +368,42 @@ impl DepSpec {
         true
     }
 
-    #[allow(dead_code)]
+    //--------------------------------------------------------------------------
+    // public validators
+
+    // Primary public interfaced for validation
     pub(crate) fn validate_package(&self, package: &Package) -> bool {
         self.key == package.key
             && self.validate_version(&package.version)
             && self.validate_url(package)
     }
+
+    // Given an EnvMarkerState, determine if this DepSpec should be included.
+    pub(crate) fn validate_env_marker(&self, ems: &EnvMarkerState) -> bool {
+        if let Some(me) = &self.marker_expr {
+            return marker_eval(&self.marker, &me, ems).unwrap();
+        }
+        true
+    }
 }
 
 impl fmt::Display for DepSpec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let marker = match self.marker.is_empty() {
+            true => "".to_string(),
+            false => format!("; {}", &self.marker),
+        };
         let mut parts = Vec::new();
         // if we have versions, we do not need URL
         if !self.versions.is_empty() {
             for (op, ver) in self.operators.iter().zip(self.versions.iter()) {
                 parts.push(format!("{}{}", op, ver));
             }
-            write!(f, "{}{}", self.name, parts.join(","))
+            write!(f, "{}{}{}", self.name, parts.join(","), marker)
         } else if let Some(url) = &self.url {
-            write!(f, "{} @ {}", self.name, url_strip_user(url))
+            write!(f, "{} @ {}{}", self.name, url_strip_user(url), marker)
         } else {
-            write!(f, "{}", self.name)
+            write!(f, "{}{}", self.name, marker)
         }
     }
 }
@@ -402,6 +507,12 @@ mod tests {
     fn test_dep_spec_h5() {
         let ds1 = DepSpec::from_string("pip @ https://github.com/pypa/pip/archive/1.3.1.zip#sha1=da9234ee9982d4bbb3c72346a6de940a148ea686").unwrap();
         assert_eq!(ds1.to_string(), "pip @ https://github.com/pypa/pip/archive/1.3.1.zip#sha1=da9234ee9982d4bbb3c72346a6de940a148ea686");
+    }
+
+    #[test]
+    fn test_dep_spec_i1() {
+        let ds1 = DepSpec::from_string("foo >= 3.4; os_name == 'posix' and platform_python_implementation == 'CPython' and   implementation_name ==   'cpython' ").unwrap();
+        assert_eq!(ds1.to_string(), "foo>=3.4; os_name == 'posix' and platform_python_implementation == 'CPython' and implementation_name == 'cpython'");
     }
 
     //--------------------------------------------------------------------------
@@ -799,6 +910,99 @@ mod tests {
     fn test_dep_spec_json_a() {
         let ds = DepSpec::from_whl("https://example.com/app-1.0.whl").unwrap();
         let json = serde_json::to_string(&ds).unwrap();
-        assert_eq!(json, "{\"name\":\"app\",\"key\":\"app\",\"url\":\"https://example.com/app-1.0.whl\",\"operators\":[\"Eq\"],\"versions\":[\"1.0\"]}")
+        assert_eq!(json, "{\"name\":\"app\",\"key\":\"app\",\"url\":\"https://example.com/app-1.0.whl\",\"operators\":[\"Eq\"],\"versions\":[\"1.0\"],\"marker\":\"\",\"marker_expr\":null}")
+    }
+
+    //--------------------------------------------------------------------------
+    #[test]
+    fn test_dep_spec_env_marker_a() {
+        let input =
+            "requests [security,tests] >= 2.8.1, == 2.8.*, < 3; python_version < '2.7'";
+        let ds1 = DepSpec::from_string(input).unwrap();
+        assert_eq!(format!("{:?}", ds1.versions), "[VersionSpec([Number(2), Number(8), Number(1)]), VersionSpec([Number(2), Number(8), Text(\"*\")]), VersionSpec([Number(3)])]");
+        assert_eq!(
+            format!("{:?}", ds1.operators),
+            "[GreaterThanOrEq, Eq, LessThan]"
+        );
+        assert_eq!(ds1.marker, "python_version < '2.7'");
+        assert_eq!(format!("{:?}", ds1.marker_expr.unwrap()), "{\"python_version < '2.7'\": EnvMarkerExpr { left: \"python_version\", operator: \"<\", right: \"2.7\" }}");
+    }
+
+    #[test]
+    fn test_dep_spec_env_marker_b() {
+        let input = "foo >= 3.4 ; python_version < '2.7.9' or (python_version >= '3.0' and python_version < '3.4')";
+        let ds1 = DepSpec::from_string(input).unwrap();
+        assert_eq!(ds1.marker, "python_version < '2.7.9' or (python_version >= '3.0' and python_version < '3.4')");
+        // assert_eq!(ds1.marker_expr.len(), 3);
+
+        let mut keys: Vec<String> =
+            ds1.marker_expr.as_ref().unwrap().keys().cloned().collect();
+        keys.sort();
+        assert_eq!(
+            keys,
+            vec![
+                "python_version < '2.7.9'",
+                "python_version < '3.4'",
+                "python_version >= '3.0'"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_dep_spec_env_marker_c() {
+        let input = "foo >= 3.4 ;(python_version > '2.0' and python_version < '2.7.9') or (python_version >= '3.0' and python_version < '3.4')";
+        let ds1 = DepSpec::from_string(input).unwrap();
+        assert_eq!(ds1.marker, "(python_version > '2.0' and python_version < '2.7.9') or (python_version >= '3.0' and python_version < '3.4')");
+        assert_eq!(ds1.marker_expr.as_ref().unwrap().len(), 4);
+
+        let mut keys: Vec<String> = ds1.marker_expr.unwrap().keys().cloned().collect();
+        keys.sort();
+        assert_eq!(
+            keys,
+            vec![
+                "python_version < '2.7.9'",
+                "python_version < '3.4'",
+                "python_version > '2.0'",
+                "python_version >= '3.0'"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_dep_spec_env_marker_d() {
+        let input = "foo >= 3.4 ;(python_version > '2.0' and python_version < '2.7.9') or python_version >= '3.0'";
+        let ds1 = DepSpec::from_string(input).unwrap();
+        assert_eq!(ds1.marker, "(python_version > '2.0' and python_version < '2.7.9') or python_version >= '3.0'");
+        assert_eq!(ds1.marker_expr.as_ref().unwrap().len(), 3);
+
+        let mut keys: Vec<String> = ds1.marker_expr.unwrap().keys().cloned().collect();
+        keys.sort();
+        assert_eq!(
+            keys,
+            vec![
+                "python_version < '2.7.9'",
+                "python_version > '2.0'",
+                "python_version >= '3.0'"
+            ]
+        );
+    }
+
+    //--------------------------------------------------------------------------
+    #[test]
+    fn test_dep_spec_validate_env_marker_a1() {
+        let input = "foo >= 3.4 ;(python_version > '2.0' and python_version < '2.7.9') or python_version >= '3.0'";
+        let ds1 = DepSpec::from_string(input).unwrap();
+
+        let em = EnvMarkerState::from_sample().unwrap();
+        assert_eq!(ds1.validate_env_marker(&em), true);
+    }
+
+    #[test]
+    fn test_dep_spec_validate_env_marker_a2() {
+        let input = "foo >= 3.4 ;(python_version > '2.0' and python_version < '2.7.9') or python_version < '3.12'";
+        let ds1 = DepSpec::from_string(input).unwrap();
+
+        let em = EnvMarkerState::from_sample().unwrap();
+        assert_eq!(ds1.validate_env_marker(&em), false);
     }
 }

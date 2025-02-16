@@ -297,13 +297,14 @@ impl DepManifest {
         self.dep_specs.len()
     }
 
+    // Given a Package, return true or false if it is valid. This is the main public interface for validation.
     pub(crate) fn validate(
         &self,
         package: &Package,
         permit_superset: bool,
     ) -> (bool, Option<&DepSpec>) {
         if let Some(ds) = self.dep_specs.get(&package.key) {
-            let valid = ds.validate_version(&package.version) && ds.validate_url(package);
+            let valid = ds.validate_package(package);
             (valid, Some(ds))
         } else {
             (permit_superset, None) // cannot get a dep spec
