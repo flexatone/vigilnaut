@@ -124,8 +124,8 @@ pub(crate) struct ScanFS {
     pub(crate) exe_to_sites: HashMap<PathBuf, Vec<PathShared>>,
     /// A mapping of Package tp a site package paths
     pub(crate) package_to_sites: HashMap<Package, Vec<PathShared>>,
-
     // A mapping of site package to exe paths
+    pub(crate) site_to_exe: HashMap<PathShared, PathBuf>,
 
     /// Optionally populate EnvMarkerState for all exe, only if env markers are found
     pub(crate) exe_to_ems: Option<HashMap<PathBuf, EnvMarkerState>>,
@@ -147,10 +147,14 @@ impl Serialize for ScanFS {
         let mut package_to_sites: Vec<_> = self.package_to_sites.iter().collect();
         package_to_sites.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
 
+        let mut site_to_exe: Vec<_> = self.site_to_exe.iter().collect();
+        // site_to_exe.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
+
         // Serialize as tuple of sorted vectors
         let data = (
             &exe_to_sites,
             &package_to_sites,
+            &site_to_exe,
             self.force_usite,
             &self.exes_hash,
         );
@@ -162,6 +166,7 @@ impl Serialize for ScanFS {
 type ScanFSData = (
     Vec<(PathBuf, Vec<PathShared>)>,
     Vec<(Package, Vec<PathShared>)>,
+    Vec<(PathShared, PathBuf)>,
     bool,   // force_usite
     String, // exes hash
 );
@@ -171,15 +176,17 @@ impl<'de> Deserialize<'de> for ScanFS {
     where
         D: Deserializer<'de>,
     {
-        let (exe_to_sites, package_to_sites, force_usite, exes_hash): ScanFSData =
+        let (exe_to_sites, package_to_sites, site_to_exe, force_usite, exes_hash): ScanFSData =
             Deserialize::deserialize(deserializer)?;
 
         let exe_to_sites = exe_to_sites.into_iter().collect();
+        let site_to_exe = site_to_exe.into_iter().collect();
         let package_to_sites = package_to_sites.into_iter().collect();
 
         Ok(ScanFS {
             exe_to_sites,
             package_to_sites,
+            site_to_exe,
             exe_to_ems: None,
             force_usite,
             exes_hash,
@@ -205,6 +212,11 @@ impl ScanFS {
             })
             .collect::<HashMap<PathShared, Vec<Package>>>();
 
+        let site_to_exe: HashMap<PathShared, PathBuf> = exe_to_sites
+            .iter()
+            .flat_map(|(exe, sites)| sites.iter().map(|site| (site.clone(), exe.clone())))
+            .collect();
+
         let mut package_to_sites: HashMap<Package, Vec<PathShared>> = HashMap::new();
         for (site_package_path, packages) in site_to_packages.iter() {
             for package in packages {
@@ -217,6 +229,7 @@ impl ScanFS {
         Ok(ScanFS {
             exe_to_sites,
             package_to_sites,
+            site_to_exe,
             exe_to_ems: None,
             force_usite,
             exes_hash,
@@ -297,6 +310,11 @@ impl ScanFS {
         exe_to_sites.insert(exe.clone(), vec![site_shared.clone()]);
         let exes = vec![exe];
 
+        let site_to_exe: HashMap<PathShared, PathBuf> = exe_to_sites
+            .iter()
+            .flat_map(|(exe, sites)| sites.iter().map(|site| (site.clone(), exe.clone())))
+            .collect();
+
         let mut package_to_sites = HashMap::new();
         for package in packages {
             package_to_sites
@@ -309,6 +327,7 @@ impl ScanFS {
         Ok(ScanFS {
             exe_to_sites,
             package_to_sites,
+            site_to_exe,
             exe_to_ems: None,
             force_usite,
             exes_hash,
@@ -1012,18 +1031,23 @@ mod tests {
         exe_to_sites.insert(exe1.clone(), vec![site_shared1.clone()]);
         exe_to_sites.insert(exe2.clone(), vec![site_shared2.clone()]);
 
-        let exes = vec![exe1, exe2];
+        let exes = vec![exe1.clone(), exe2.clone()];
 
         let mut package_to_sites = HashMap::new();
         package_to_sites.insert(p1, vec![site_shared1.clone()]);
         package_to_sites.insert(p2, vec![site_shared1.clone()]);
-        package_to_sites.insert(p3, vec![site_shared1.clone(), site_shared2]);
+        package_to_sites.insert(p3, vec![site_shared1.clone(), site_shared2.clone()]);
+
+        let mut site_to_exe = HashMap::new();
+        site_to_exe.insert(site_shared1.clone(), exe1.clone());
+        site_to_exe.insert(site_shared2.clone(), exe2.clone());
 
         let force_usite = false;
         let exes_hash = hash_paths(&exes, force_usite);
         let sfs = ScanFS {
             exe_to_sites,
             package_to_sites,
+            site_to_exe,
             exe_to_ems: None,
             force_usite,
             exes_hash,
