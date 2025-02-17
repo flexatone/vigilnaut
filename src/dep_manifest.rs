@@ -135,15 +135,9 @@ impl DepManifest {
                         panic!("here")
                     }
                 };
-                ds.insert(
-                    dep_spec_new.key.clone(),
-                    DepSpecOOM::One(dep_spec_new),
-                );
+                ds.insert(dep_spec_new.key.clone(), DepSpecOOM::One(dep_spec_new));
             } else {
-                ds.insert(
-                    dep_spec.key.clone(),
-                    DepSpecOOM::One(dep_spec.clone()),
-                );
+                ds.insert(dep_spec.key.clone(), DepSpecOOM::One(dep_spec.clone()));
             }
         }
         Ok(DepManifest { dep_specs: ds })
