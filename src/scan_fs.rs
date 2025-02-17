@@ -776,7 +776,7 @@ mod tests {
                 permit_subset: false,
             },
         );
-        assert_eq!(sfs.exe_to_sites.get(&exe).unwrap()[0].strong_count(), 7);
+        assert_eq!(sfs.exe_to_sites.get(&exe).unwrap()[0].strong_count(), 8);
         let json = serde_json::to_string(&vr.to_validation_digest()).unwrap();
         assert_eq!(
             json,
@@ -977,7 +977,7 @@ mod tests {
         ];
         let sfs = ScanFS::from_exe_site_packages(exe, site, packages.clone()).unwrap();
         let json = serde_json::to_string(&sfs).unwrap();
-        assert_eq!(json, "[[[\"/usr/bin/python3\",[\"/usr/lib/python3/site-packages\"]]],[[{\"name\":\"flask\",\"key\":\"flask\",\"version\":\"1.1.3\",\"direct_url\":null},[\"/usr/lib/python3/site-packages\"]],[{\"name\":\"numpy\",\"key\":\"numpy\",\"version\":\"1.19.3\",\"direct_url\":null},[\"/usr/lib/python3/site-packages\"]],[{\"name\":\"static-frame\",\"key\":\"static_frame\",\"version\":\"2.13.0\",\"direct_url\":null},[\"/usr/lib/python3/site-packages\"]]],false,\"35cc8bbf5f965f99f2ed716a23e0cfbb70b8977ba65e837708e960fc13e51da2\"]");
+        assert_eq!(json, "[[[\"/usr/bin/python3\",[\"/usr/lib/python3/site-packages\"]]],[[{\"name\":\"flask\",\"key\":\"flask\",\"version\":\"1.1.3\",\"direct_url\":null},[\"/usr/lib/python3/site-packages\"]],[{\"name\":\"numpy\",\"key\":\"numpy\",\"version\":\"1.19.3\",\"direct_url\":null},[\"/usr/lib/python3/site-packages\"]],[{\"name\":\"static-frame\",\"key\":\"static_frame\",\"version\":\"2.13.0\",\"direct_url\":null},[\"/usr/lib/python3/site-packages\"]]],[[\"/usr/lib/python3/site-packages\",\"/usr/bin/python3\"]],false,\"35cc8bbf5f965f99f2ed716a23e0cfbb70b8977ba65e837708e960fc13e51da2\"]");
 
         let sfsd: ScanFS = serde_json::from_str(&json).unwrap();
         assert_eq!(sfsd.exe_to_sites.len(), 1);
