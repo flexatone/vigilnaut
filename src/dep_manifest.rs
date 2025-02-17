@@ -66,13 +66,15 @@ impl Tableable<DepManifestRecord> for DepManifestReport {
 }
 
 //------------------------------------------------------------------------------
+
+/// DepSpecOneOrMany
 #[derive(Debug, Clone)]
-enum DepSpecOneOrMany {
+enum DepSpecOOM {
     One(DepSpec),
     Many(Vec<DepSpec>),
 }
 
-impl DepSpecOneOrMany {
+impl DepSpecOOM {
     /// Converts the current entry into Many if necessary and inserts a new DepSpec
     fn add(self, dep: DepSpec) -> Self {
         match self {
@@ -89,7 +91,7 @@ impl DepSpecOneOrMany {
 // A DepManifest is a requirements listing, implemented as HashMap for quick lookup by package name.
 #[derive(Debug, Clone)]
 pub(crate) struct DepManifest {
-    dep_specs: HashMap<String, DepSpecOneOrMany>,
+    dep_specs: HashMap<String, DepSpecOOM>,
 }
 
 impl DepManifest {
@@ -101,47 +103,46 @@ impl DepManifest {
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        let mut dep_specs = HashMap::new();
+        let mut dep_specs: HashMap<String, DepSpecOOM> = HashMap::new();
         for line in ds_iter {
             let spec = line.as_ref().trim();
             if spec.is_empty() {
                 continue;
             }
             let dep_spec = DepSpec::from_string(spec)?;
-            if dep_specs.contains_key(&dep_spec.key) {
-                let dsoom: DepSpecOneOrMany = dep_specs.remove(&dep_spec.key).unwrap();
+            if let Some(dsoom) = dep_specs.remove(&dep_spec.key) {
                 dep_specs.insert(dep_spec.key.clone(), dsoom.add(dep_spec));
                 // return Err(
                 //     format!("Duplicate package key found: {}", dep_spec.key).into()
                 // );
             } else {
-                dep_specs.insert(dep_spec.key.clone(), DepSpecOneOrMany::One(dep_spec));
+                dep_specs.insert(dep_spec.key.clone(), DepSpecOOM::One(dep_spec));
             }
         }
         Ok(DepManifest { dep_specs })
     }
 
     pub(crate) fn from_dep_specs(dep_specs: &Vec<DepSpec>) -> ResultDynError<Self> {
-        let mut ds: HashMap<String, DepSpecOneOrMany> = HashMap::new();
+        let mut ds: HashMap<String, DepSpecOOM> = HashMap::new();
         for dep_spec in dep_specs {
             if let Some(dep_spec_prev) = ds.remove(&dep_spec.key) {
                 // remove and replace with composite
                 let dep_spec_new: DepSpec = match dep_spec_prev {
-                    DepSpecOneOrMany::One(dsn) => {
+                    DepSpecOOM::One(dsn) => {
                         DepSpec::from_dep_specs(vec![&dsn, &dep_spec])?
                     }
-                    DepSpecOneOrMany::Many(dsnv) => {
+                    DepSpecOOM::Many(dsnv) => {
                         panic!("here")
                     }
                 };
                 ds.insert(
                     dep_spec_new.key.clone(),
-                    DepSpecOneOrMany::One(dep_spec_new),
+                    DepSpecOOM::One(dep_spec_new),
                 );
             } else {
                 ds.insert(
                     dep_spec.key.clone(),
-                    DepSpecOneOrMany::One(dep_spec.clone()),
+                    DepSpecOOM::One(dep_spec.clone()),
                 );
             }
         }
@@ -315,8 +316,8 @@ impl DepManifest {
     pub(crate) fn get_dep_spec(&self, key: &str) -> Option<&DepSpec> {
         if let Some(dsoom) = self.dep_specs.get(key) {
             match dsoom {
-                DepSpecOneOrMany::One(ds) => Some(ds),
-                DepSpecOneOrMany::Many(dsoom) => {
+                DepSpecOOM::One(ds) => Some(ds),
+                DepSpecOOM::Many(dsoom) => {
                     panic!("here")
                 }
             }
@@ -354,11 +355,11 @@ impl DepManifest {
     ) -> (bool, Option<&DepSpec>) {
         if let Some(dsoom) = self.dep_specs.get(&package.key) {
             match dsoom {
-                DepSpecOneOrMany::One(ds) => {
+                DepSpecOOM::One(ds) => {
                     let valid = ds.validate_package(package);
                     (valid, Some(ds))
                 }
-                DepSpecOneOrMany::Many(dsv) => {
+                DepSpecOOM::Many(dsv) => {
                     panic!("not implemented")
                 }
             }
@@ -375,12 +376,12 @@ impl DepManifest {
         for key in self.keys() {
             if let Some(dsoom) = self.dep_specs.get(&key) {
                 match dsoom {
-                    DepSpecOneOrMany::One(ds) => {
+                    DepSpecOOM::One(ds) => {
                         records.push(DepManifestRecord {
                             dep_spec: ds.clone(),
                         });
                     }
-                    DepSpecOneOrMany::Many(ds) => {
+                    DepSpecOOM::Many(ds) => {
                         panic!("not implemented");
                     }
                 };
