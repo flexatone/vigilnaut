@@ -85,7 +85,6 @@ impl DepSpecOneOrMany {
     }
 }
 
-
 //------------------------------------------------------------------------------
 // A DepManifest is a requirements listing, implemented as HashMap for quick lookup by package name.
 #[derive(Debug, Clone)]
@@ -115,8 +114,7 @@ impl DepManifest {
                 // return Err(
                 //     format!("Duplicate package key found: {}", dep_spec.key).into()
                 // );
-            }
-            else {
+            } else {
                 dep_specs.insert(dep_spec.key.clone(), DepSpecOneOrMany::One(dep_spec));
             }
         }
@@ -131,14 +129,20 @@ impl DepManifest {
                 let dep_spec_new: DepSpec = match dep_spec_prev {
                     DepSpecOneOrMany::One(dsn) => {
                         DepSpec::from_dep_specs(vec![&dsn, &dep_spec])?
-                    },
+                    }
                     DepSpecOneOrMany::Many(dsnv) => {
                         panic!("here")
-                    },
+                    }
                 };
-                ds.insert(dep_spec_new.key.clone(), DepSpecOneOrMany::One(dep_spec_new));
+                ds.insert(
+                    dep_spec_new.key.clone(),
+                    DepSpecOneOrMany::One(dep_spec_new),
+                );
             } else {
-                ds.insert(dep_spec.key.clone(), DepSpecOneOrMany::One(dep_spec.clone()));
+                ds.insert(
+                    dep_spec.key.clone(),
+                    DepSpecOneOrMany::One(dep_spec.clone()),
+                );
             }
         }
         Ok(DepManifest { dep_specs: ds })
@@ -314,10 +318,9 @@ impl DepManifest {
                 DepSpecOneOrMany::One(ds) => Some(ds),
                 DepSpecOneOrMany::Many(dsoom) => {
                     panic!("here")
-                },
+                }
             }
-        }
-        else {
+        } else {
             None
         }
     }
@@ -376,10 +379,10 @@ impl DepManifest {
                         records.push(DepManifestRecord {
                             dep_spec: ds.clone(),
                         });
-                    },
+                    }
                     DepSpecOneOrMany::Many(ds) => {
                         panic!("not implemented");
-                    },
+                    }
                 };
             }
         }
