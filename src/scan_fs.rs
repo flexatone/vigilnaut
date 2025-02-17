@@ -147,7 +147,7 @@ impl Serialize for ScanFS {
         let mut package_to_sites: Vec<_> = self.package_to_sites.iter().collect();
         package_to_sites.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
 
-        let mut site_to_exe: Vec<_> = self.site_to_exe.iter().collect();
+        let site_to_exe: Vec<_> = self.site_to_exe.iter().collect();
         // site_to_exe.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
 
         // Serialize as tuple of sorted vectors

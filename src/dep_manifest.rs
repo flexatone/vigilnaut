@@ -1,3 +1,4 @@
+use core::panic;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
@@ -65,10 +66,31 @@ impl Tableable<DepManifestRecord> for DepManifestReport {
 }
 
 //------------------------------------------------------------------------------
+#[derive(Debug, Clone)]
+enum DepSpecOneOrMany {
+    One(DepSpec),
+    Many(Vec<DepSpec>),
+}
+
+impl DepSpecOneOrMany {
+    /// Converts the current entry into Many if necessary and inserts a new DepSpec
+    fn add(self, dep: DepSpec) -> Self {
+        match self {
+            Self::One(existing) => Self::Many(vec![existing, dep]),
+            Self::Many(mut vec) => {
+                vec.push(dep);
+                Self::Many(vec)
+            }
+        }
+    }
+}
+
+
+//------------------------------------------------------------------------------
 // A DepManifest is a requirements listing, implemented as HashMap for quick lookup by package name.
 #[derive(Debug, Clone)]
 pub(crate) struct DepManifest {
-    dep_specs: HashMap<String, DepSpec>,
+    dep_specs: HashMap<String, DepSpecOneOrMany>,
 }
 
 impl DepManifest {
@@ -88,25 +110,35 @@ impl DepManifest {
             }
             let dep_spec = DepSpec::from_string(spec)?;
             if dep_specs.contains_key(&dep_spec.key) {
-                return Err(
-                    format!("Duplicate package key found: {}", dep_spec.key).into()
-                );
+                let dsoom: DepSpecOneOrMany = dep_specs.remove(&dep_spec.key).unwrap();
+                dep_specs.insert(dep_spec.key.clone(), dsoom.add(dep_spec));
+                // return Err(
+                //     format!("Duplicate package key found: {}", dep_spec.key).into()
+                // );
             }
-            dep_specs.insert(dep_spec.key.clone(), dep_spec);
+            else {
+                dep_specs.insert(dep_spec.key.clone(), DepSpecOneOrMany::One(dep_spec));
+            }
         }
         Ok(DepManifest { dep_specs })
     }
 
     pub(crate) fn from_dep_specs(dep_specs: &Vec<DepSpec>) -> ResultDynError<Self> {
-        let mut ds: HashMap<String, DepSpec> = HashMap::new();
+        let mut ds: HashMap<String, DepSpecOneOrMany> = HashMap::new();
         for dep_spec in dep_specs {
             if let Some(dep_spec_prev) = ds.remove(&dep_spec.key) {
                 // remove and replace with composite
-                let dep_spec_new =
-                    DepSpec::from_dep_specs(vec![&dep_spec_prev, &dep_spec])?;
-                ds.insert(dep_spec_new.key.clone(), dep_spec_new);
+                let dep_spec_new: DepSpec = match dep_spec_prev {
+                    DepSpecOneOrMany::One(dsn) => {
+                        DepSpec::from_dep_specs(vec![&dsn, &dep_spec])?
+                    },
+                    DepSpecOneOrMany::Many(dsnv) => {
+                        panic!("here")
+                    },
+                };
+                ds.insert(dep_spec_new.key.clone(), DepSpecOneOrMany::One(dep_spec_new));
             } else {
-                ds.insert(dep_spec.key.clone(), dep_spec.clone());
+                ds.insert(dep_spec.key.clone(), DepSpecOneOrMany::One(dep_spec.clone()));
             }
         }
         Ok(DepManifest { dep_specs: ds })
@@ -118,7 +150,7 @@ impl DepManifest {
     pub(crate) fn from_requirements_file(file_path: &Path) -> ResultDynError<Self> {
         let mut files: VecDeque<PathBuf> = VecDeque::new();
         files.push_back(file_path.to_path_buf());
-        let mut dep_specs = HashMap::new();
+        let mut dep_specs: Vec<String> = Vec::new();
 
         while !files.is_empty() {
             let fp = files.pop_front().unwrap();
@@ -131,21 +163,25 @@ impl DepManifest {
                     continue;
                 }
                 if let Some(post) = t.strip_prefix("-r ") {
-                    files.push_back(file_path.parent().unwrap().join(post.trim()));
-                } else if let Some(post) = t.strip_prefix("--requirement ") {
-                    files.push_back(file_path.parent().unwrap().join(post.trim()));
-                } else {
-                    let ds = DepSpec::from_string(&line)?;
-                    if dep_specs.contains_key(&ds.key) {
-                        return Err(
-                            format!("Duplicate package key found: {}", ds.key).into()
-                        );
+                    if let Some(parent) = fp.parent() {
+                        files.push_back(parent.join(post.trim()));
                     }
-                    dep_specs.insert(ds.key.clone(), ds);
+                } else if let Some(post) = t.strip_prefix("--requirement ") {
+                    if let Some(parent) = fp.parent() {
+                        files.push_back(parent.join(post.trim()));
+                    }
+                } else {
+                    // let ds = DepSpec::from_string(&line)?;
+                    // if dep_specs.contains_key(&ds.key) {
+                    //     return Err(
+                    //         format!("Duplicate package key found: {}", ds.key).into()
+                    //     );
+                    // }
+                    dep_specs.push(line);
                 }
             }
         }
-        Ok(DepManifest { dep_specs })
+        Self::from_iter(dep_specs.iter())
     }
 
     pub(crate) fn from_pyproject(
@@ -273,7 +309,17 @@ impl DepManifest {
 
     // Return an optional DepSpec reference.
     pub(crate) fn get_dep_spec(&self, key: &str) -> Option<&DepSpec> {
-        self.dep_specs.get(key)
+        if let Some(dsoom) = self.dep_specs.get(key) {
+            match dsoom {
+                DepSpecOneOrMany::One(ds) => Some(ds),
+                DepSpecOneOrMany::Many(dsoom) => {
+                    panic!("here")
+                },
+            }
+        }
+        else {
+            None
+        }
     }
 
     // Return all DepSpec in this DepManifest that are not in observed.
@@ -303,9 +349,17 @@ impl DepManifest {
         package: &Package,
         permit_superset: bool,
     ) -> (bool, Option<&DepSpec>) {
-        if let Some(ds) = self.dep_specs.get(&package.key) {
-            let valid = ds.validate_package(package);
-            (valid, Some(ds))
+        if let Some(dsoom) = self.dep_specs.get(&package.key) {
+            match dsoom {
+                DepSpecOneOrMany::One(ds) => {
+                    let valid = ds.validate_package(package);
+                    (valid, Some(ds))
+                }
+                DepSpecOneOrMany::Many(dsv) => {
+                    panic!("not implemented")
+                }
+            }
+            // let valid = ds.validate_package(package);
         } else {
             (permit_superset, None) // cannot get a dep spec
         }
@@ -316,10 +370,17 @@ impl DepManifest {
     pub(crate) fn to_dep_manifest_report(&self) -> DepManifestReport {
         let mut records = Vec::new();
         for key in self.keys() {
-            if let Some(ds) = self.dep_specs.get(&key) {
-                records.push(DepManifestRecord {
-                    dep_spec: ds.clone(),
-                });
+            if let Some(dsoom) = self.dep_specs.get(&key) {
+                match dsoom {
+                    DepSpecOneOrMany::One(ds) => {
+                        records.push(DepManifestRecord {
+                            dep_spec: ds.clone(),
+                        });
+                    },
+                    DepSpecOneOrMany::Many(ds) => {
+                        panic!("not implemented");
+                    },
+                };
             }
         }
         DepManifestReport { records }
